@@ -1,0 +1,10 @@
+[submodule "third_party/rlinf"]
+	path = third_party/rlinf
+	url = https://github.com/RLinf/RLinf.git
+[submodule "third_party/robotwin"]
+	path = third_party/robotwin
+	url = https://github.com/RoboTwin-Platform/RoboTwin.git
+	branch = RLinf_support
+[submodule "third_party/robometer"]
+	path = third_party/robometer
+	url = https://github.com/robometer/robometer.git

@@ -1,0 +1,17 @@
+# Matched dense-eight-frame learned-reward run; ICON's server owns its fixed demo.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_learned_reward
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/icon_dsrl_dense8_single_stage_large_s1234
+    experiment_name: pi05_dsrl_icon_dense8_single_stage_large
+
+reward:
+  model:
+    server_url: http://127.0.0.1:8001

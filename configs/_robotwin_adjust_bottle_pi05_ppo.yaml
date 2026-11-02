@@ -1,0 +1,208 @@
+# Shared matched PPO recipe for simulator or Robometer rewards.
+# This workstation needs NCCL_P2P_DISABLE=1 and the tested NCCL runtime via
+# LD_PRELOAD=/home/yifei/icr/data/nccl/2.31.2/nvidia/nccl/lib/libnccl.so.2.
+defaults:
+  - env/robotwin_adjust_bottle@env.train
+  - env/robotwin_adjust_bottle@env.eval
+  - model/pi0_5@actor.model
+  - hybrid_engines/fsdp@actor.fsdp_config
+  - weight_syncer/patch_syncer@weight_syncer
+  - override hydra/job_logging: stdout
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+cluster:
+  num_nodes: 1
+  component_placement:
+    actor, env, rollout: 0-1
+
+runner:
+  task_type: embodied
+  logger:
+    log_path: /home/yifei/icr/outputs/ppo_sim_raster_s1234
+    project_name: rlinf
+    experiment_name: pi05_ppo
+    logger_backends: [tensorboard]
+  # 100 iterations x 8 episode attempts = 800 attempts per reward condition.
+  max_epochs: 100
+  max_steps: 100
+  only_eval: false
+  # Evaluate held-out seeds separately and retain only the final checkpoint.
+  val_check_interval: -1
+  save_interval: 100
+  resume_dir: null
+  ckpt_path: null
+
+# Preserve the pinned PPO losses and learning rates for both reward conditions.
+algorithm:
+  normalize_advantages: true
+  kl_penalty: kl
+  group_size: 1
+  reward_coef: 1.0
+  reward_type: chunk_level
+  logprob_type: chunk_level
+  entropy_type: token_level
+  update_epoch: 5
+  adv_type: gae
+  loss_type: actor_critic
+  loss_agg_func: token-mean
+  kl_beta: 0.0
+  entropy_bonus: 0
+  clip_ratio_high: 0.2
+  clip_ratio_low: 0.2
+  clip_ratio_c: 3.0
+  value_clip: 0.2
+  huber_delta: 10.0
+  gamma: 0.99
+  gae_lambda: 0.95
+  filter_rewards: false
+  rewards_lower_bound: 0.1
+  rewards_upper_bound: 0.9
+
+env:
+  group_name: EnvGroup
+  enable_offload: true
+  train:
+    # One environment per worker is required by single_thread_render.
+    total_num_envs: 2
+    rollout_epoch: 4
+    auto_reset: false
+    ignore_terminations: false
+    reward_coef: ${algorithm.reward_coef}
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    group_size: ${algorithm.group_size}
+    assets_path: /home/yifei/icr/third_party/robotwin
+    seeds_path: ${oc.env:REPO_PATH}/rlinf/envs/sim/robotwin/seeds/train_seeds.json
+    center_crop: false
+    skip_intermediate_renders: true
+    video_cfg:
+      save_video: false
+    task_config:
+      render_shader: default
+      render_denoiser: none
+      single_thread_render: true
+      embodiment: [aloha-agilex]
+      camera:
+        collect_wrist_camera: true
+      domain_randomization:
+        random_background: false
+        cluttered_table: false
+        clean_background_rate: 1
+        random_head_camera_dis: 0
+        random_table_height: 0
+        random_light: false
+        crazy_random_light_rate: 0
+  # A small, fixed monitoring set. The standalone evaluation covers all 150 seeds.
+  eval:
+    total_num_envs: 2
+    rollout_epoch: 1
+    auto_reset: true
+    ignore_terminations: true
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    reward_coef: ${algorithm.reward_coef}
+    group_size: 1
+    use_fixed_reset_state_ids: true
+    is_eval: true
+    assets_path: /home/yifei/icr/third_party/robotwin
+    seeds_path: ${oc.env:REPO_PATH}/rlinf/envs/sim/robotwin/seeds/eval_seeds.json
+    center_crop: false
+    video_cfg:
+      save_video: false
+      video_base_dir: ${runner.logger.log_path}/video/eval
+    task_config: ${env.train.task_config}
+
+rollout:
+  group_name: RolloutGroup
+  backend: huggingface
+  recompute_logprobs: false
+  enable_offload: true
+  pipeline_stage_num: 1
+  model:
+    model_path: ${actor.model.model_path}
+    precision: bf16
+
+actor:
+  group_name: ActorGroup
+  training_backend: fsdp
+  # 2 envs * 4 rollout epochs * (200 / 50) = 32 chunk slots per iteration.
+  # Global batch 16 gives two minibatches per PPO epoch on two actor ranks.
+  micro_batch_size: 1
+  global_batch_size: 16
+  seed: 1234
+  enable_offload: true
+  model:
+    model_path: /home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle
+    # Keep optimizer parameters in FP32; FSDP uses BF16 backbone computation.
+    precision: fp32
+    num_action_chunks: 50
+    action_dim: 14
+    add_value_head: true
+    num_steps: 5
+    openpi_data:
+      norm_stats_path: /home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json
+    openpi:
+      embed_dtype: bf16
+      task: rl
+      train_expert_only: true
+      config_name: pi05_aloha_robotwin
+      num_images_in_input: 3
+      noise_level: 0.3
+      detach_critic_input: true
+      torch_compile: false
+  optim:
+    lr: 5.0e-06
+    value_lr: 1.0e-04
+    adam_beta1: 0.9
+    adam_beta2: 0.95
+    adam_eps: 1.0e-08
+    weight_decay: 0.01
+    clip_grad: 1.0
+    critic_warmup_steps: 0
+  fsdp_config:
+    strategy: fsdp
+    use_orig_params: true
+    gradient_checkpointing: true
+    gradient_checkpointing_use_reentrant: false
+    save_full_model_weights: true
+    mixed_precision:
+      param_dtype: bf16
+      reduce_dtype: fp32
+      buffer_dtype: fp32
+      cast_forward_inputs: false
+      cast_root_forward_inputs: false
+    # Follow the upstream OpenPI FSDP preset; PPO also has an FP32 value head.
+    wrappers:
+      projections:
+        module_names: ["action_*proj", "*time_mlp_*", value_head]
+      norms:
+        module_classes: [RMSNorm]
+      vision_embedding:
+        module_names: [img, img.stem]
+    mixed_precision_policies:
+      fp32:
+        param_dtype: fp32
+        reduce_dtype: fp32
+        buffer_dtype: fp32
+      fp32_preserve_inputs:
+        param_dtype: fp32
+        reduce_dtype: fp32
+        buffer_dtype: fp32
+        cast_forward_inputs: false
+    mixed_precision_rules:
+      projections: fp32
+      norms: fp32_preserve_inputs
+      vision_embedding: fp32_preserve_inputs
+
+reward:
+  use_reward_model: false
+  env_reward_weight: 1.0
+  reward_weight: 0.0
+
+critic:
+  use_critic_model: false

@@ -1,0 +1,164 @@
+diff --git a/.gitignore b/.gitignore
+index 23e22b6d9f1a16b3aa0e329a6c8ea29fd2e1ccad..c4a7c37713f6cb3aa9eeff42421c1aba2a8ec3b1 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -26,4 +26,24 @@ envs/curobo/*
+ /*.json*
+ /*.txt
+ 
+-gen_reward_video/
+\ No newline at end of file
++gen_reward_video/
++
++# Local experiment artifacts and generated caches
++/runs/
++/models/
++/checkpoints/
++/logs/
++/outputs/
++.venv*/
++__pycache__/
++*.py[cod]
++.pytest_cache/
++.ruff_cache/
++.mypy_cache/
++*.log
++*.log.*
++*.pt
++*.pth
++*.ckpt
++*.safetensors
++*.onnx
+diff --git a/envs/_base_task.py b/envs/_base_task.py
+index 3485e7ca7039a23218c06bc9308e8758dc03a4b5..8722b925ccb9d556e7d44b2b68854e82006156de 100644
+--- a/envs/_base_task.py
++++ b/envs/_base_task.py
+@@ -66,6 +66,8 @@ class Base_Task(gym.Env):
+         self.save_dir = kwags.get("save_path", "data")
+         self.ep_num = kwags.get("now_ep_num", 0)
+         self.render_freq = kwags.get("render_freq", 10)
++        self.render_shader = kwags.get("render_shader", "rt")
++        self.render_denoiser = kwags.get("render_denoiser", "oidn")
+         self.data_type = kwags.get("data_type", None)
+         self.save_data = kwags.get("save_data", False)
+         self.dual_arm = kwags.get("dual_arm", True)
+@@ -204,6 +206,14 @@ class Base_Task(gym.Env):
+         Set the scene
+             - Set up the basic scene: light source, viewer.
+         """
++        render_shader = kwargs.get("render_shader", self.render_shader)
++        if render_shader not in ("rt", "default"):
++            raise ValueError("render_shader must be 'rt' or 'default'")
++        if render_shader == "default":
++            # VectorEnv also sets this before seed-probe cache access, which
++            # may create SAPIEN's global Vulkan context before task setup.
++            os.environ["SAPIEN_DISABLE_RAY_TRACING"] = "1"
++
+         self.engine = sapien.Engine()
+         # declare sapien renderer
+         from sapien.render import set_global_config
+@@ -213,10 +223,15 @@ class Base_Task(gym.Env):
+         # give renderer to sapien sim
+         self.engine.set_renderer(self.renderer)
+ 
+-        sapien.render.set_camera_shader_dir("rt")
+-        sapien.render.set_ray_tracing_samples_per_pixel(32)
+-        sapien.render.set_ray_tracing_path_depth(8)
+-        sapien.render.set_ray_tracing_denoiser("oidn")
++        sapien.render.set_camera_shader_dir(render_shader)
++        if render_shader == "rt":
++            sapien.render.set_ray_tracing_samples_per_pixel(32)
++            sapien.render.set_ray_tracing_path_depth(8)
++            sapien.render.set_ray_tracing_denoiser(
++                kwargs.get("render_denoiser", self.render_denoiser)
++            )
++        else:
++            sapien.render.set_ray_tracing_denoiser("none")
+ 
+         # declare sapien scene
+         scene_config = sapien.SceneConfig()
+diff --git a/robotwin/envs/vector_env.py b/robotwin/envs/vector_env.py
+index 52766aad0c6df3992c52e317f8c8636601da7463..d15fbc61c9372635aa41a0a1e85804a9ab21f526 100644
+--- a/robotwin/envs/vector_env.py
++++ b/robotwin/envs/vector_env.py
+@@ -259,6 +259,12 @@ class VectorEnv(gym.Env):
+         env_seeds=None,
+         instruction_type="seen",
+     ):
++        render_shader = task_config.get("render_shader", "rt")
++        if render_shader not in ("rt", "default"):
++            raise ValueError("render_shader must be 'rt' or 'default'")
++        # Seed probes clear SAPIEN caches before the first task scene is built.
++        if render_shader == "default":
++            os.environ["SAPIEN_DISABLE_RAY_TRACING"] = "1"
+         self.env_seeds = env_seeds
+         if self.env_seeds is not None:
+             assert len(self.env_seeds) == n_envs
+@@ -340,6 +346,10 @@ class VectorEnv(gym.Env):
+ 
+         self.args = args
+         self.n_envs = n_envs
++        self.single_thread_render = bool(args.get("single_thread_render", False))
++        if self.single_thread_render and n_envs != 1:
++            raise ValueError("single_thread_render requires exactly one environment")
++        self._env_owner_thread_id = None
+ 
+         self.envs = []
+         self.instruction_type = instruction_type
+@@ -350,8 +360,20 @@ class VectorEnv(gym.Env):
+ 
+         self._init_envs()
+ 
++    def _run_on_env_thread(self, fn, *args, **kwargs):
++        # Keep SAPIEN scene creation, camera access and destruction on the
++        # same worker when the single-environment rendering workaround is on.
++        if threading.get_ident() == self._env_owner_thread_id:
++            return fn(*args, **kwargs)
++
++        def run():
++            self._env_owner_thread_id = threading.get_ident()
++            return fn(*args, **kwargs)
++
++        return self.env_thread_pool.submit(run).result(timeout=1200)
++
+     def _init_envs(self):
+-        for i in range(self.n_envs):
++        def create_env(i):
+             sub_env = SubEnv(
+                 env_id=i,
+                 task_name=self.task_name,
+@@ -361,6 +383,13 @@ class VectorEnv(gym.Env):
+                 global_lock=self.global_lock,
+             )
+             sub_env.setup_task()
++            return sub_env
++
++        for i in range(self.n_envs):
++            if self.single_thread_render:
++                sub_env = self._run_on_env_thread(create_env, i)
++            else:
++                sub_env = create_env(i)
+             self.envs.append(sub_env)
+ 
+     def transform(self, results):
+@@ -477,11 +506,19 @@ class VectorEnv(gym.Env):
+     def get_obs(self):
+         obs_venv = []
+         for env in self.envs:
+-            obs_venv.append(env.get_obs())
++            if self.single_thread_render:
++                obs_venv.append(self._run_on_env_thread(env.get_obs))
++            else:
++                obs_venv.append(env.get_obs())
+ 
+         return obs_venv
+ 
+     def close(self, clear_cache=True):
++        if self.single_thread_render:
++            return self._run_on_env_thread(self._close_envs, clear_cache)
++        return self._close_envs(clear_cache)
++
++    def _close_envs(self, clear_cache=True):
+         for env in self.envs:
+             env.close(clear_cache=clear_cache)
+ 

@@ -1,0 +1,205 @@
+diff --git a/.gitignore b/.gitignore
+index 4bbf2adcd8b4e28f0fdf36b379f2d86f2cb784ff..0d23161046f7d4f911a5ed272dc0fedd6adea01b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,4 +4,24 @@ outputs/*
+ unsloth_compiled_cache/*
+ venv_robodopamine.txt
+ baseline_eval_output/*
+-*.py[cod]
+\ No newline at end of file
++*.py[cod]
++
++# Local experiment artifacts and generated caches
++/runs/
++/models/
++/checkpoints/
++/logs/
++/outputs/
++.venv*/
++__pycache__/
++*.py[cod]
++.pytest_cache/
++.ruff_cache/
++.mypy_cache/
++*.log
++*.log.*
++*.pt
++*.pth
++*.ckpt
++*.safetensors
++*.onnx
+diff --git a/robometer/models/utils.py b/robometer/models/utils.py
+index 9e38c6f8118d164946208f1c64ed4aef4ba5f3e3..7851b5e1eb139551aa16d1e0b49e8885bab3fd1b 100644
+--- a/robometer/models/utils.py
++++ b/robometer/models/utils.py
+@@ -1,7 +1,8 @@
+-import torch
+-import numpy as np
+ from dataclasses import dataclass
+ 
++import numpy as np
++import torch
++
+ 
+ @dataclass
+ class ModelOutput:
+@@ -12,27 +13,58 @@ class ModelOutput:
+     hidden_states: torch.Tensor | None = None
+ 
+ 
+-def convert_bins_to_continuous(bin_logits: torch.Tensor | np.ndarray) -> torch.Tensor | np.ndarray:
+-    """Convert discrete bins to continuous progress values in [0, 1] via weighted sum of bin centers."""
++def convert_bins_to_continuous(
++    bin_logits: torch.Tensor | np.ndarray, *, from_logits: bool = True
++) -> torch.Tensor | np.ndarray:
++    """Return expected progress from logits or explicit normalized probabilities.
++
++    The last axis contains bins with centers evenly spaced over [0, 1].
++    Low-precision inputs are accumulated in at least float32. Probability input
++    must be finite, nonnegative, and normalized within its dtype's precision.
++    """
++    if not isinstance(bin_logits, (torch.Tensor, np.ndarray)):
++        raise TypeError("Bin values must be a torch.Tensor or numpy.ndarray")
++    if bin_logits.ndim == 0 or bin_logits.shape[-1] == 0:
++        raise ValueError("Bin values require a nonempty final bin dimension")
+     num_bins = bin_logits.shape[-1]
+-    if (bin_logits.sum(dim=-1) == 1).all():
+-        bin_probs = bin_logits
++    if isinstance(bin_logits, torch.Tensor):
++        if bin_logits.is_complex():
++            raise ValueError("Bin values must be real numbers")
++        tolerance = max(1e-6, torch.finfo(bin_logits.dtype).eps) if bin_logits.is_floating_point() else 1e-6
++        values = bin_logits if bin_logits.dtype in (torch.float32, torch.float64) else bin_logits.float()
++        if not torch.isfinite(values).all():
++            raise ValueError("Bin values must be finite")
++        if from_logits:
++            bin_probs = torch.softmax(values, dim=-1)
++        else:
++            totals = values.sum(dim=-1, keepdim=True)
++            if (values < 0).any() or not torch.isclose(
++                totals, torch.ones_like(totals), rtol=1e-5, atol=tolerance
++            ).all():
++                raise ValueError("Bin probabilities must be nonnegative and sum to one")
++            bin_probs = values / totals
++        bin_centers = torch.linspace(0.0, 1.0, num_bins, device=values.device, dtype=values.dtype)
++        return (bin_probs * bin_centers).sum(dim=-1)
++
++    if not np.issubdtype(bin_logits.dtype, np.number) or np.iscomplexobj(bin_logits):
++        raise ValueError("Bin values must be real numbers")
++    tolerance = max(1e-6, np.finfo(bin_logits.dtype).eps) if np.issubdtype(bin_logits.dtype, np.floating) else 1e-6
++    values = bin_logits.astype(np.result_type(bin_logits.dtype, np.float32), copy=False)
++    if not np.isfinite(values).all():
++        raise ValueError("Bin values must be finite")
++    if from_logits:
++        # Subtracting opposite finite extremes can overflow to negative infinity.
++        with np.errstate(over="ignore", under="ignore"):
++            shifted = values - values.max(axis=-1, keepdims=True)
++            weights = np.exp(shifted)
++        bin_probs = weights / weights.sum(axis=-1, keepdims=True)
+     else:
+-        bin_probs = (
+-            torch.softmax(bin_logits, dim=-1)
+-            if isinstance(bin_logits, torch.Tensor)
+-            else np.softmax(bin_logits, axis=-1)
+-        )
+-    bin_centers = (
+-        torch.linspace(0.0, 1.0, num_bins, device=bin_logits.device, dtype=bin_logits.dtype)
+-        if isinstance(bin_logits, torch.Tensor)
+-        else np.linspace(0.0, 1.0, num_bins)
+-    )
+-    return (
+-        (bin_probs * bin_centers).sum(dim=-1)
+-        if isinstance(bin_logits, torch.Tensor)
+-        else (bin_probs * bin_centers).sum(axis=-1)
+-    )
++        totals = values.sum(axis=-1, keepdims=True)
++        if (values < 0).any() or not np.allclose(totals, 1.0, rtol=1e-5, atol=tolerance):
++            raise ValueError("Bin probabilities must be nonnegative and sum to one")
++        bin_probs = values / totals
++    bin_centers = np.linspace(0.0, 1.0, num_bins, dtype=values.dtype)
++    return (bin_probs * bin_centers).sum(axis=-1)
+ 
+ 
+ def convert_bins_to_continuous_hard(
+@@ -62,16 +94,47 @@ def convert_bins_to_continuous_hard(
+ 
+ 
+ def convert_bin_index_to_continuous(bin_index: torch.Tensor | np.ndarray, num_bins: int) -> torch.Tensor | np.ndarray:
+-    """Convert discrete bin index to continuous progress value in [0, 1] by selecting the argmax bin and returning its center."""
+-    bin_centers = torch.linspace(0.0, 1.0, num_bins, device=bin_index.device, dtype=bin_index.dtype)
+-    return bin_centers[bin_index.long()]
++    """Map integer-valued bin indices to floating-point bin centers in [0, 1]."""
++    if num_bins <= 0:
++        raise ValueError("num_bins must be positive")
++    if isinstance(bin_index, torch.Tensor):
++        if bin_index.is_complex() or not torch.isfinite(bin_index).all():
++            raise ValueError("Bin indices must be finite real integers")
++        indices = bin_index.long()
++        if (bin_index != indices).any() or (indices < 0).any() or (indices >= num_bins).any():
++            raise ValueError("Bin indices must be integers in [0, num_bins)")
++        dtype = torch.float64 if bin_index.dtype == torch.float64 else torch.float32
++        bin_centers = torch.linspace(0.0, 1.0, num_bins, device=bin_index.device, dtype=dtype)
++        return bin_centers[indices]
++    if not isinstance(bin_index, np.ndarray):
++        raise TypeError("Bin indices must be a torch.Tensor or numpy.ndarray")
++    if not np.issubdtype(bin_index.dtype, np.number) or np.iscomplexobj(bin_index) or not np.isfinite(bin_index).all():
++        raise ValueError("Bin indices must be finite real integers")
++    if (bin_index < 0).any() or (bin_index >= num_bins).any() or (bin_index != np.floor(bin_index)).any():
++        raise ValueError("Bin indices must be integers in [0, num_bins)")
++    return np.linspace(0.0, 1.0, num_bins)[bin_index.astype(np.int64)]
+ 
+ 
+ def convert_discrete_target_to_continuous(
+     target: torch.Tensor | np.ndarray, num_bins: int
+ ) -> torch.Tensor | np.ndarray:
+-    """Convert discrete target to continuous progress value in [0, 1] by selecting the argmax bin and returning its center."""
++    """Convert [batch, time] indices or bin-distribution targets to progress.
++
++    Distribution targets use their expected bin center. All-zero distribution
++    rows are collator padding and map to zero progress.
++    """
+     if len(target.shape) == 2:
+         return convert_bin_index_to_continuous(target, num_bins)
++    if target.ndim == 0 or target.shape[-1] != num_bins:
++        raise ValueError("Distribution targets must end with num_bins values")
++    if isinstance(target, torch.Tensor):
++        padding = (target == 0).all(dim=-1, keepdim=True)
++        zero_progress = torch.zeros_like(target)
++        zero_progress[..., 0] = 1
++        probabilities = torch.where(padding, zero_progress, target)
+     else:
+-        return convert_bins_to_continuous(target)
++        padding = (target == 0).all(axis=-1, keepdims=True)
++        zero_progress = np.zeros_like(target)
++        zero_progress[..., 0] = 1
++        probabilities = np.where(padding, zero_progress, target)
++    return convert_bins_to_continuous(probabilities, from_logits=False)
+diff --git a/robometer/utils/setup_utils.py b/robometer/utils/setup_utils.py
+index fad875d24b8e1a10d0c484c2472bed38b5b7a753..755aa77ad06596b66ebc48faa50b3da4efc6bf49 100755
+--- a/robometer/utils/setup_utils.py
++++ b/robometer/utils/setup_utils.py
+@@ -4,7 +4,12 @@ Shared setup utilities for RBM training.
+ This file contains setup functions that can be reused across different training scripts.
+ """
+ 
+-from unsloth import FastVisionModel
++try:
++    from unsloth import FastVisionModel
++except ModuleNotFoundError as exc:
++    if exc.name != "unsloth":
++        raise
++    FastVisionModel = None
+ 
+ import json
+ import os
+@@ -496,6 +501,9 @@ def _load_base_model_with_unsloth(
+     Returns:
+         Tuple of (base_model, tokenizer)
+     """
++    if FastVisionModel is None:
++        raise ImportError("use_unsloth=True requires the optional unsloth package")
++
+     logger.info("Using Unsloth for faster training with Qwen model")
+ 
+     # Load model with unsloth

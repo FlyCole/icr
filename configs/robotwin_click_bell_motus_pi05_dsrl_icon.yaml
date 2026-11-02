@@ -1,0 +1,32 @@
+# Matched 400-iteration DSRL training; reward source icon.
+defaults:
+  - /_robotwin_motus_pi05_dsrl
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_multitask/click_bell/icon_train
+    experiment_name: pi05_motus_click_bell_dsrl_icon
+
+env:
+  train:
+    max_episode_steps: 400
+    max_steps_per_rollout_epoch: 400
+    task_config:
+      task_name: click_bell
+      step_lim: 400
+  eval:
+    max_episode_steps: 400
+    max_steps_per_rollout_epoch: 400
+    task_config:
+      task_name: click_bell
+      step_lim: 400
+
+reward:
+  model:
+    server_url: http://127.0.0.1:8001
+

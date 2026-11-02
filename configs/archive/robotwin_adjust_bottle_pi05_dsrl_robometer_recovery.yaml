@@ -1,0 +1,25 @@
+# @package _global_
+# Fresh, shorter test of dense eight-frame prefixes and simulator-gated reward.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_learned_reward
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/robometer_dsrl_dense8_single_stage_s1234
+    experiment_name: pi05_dsrl_dense8_single_stage
+  max_epochs: 100
+  max_steps: 100
+  save_interval: 100
+  val_check_interval: 25
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  eval:
+    # Twenty episodes per monitoring evaluation; final comparison still uses 150.
+    rollout_epoch: 10

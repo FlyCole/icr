@@ -1,0 +1,943 @@
+diff --git a/.gitignore b/.gitignore
+index e2d6578cd25f50a776374cc01cf2e4be74069990..a9754441d1bb46d2be81edb861476fa89c2ae868 100755
+--- a/.gitignore
++++ b/.gitignore
+@@ -17,4 +17,24 @@ logs/
+ libero*/
+ .tools/
+ visualizations/
+-artifacts/
+\ No newline at end of file
++artifacts/
++
++# Local experiment artifacts and generated caches
++/runs/
++/models/
++/checkpoints/
++/logs/
++/outputs/
++.venv*/
++__pycache__/
++*.py[cod]
++.pytest_cache/
++.ruff_cache/
++.mypy_cache/
++*.log
++*.log.*
++*.pt
++*.pth
++*.ckpt
++*.safetensors
++*.onnx
+diff --git a/robometer/configs/eval_config_server.yaml b/robometer/configs/eval_config_server.yaml
+index a5ee37f0b077670403a86e50e1cc30c1266b4d95..cd7e1a0b66d4f9318f3a9e829ad6e4cdfca8e0d6 100755
+--- a/robometer/configs/eval_config_server.yaml
++++ b/robometer/configs/eval_config_server.yaml
+@@ -3,6 +3,10 @@
+ 
+ # Model path to load training config from
+ model_path: "robometer/Robometer-4B"  # or your RBM/ReWiND checkpoint
++context_demo_path: null  # ICON: fixed successful train demo with frames.npy + metadata.json
++context_kv_cache: true  # Active only with a fixed ICON context; false restores full-sequence inference.
++context_kv_cache_max_entries: 8  # Separate cached prefixes for different task instructions.
++context_kv_cache_max_mib: 1024  # Per-GPU LRU memory cap; query history is never retained.
+ 
+ # GPU Pool settings
+ num_gpus: 1  # Number of GPUs to use (null for all available)
+diff --git a/robometer/configs/eval_configs.py b/robometer/configs/eval_configs.py
+index 515d133c569fae3131bb05b4f140b2116e3d546d..3efbadf5ed3b3c0cd4b8724c417b62beae32e90a 100755
+--- a/robometer/configs/eval_configs.py
++++ b/robometer/configs/eval_configs.py
+@@ -23,6 +23,16 @@ class EvalServerConfig:
+         default="./rbm_model_output/checkpoint-1000",
+         metadata={"help": "Path to the trained model checkpoint (will load training_config.yaml from here)"},
+     )
++    context_demo_path: Optional[str] = field(
++        default=None,
++        metadata={"help": "Optional fixed ICON train-demo directory containing frames.npy and metadata.json"},
++    )
++    context_kv_cache: bool = field(
++        default=True,
++        metadata={"help": "Reuse causal Qwen3-VL context prefixes when a fixed ICON demonstration is supplied"},
++    )
++    context_kv_cache_max_entries: int = field(default=8)
++    context_kv_cache_max_mib: int = field(default=1024)
+ 
+     # GPU Pool settings
+     num_gpus: int = field(default=1, metadata={"help": "Number of GPUs to use (None for all available)"})
+diff --git a/robometer/evals/context_demo.py b/robometer/evals/context_demo.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa44c84ebb
+--- /dev/null
++++ b/robometer/evals/context_demo.py
+@@ -0,0 +1,159 @@
++"""A validated, fixed successful RoboTwin reference for ICON requests.
++
++This module deliberately avoids the model stack so the artifact and checkpoint
++contract can be checked on CPU before loading model weights.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import json
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++
++
++def _field(section: Any, name: str, default: Any = None) -> Any:
++    return section.get(name, default) if isinstance(section, dict) else getattr(section, name, default)
++
++
++def conditioning_info(config: Any) -> dict[str, Any]:
++    data = _field(config, "data")
++    model = _field(config, "model")
++    return {
++        "conditioning_mode": _field(data, "conditioning_mode", "language"),
++        "context_frames": _field(data, "context_frames"),
++        "add_context_progress_tokens": _field(data, "add_context_progress_tokens", False),
++        "use_multi_image": _field(data, "use_multi_image", False),
++        "use_per_frame_progress_token": _field(data, "use_per_frame_progress_token", False),
++        "include_language_with_context": _field(data, "include_language_with_context", False),
++        "language_condition_dropout_prob": _field(data, "language_condition_dropout_prob", 0.0),
++        "context_condition_dropout_prob": _field(data, "context_condition_dropout_prob", 0.0),
++        "base_model_id": _field(model, "base_model_id"),
++    }
++
++
++def validate_icon_conditioning(config: Any) -> int:
++    """Reject settings that would drop or misinterpret the fixed demonstration."""
++    info = conditioning_info(config)
++    if info["conditioning_mode"] != "language_context":
++        raise ValueError("A fixed ICON demo requires conditioning_mode='language_context'")
++    for key in ("use_multi_image", "use_per_frame_progress_token", "add_context_progress_tokens"):
++        if info[key] is not True:
++            raise ValueError(f"A fixed ICON demo requires data.{key}=true")
++    model = _field(config, "model")
++    for key in ("use_multi_image", "use_per_frame_progress_token"):
++        if _field(model, key) is not True:
++            raise ValueError(f"A fixed ICON demo requires matching model.{key}=true")
++    if not 0 <= info["context_condition_dropout_prob"] < 1:
++        raise ValueError("Fixed ICON context must remain enabled during inference")
++    count = info["context_frames"]
++    if type(count) is not int or count < 1:
++        raise ValueError("Checkpoint context_frames must be a positive integer")
++    return count
++
++
++def evenly_spaced_context_indices(frame_count: int, context_frames: int) -> list[int]:
++    """Match full_training's deterministic nearest-rounded endpoint sampling."""
++    if frame_count < 1 or context_frames < 1:
++        raise ValueError("Frame counts must be positive")
++    if context_frames == 1:
++        return [0]
++    return [
++        (index * (frame_count - 1) + (context_frames - 1) // 2) // (context_frames - 1)
++        for index in range(context_frames)
++    ]
++
++
++@dataclass(frozen=True)
++class FixedContextDemo:
++    frames: np.ndarray
++    metadata: dict[str, Any]
++    path: str
++    metadata_sha256: str
++    selected_indices: list[int]
++
++    @classmethod
++    def load(cls, context_demo_path: str, config: Any) -> FixedContextDemo:
++        count = validate_icon_conditioning(config)
++        requested = Path(context_demo_path).expanduser().resolve()
++        frames_path = requested / "frames.npy" if requested.is_dir() else requested
++        metadata_path = frames_path.with_name("metadata.json")
++        metadata_bytes = metadata_path.read_bytes()
++        metadata = json.loads(metadata_bytes)
++        if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
++            raise ValueError("ICON demo metadata requires schema_version=1")
++        for key, expected in (
++            ("simulator_success", True),
++            ("raw_rgb", True),
++            ("split", "train"),
++            ("camera", "head"),
++        ):
++            value = metadata.get(key)
++            if value != expected or (isinstance(expected, bool) and type(value) is not bool):
++                raise ValueError(f"ICON demo provenance requires {key}={expected!r}")
++        for key in ("task_name", "task_instruction", "policy_checkpoint"):
++            if not isinstance(metadata.get(key), str) or not metadata[key].strip():
++                raise ValueError(f"ICON demo provenance requires a nonempty {key}")
++        for key in ("seed", "actual_scene_seed"):
++            if type(metadata.get(key)) is not int or metadata[key] < 0:
++                raise ValueError(f"ICON demo provenance requires a nonnegative integer {key}")
++        hasher = hashlib.sha256()
++        with frames_path.open("rb") as handle:
++            for block in iter(lambda: handle.read(1024 * 1024), b""):
++                hasher.update(block)
++        digest = hasher.hexdigest()
++        if metadata.get("frames_sha256") != digest:
++            raise ValueError("ICON demo frames_sha256 does not match frames.npy")
++        frames = np.load(frames_path, allow_pickle=False)
++        if frames.dtype != np.uint8 or frames.ndim != 4 or frames.shape[-1] != 3 or min(frames.shape) < 1:
++            raise ValueError("ICON demo frames must be nonempty uint8 RGB [T,H,W,3]")
++        if metadata.get("frame_count") != len(frames):
++            raise ValueError("ICON demo frame_count does not match frames.npy")
++        if metadata.get("first_success_frame_index") != len(frames) - 1:
++            raise ValueError("ICON demo must end at its first native simulator success")
++        indices = evenly_spaced_context_indices(len(frames), count)
++        if metadata.get("context_frames") != count or metadata.get("context_frame_indices") != indices:
++            raise ValueError("ICON demo context sampling does not match checkpoint context_frames")
++        selected = np.ascontiguousarray(frames[indices])
++        selected.setflags(write=False)
++        return cls(selected, metadata, str(frames_path), hashlib.sha256(metadata_bytes).hexdigest(), indices)
++
++    def attach(self, samples: list[Any]) -> list[dict[str, Any]]:
++        """Attach one immutable cached reference without changing query history."""
++        result = []
++        for sample in samples:
++            item = dict(sample) if isinstance(sample, dict) else sample.model_dump()
++            if item.get("context_trajectory") is not None:
++                raise ValueError("This ICON service uses its fixed demo; request context is not accepted")
++            item["context_trajectory"] = {
++                "frames": self.frames,
++                "frames_shape": self.frames.shape,
++                "task": self.metadata["task_instruction"],
++                "id": f"fixed-demo:{self.metadata['frames_sha256']}",
++                "data_source": "robotwin_train_sft",
++                "quality_label": "successful",
++                "metadata": {"context_demo_sha256": self.metadata["frames_sha256"]},
++            }
++            result.append(item)
++        return result
++
++    def info(self) -> dict[str, Any]:
++        return {
++            "frames_path": self.path,
++            "frames_sha256": self.metadata["frames_sha256"],
++            "metadata_sha256": self.metadata_sha256,
++            "task_name": self.metadata["task_name"],
++            "task_instruction": self.metadata["task_instruction"],
++            "split": self.metadata["split"],
++            "seed": self.metadata["seed"],
++            "actual_scene_seed": self.metadata["actual_scene_seed"],
++            "policy_checkpoint": self.metadata["policy_checkpoint"],
++            "camera": self.metadata["camera"],
++            "simulator_success": self.metadata["simulator_success"],
++            "source_frame_count": self.metadata["frame_count"],
++            "frame_count": len(self.frames),
++            "selected_indices": self.selected_indices,
++        }
+diff --git a/robometer/evals/eval_server.py b/robometer/evals/eval_server.py
+index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4cec9ba9a5 100755
+--- a/robometer/evals/eval_server.py
++++ b/robometer/evals/eval_server.py
+@@ -47,6 +47,7 @@ from robometer.evals.eval_utils import (
+     parse_npy_form_data,
+     reconstruct_payload_from_npy,
+ )
++from robometer.evals.context_demo import FixedContextDemo, conditioning_info
+ from robometer.utils.save import load_model_from_hf
+ from robometer.configs.eval_configs import EvalServerConfig
+ from robometer.configs.experiment_configs import ExperimentConfig
+@@ -271,10 +272,7 @@ def process_batch_helper(
+                             )
+ 
+                     # Create sub-sample
+-                    sub_sample = ProgressSample(
+-                        trajectory=sub_trajectory,
+-                        data_gen_strategy=sample.data_gen_strategy,
+-                    )
++                    sub_sample = sample.model_copy(update={"trajectory": sub_trajectory})
+                     expanded_samples.append(sub_sample)
+ 
+                 sample_frame_counts.append(num_frames)
+@@ -361,6 +359,10 @@ class MultiGPUEvalServer:
+         model_path: str,
+         num_gpus: int | None = None,
+         max_workers: int | None = None,
++        context_demo_path: str | None = None,
++        context_kv_cache: bool = True,
++        context_kv_cache_max_entries: int = 8,
++        context_kv_cache_max_mib: int = 1024,
+     ):
+         self.model_path = model_path
+         self.num_gpus = num_gpus or torch.cuda.device_count()
+@@ -377,6 +379,19 @@ class MultiGPUEvalServer:
+         )
+ 
+         self.exp_config: ExperimentConfig = exp_config
++        self.context_demo = (
++            FixedContextDemo.load(context_demo_path, self.exp_config)
++            if context_demo_path is not None
++            else None
++        )
++        self.context_kv_cache_enabled = bool(context_kv_cache and self.context_demo is not None)
++        self.context_kv_cache_max_entries = int(context_kv_cache_max_entries)
++        self.context_kv_cache_max_bytes = int(context_kv_cache_max_mib) * 1024**2
++        if self.context_kv_cache_max_entries < 1 or self.context_kv_cache_max_bytes < 1:
++            raise ValueError("Context KV cache limits must be positive")
++        if self.context_kv_cache_enabled and getattr(reward_model.model.config, "model_type", None) != "qwen3_vl":
++            raise ValueError("Fixed-context KV caching currently requires the Qwen3-VL ICON model")
++        self.context_kv_caches = {}
+         self.base_tokenizer = tokenizer
+         self.base_processor = processor
+         self.base_model = reward_model
+@@ -414,6 +429,14 @@ class MultiGPUEvalServer:
+ 
+             model = model.to(device)
+             model.eval()
++            if self.context_kv_cache_enabled:
++                from robometer.models.context_kv_cache import FixedContextKVCache
++
++                model.context_kv_cache = FixedContextKVCache(
++                    max_entries=self.context_kv_cache_max_entries,
++                    max_bytes=self.context_kv_cache_max_bytes,
++                )
++                self.context_kv_caches[gpu_id] = model.context_kv_cache
+ 
+             # Initialize GPU stats
+             self.gpu_stats[gpu_id] = {
+@@ -483,6 +506,9 @@ class MultiGPUEvalServer:
+                 if len(actual_batch_data) == 1 and isinstance(actual_batch_data[0], list):
+                     actual_batch_data = actual_batch_data[0]
+ 
++            if self.context_demo is not None:
++                actual_batch_data = self.context_demo.attach(actual_batch_data)
++
+             # Process batch in thread pool
+             result = await loop.run_in_executor(
+                 self.executor,
+@@ -536,6 +562,25 @@ class MultiGPUEvalServer:
+             "pool_size": self.gpu_pool.maxsize,
+         }
+ 
++    def get_service_info(self) -> Dict[str, Any]:
++        """Expose the exact context contract used for otherwise unchanged queries."""
++        return {
++            "model_path": self.model_path,
++            "service_protocol": "icon-fixed-context-v1" if self.context_demo is not None else "robometer-query-v1",
++            "conditioning": conditioning_info(self.exp_config),
++            "context_demo": self.context_demo.info() if self.context_demo is not None else None,
++            "context_kv_cache": {
++                "enabled": getattr(self, "context_kv_cache_enabled", False),
++                "implementation": "qwen3-vl-fixed-context-kv-v1",
++                "max_entries": getattr(self, "context_kv_cache_max_entries", 0),
++                "max_bytes": getattr(self, "context_kv_cache_max_bytes", 0),
++                "replicas": {
++                    str(gpu_id): cache.info()
++                    for gpu_id, cache in getattr(self, "context_kv_caches", {}).items()
++                },
++            },
++        }
++
+     def shutdown(self):
+         """Shutdown the GPU pool and executor."""
+         logger.info("Shutting down GPU pool...")
+@@ -637,7 +682,12 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+     num_gpus = getattr(cfg, "num_gpus", None)
+     max_workers = getattr(cfg, "max_workers", None)
+ 
+-    multi_gpu_server = multi_gpu_server or MultiGPUEvalServer(cfg.model_path, num_gpus, max_workers)
++    multi_gpu_server = multi_gpu_server or MultiGPUEvalServer(
++        cfg.model_path, num_gpus, max_workers, getattr(cfg, "context_demo_path", None),
++        context_kv_cache=getattr(cfg, "context_kv_cache", True),
++        context_kv_cache_max_entries=getattr(cfg, "context_kv_cache_max_entries", 8),
++        context_kv_cache_max_mib=getattr(cfg, "context_kv_cache_max_mib", 1024),
++    )
+     logger.info(f"Multi-GPU eval server initialized with {multi_gpu_server.num_gpus} GPUs")
+ 
+     @app.post("/evaluate_batch")
+@@ -678,6 +728,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+                 "traj_sim_trajectory",
+                 "traj_diff_trajectory",
+                 "trajectory",
++                "context_trajectory",
+             ],
+             convert_embeddings_to_torch=True,
+         )
+@@ -704,7 +755,12 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+     def health_check() -> Dict[str, Any]:
+         """Health check endpoint."""
+         status = multi_gpu_server.get_pool_status()
+-        return {"status": "healthy", "available_gpus": status["available_gpus"], "total_gpus": status["total_gpus"]}
++        return {
++            "status": "healthy",
++            "available_gpus": status["available_gpus"],
++            "total_gpus": status["total_gpus"],
++            **multi_gpu_server.get_service_info(),
++        }
+ 
+     @app.get("/model_info")
+     def get_model_info() -> Dict[str, Any]:
+@@ -779,6 +835,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+             model_arch_info = {"error": str(e)}
+ 
+         return {
++            **multi_gpu_server.get_service_info(),
+             "model_path": multi_gpu_server.model_path,
+             "num_gpus": multi_gpu_server.num_gpus,
+             "experiment_config": exp_config_dict,
+@@ -810,6 +867,10 @@ def main(cfg: DictConfig):
+         model_path=eval_cfg.model_path,
+         num_gpus=eval_cfg.num_gpus,
+         max_workers=eval_cfg.max_workers,
++        context_demo_path=eval_cfg.context_demo_path,
++        context_kv_cache=eval_cfg.context_kv_cache,
++        context_kv_cache_max_entries=eval_cfg.context_kv_cache_max_entries,
++        context_kv_cache_max_mib=eval_cfg.context_kv_cache_max_mib,
+     )
+     display_config(multi_gpu_server.exp_config)
+ 
+diff --git a/robometer/evals/eval_utils.py b/robometer/evals/eval_utils.py
+index 8bd5f5398c9f6ea29c1e9ac1012044abf0fa93fc..2f705131df4c1106f4b1a74102b5295817014e70 100755
+--- a/robometer/evals/eval_utils.py
++++ b/robometer/evals/eval_utils.py
+@@ -197,6 +197,7 @@ def build_payload(
+             "chosen_trajectory",
+             "rejected_trajectory",
+             "trajectory",
++            "context_trajectory",
+         ]:
+             if key in processed_sample and isinstance(processed_sample[key], dict):
+                 trajectory = processed_sample[key]
+@@ -338,6 +339,7 @@ def reconstruct_payload_from_npy(
+             "chosen_trajectory",
+             "rejected_trajectory",
+             "trajectory",
++            "context_trajectory",
+         ]
+ 
+     samples = []
+diff --git a/robometer/models/context_kv_cache.py b/robometer/models/context_kv_cache.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..df76fbf486877e9e1db1d10b68547631a49ce458
+--- /dev/null
++++ b/robometer/models/context_kv_cache.py
+@@ -0,0 +1,356 @@
++"""Inference-only, bounded prefix caching for fixed-context Qwen3-VL rewards.
++
++The reusable prefix contains the language prompt and every context image, ending
++immediately before the first query image. Query frames are never retained between
++requests. Multimodal position IDs are computed from the original complete input;
++Qwen's generation-time position shortcut is inappropriate for new query images.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import threading
++from collections import Counter, OrderedDict
++from dataclasses import dataclass
++from typing import Any
++
++import torch
++from transformers.cache_utils import DynamicCache
++
++
++class _UnsupportedInput(Exception):
++    pass
++
++
++def _tensor_digest(digest: Any, value: torch.Tensor) -> None:
++    value = value.detach().contiguous()
++    digest.update(str((tuple(value.shape), value.dtype)).encode())
++    digest.update(value.view(torch.uint8).cpu().numpy().tobytes())
++
++
++def _hidden_state(output: Any) -> torch.Tensor:
++    hidden = getattr(output, "last_hidden_state", None)
++    if hidden is not None:
++        return hidden
++    return output.hidden_states[-1]
++
++
++@dataclass
++class _Prefix:
++    keys_values: tuple[tuple[torch.Tensor, torch.Tensor], ...]
++    hidden: torch.Tensor
++    length: int
++    nbytes: int
++
++
++@dataclass
++class _Row:
++    active: torch.Tensor
++    ids: torch.Tensor
++    positions: torch.Tensor
++    prefix_length: int
++    context_pixels: torch.Tensor
++    context_grid: torch.Tensor
++    query_pixels: torch.Tensor
++    query_grid: torch.Tensor
++    key: str
++
++
++class FixedContextKVCache:
++    """Cache immutable per-prompt context prefixes on one inference replica.
++
++    ``forward`` returns the complete final hidden-state tensor expected by RBM's
++    existing prediction heads. Different prompts, pixels, image grids, positions,
++    model weights, devices and precision never share an entry. The GPU server's
++    replica pool already serializes use; the lock also protects direct callers.
++    """
++
++    def __init__(self, max_entries: int = 8, max_bytes: int = 512 * 1024**2):
++        if max_entries < 1 or max_bytes < 1:
++            raise ValueError("Context cache limits must be positive")
++        self.max_entries = int(max_entries)
++        self.max_bytes = int(max_bytes)
++        self._entries: OrderedDict[str, _Prefix] = OrderedDict()
++        self._bytes = 0
++        self._identity = None
++        self._stats: Counter = Counter()
++        self._fallback_reasons: Counter = Counter()
++        self._lock = threading.RLock()
++
++    def clear(self, reset_stats: bool = False) -> None:
++        with self._lock:
++            self._entries.clear()
++            self._bytes = 0
++            self._identity = None
++            if reset_stats:
++                self._stats.clear()
++                self._fallback_reasons.clear()
++
++    def info(self) -> dict[str, Any]:
++        # Health requests must not wait for a GPU inference holding the lock.
++        # Counters are diagnostic snapshots; no mutable cache tensors escape.
++        return {
++            "enabled": True,
++            "implementation": "qwen3-vl-fixed-context-kv-v1",
++            "max_entries": self.max_entries,
++            "max_bytes": self.max_bytes,
++            "entries": len(self._entries),
++            "bytes": self._bytes,
++            **{key: self._stats[key] for key in (
++                "requests", "hits", "misses", "prefill_batches", "evictions",
++                "invalidations", "fallbacks", "oversized_entries",
++            )},
++            "fallback_reasons": dict(self._fallback_reasons),
++        }
++
++    @staticmethod
++    def _model_identity(model: Any) -> tuple:
++        parameter = next(model.parameters())
++        autocast = torch.is_autocast_enabled(parameter.device.type)
++        amp_dtype = torch.get_autocast_dtype(parameter.device.type) if autocast else None
++        weights = tuple(
++            (name, weight.data_ptr(), weight._version, weight.dtype, weight.device)
++            for name, weight in model.named_parameters()
++        )
++        configuration = (
++            model.config.to_json_string(use_diff=False),
++            getattr(model.config.text_config, "_attn_implementation", None),
++            getattr(model.config.vision_config, "_attn_implementation", None),
++        )
++        return id(model), autocast, amp_dtype, configuration, weights
++
++    @staticmethod
++    def _rows(model: Any, inputs: dict[str, Any], counts: Any) -> list[_Row]:
++        ids = inputs.get("input_ids")
++        mask = inputs.get("attention_mask")
++        pixels = inputs.get("pixel_values")
++        grid = inputs.get("image_grid_thw")
++        if not isinstance(ids, torch.Tensor) or ids.ndim != 2:
++            raise _UnsupportedInput("input_ids")
++        if not isinstance(pixels, torch.Tensor) or not isinstance(grid, torch.Tensor):
++            raise _UnsupportedInput("image_inputs")
++        if grid.ndim != 2 or grid.shape[-1] != 3 or bool((grid[:, 0] != 1).any()):
++            raise _UnsupportedInput("image_grid")
++        if mask is None:
++            mask = torch.ones_like(ids)
++        if not isinstance(mask, torch.Tensor) or mask.shape != ids.shape:
++            raise _UnsupportedInput("attention_mask")
++        if bool(((mask != 0) & (mask != 1)).any()):
++            raise _UnsupportedInput("attention_mask")
++        if counts is None or len(counts) != ids.shape[0]:
++            raise _UnsupportedInput("context_counts")
++        # Use the complete multimodal sequence, including query image grids. In
++        # particular, do not reuse the generation-only linear RoPE continuation.
++        positions, _ = model.get_rope_index(ids, grid, attention_mask=mask)
++        rows = []
++        image_offset = pixel_offset = 0
++        vision_start = model.config.vision_start_token_id
++        image_token = model.config.image_token_id
++        vision_end = getattr(model.config, "vision_end_token_id", None)
++        for index, context_count in enumerate(counts):
++            active = mask[index].bool().nonzero(as_tuple=True)[0]
++            if active.numel() == 0 or int(active[-1] - active[0] + 1) != active.numel():
++                raise _UnsupportedInput("noncontiguous_padding")
++            row_ids = ids[index, active]
++            row_positions = positions[:, index, active]
++            starts = (row_ids == vision_start).nonzero(as_tuple=True)[0]
++            count = int(context_count)
++            if count < 1 or starts.numel() <= count:
++                raise _UnsupportedInput("context_counts")
++            if bool((starts + 1 >= row_ids.numel()).any()) or bool(
++                (row_ids[starts + 1] != image_token).any()
++            ):
++                raise _UnsupportedInput("nonimage_vision")
++            # Every image must end before the next one starts; get_rope_index
++            # already validates the expected patch span against its image grid.
++            if vision_end is not None:
++                ends = (row_ids == vision_end).nonzero(as_tuple=True)[0]
++                if ends.numel() != starts.numel() or bool((ends <= starts).any()):
++                    raise _UnsupportedInput("vision_boundaries")
++            image_count = starts.numel()
++            row_grid = grid[image_offset : image_offset + image_count]
++            if row_grid.shape[0] != image_count:
++                raise _UnsupportedInput("image_count")
++            context_grid = row_grid[:count]
++            context_pixel_count = int(context_grid.prod(-1).sum())
++            pixel_count = int(row_grid.prod(-1).sum())
++            row_pixels = pixels[pixel_offset : pixel_offset + pixel_count]
++            if row_pixels.shape[0] != pixel_count:
++                raise _UnsupportedInput("pixel_count")
++            prefix_length = int(starts[count])
++            context_pixels = row_pixels[:context_pixel_count]
++            digest = hashlib.sha256()
++            for value in (
++                row_ids[:prefix_length], row_positions[:, :prefix_length],
++                context_grid, context_pixels,
++            ):
++                _tensor_digest(digest, value)
++            rows.append(_Row(
++                active=active, ids=row_ids, positions=row_positions,
++                prefix_length=prefix_length, context_pixels=context_pixels,
++                context_grid=context_grid,
++                query_pixels=row_pixels[context_pixel_count:], query_grid=row_grid[count:],
++                key=digest.hexdigest(),
++            ))
++            image_offset += image_count
++            pixel_offset += pixel_count
++        if image_offset != grid.shape[0] or pixel_offset != pixels.shape[0]:
++            raise _UnsupportedInput("unused_images")
++        return rows
++
++    @staticmethod
++    def _padded_inputs(rows: list[_Row], prefix: bool, pad_id: int) -> dict[str, torch.Tensor]:
++        lengths = [row.prefix_length if prefix else row.ids.numel() - row.prefix_length for row in rows]
++        max_length = max(lengths)
++        ids = rows[0].ids.new_full((len(rows), max_length), pad_id)
++        mask = torch.zeros_like(ids)
++        positions = rows[0].positions.new_ones((3, len(rows), max_length))
++        for index, (row, length) in enumerate(zip(rows, lengths, strict=True)):
++            segment = slice(0, row.prefix_length) if prefix else slice(row.prefix_length, None)
++            ids[index, :length] = row.ids[segment]
++            mask[index, :length] = 1
++            positions[:, index, :length] = row.positions[:, segment]
++        return {
++            "input_ids": ids,
++            "attention_mask": mask,
++            "position_ids": positions,
++            "pixel_values": torch.cat([
++                row.context_pixels if prefix else row.query_pixels for row in rows
++            ]),
++            "image_grid_thw": torch.cat([
++                row.context_grid if prefix else row.query_grid for row in rows
++            ]),
++        }
++
++    def _store(self, key: str, entry: _Prefix) -> None:
++        if entry.nbytes > self.max_bytes:
++            self._stats["oversized_entries"] += 1
++            return
++        while self._entries and (
++            len(self._entries) >= self.max_entries or self._bytes + entry.nbytes > self.max_bytes
++        ):
++            _, removed = self._entries.popitem(last=False)
++            self._bytes -= removed.nbytes
++            self._stats["evictions"] += 1
++        self._entries[key] = entry
++        self._bytes += entry.nbytes
++
++    def forward(
++        self, model: Any, *, context_frame_counts: Any,
++        context_progress_token_counts: Any = None, sample_type: str = "progress", **inputs: Any,
++    ) -> torch.Tensor:
++        del context_progress_token_counts  # Head extraction remains entirely in RBM.
++        with self._lock:
++            self._stats["requests"] += 1
++            reason = None
++            if model.training or torch.is_grad_enabled():
++                reason = "training_or_gradients"
++            elif getattr(model.config, "model_type", None) != "qwen3_vl":
++                reason = "unsupported_model"
++            elif sample_type != "progress":
++                reason = "sample_type"
++            elif any(inputs.get(key) is not None for key in (
++                "pixel_values_videos", "video_grid_thw", "past_key_values", "inputs_embeds",
++                "position_ids", "cache_position", "second_per_grid_ts",
++            )):
++                reason = "unsupported_inputs"
++            elif any(
++                layer != "full_attention" for layer in getattr(model.config.text_config, "layer_types", [])
++            ):
++                reason = "nonfull_attention"
++            elif (getattr(model.config.text_config, "rope_scaling", None) or {}).get(
++                "rope_type", "default"
++            ) != "default":
++                # Dynamic/length-dependent RoPE can change earlier keys when a
++                # query extends the sequence. This cache is for static mRoPE.
++                reason = "nonstatic_rope"
++            if reason is None:
++                try:
++                    rows = self._rows(model, inputs, context_frame_counts)
++                except _UnsupportedInput as exc:
++                    reason = str(exc)
++            if reason is not None:
++                self._stats["fallbacks"] += 1
++                self._fallback_reasons[reason] += 1
++                if reason == "training_or_gradients":
++                    self.clear()
++                return _hidden_state(model(**inputs))
++
++            identity = self._model_identity(model)
++            if self._identity is not None and self._identity != identity:
++                self.clear()
++                self._stats["invalidations"] += 1
++            self._identity = identity
++            entries = {}
++            missing = {}
++            for row in rows:
++                if row.key in self._entries:
++                    entries[row.key] = self._entries[row.key]
++                    self._entries.move_to_end(row.key)
++                    self._stats["hits"] += 1
++                elif row.key not in missing:
++                    missing[row.key] = row
++                    self._stats["misses"] += 1
++            pad_id = model.config.pad_token_id or 0
++            if missing:
++                missing_rows = list(missing.values())
++                prefix_inputs = self._padded_inputs(missing_rows, True, pad_id)
++                prefix_output = model(
++                    **prefix_inputs, use_cache=True, return_dict=True, output_hidden_states=False,
++                )
++                legacy = prefix_output.past_key_values.to_legacy_cache()
++                hidden = _hidden_state(prefix_output)
++                self._stats["prefill_batches"] += 1
++                for index, row in enumerate(missing_rows):
++                    length = row.prefix_length
++                    keys_values = tuple((
++                        key[index : index + 1, :, :length].detach().clone(),
++                        value[index : index + 1, :, :length].detach().clone(),
++                    ) for key, value in legacy)
++                    prefix_hidden = hidden[index, :length].detach().clone()
++                    nbytes = prefix_hidden.numel() * prefix_hidden.element_size() + sum(
++                        tensor.numel() * tensor.element_size() for pair in keys_values for tensor in pair
++                    )
++                    entry = _Prefix(keys_values, prefix_hidden, length, nbytes)
++                    entries[row.key] = entry
++                    self._store(row.key, entry)
++                del prefix_output, legacy, hidden
++
++            # Each cached prefix is immutable. Assemble a separate, batched cache
++            # for this request; DynamicCache appends to it in place. Padding KV
++            # slots have a zero attention mask and never represent real tokens.
++            max_prefix = max(row.prefix_length for row in rows)
++            batched_legacy = []
++            for layer in range(len(entries[rows[0].key].keys_values)):
++                pair = []
++                for kind in (0, 1):
++                    tensors = []
++                    for row in rows:
++                        tensor = entries[row.key].keys_values[layer][kind]
++                        if row.prefix_length < max_prefix:
++                            tensor = torch.nn.functional.pad(tensor, (0, 0, 0, max_prefix - row.prefix_length))
++                        tensors.append(tensor)
++                    pair.append(torch.cat(tensors, dim=0))
++                batched_legacy.append(tuple(pair))
++            working_cache = DynamicCache.from_legacy_cache(tuple(batched_legacy))
++            query_inputs = self._padded_inputs(rows, False, pad_id)
++            prefix_mask = query_inputs["attention_mask"].new_zeros((len(rows), max_prefix))
++            for index, row in enumerate(rows):
++                prefix_mask[index, :row.prefix_length] = 1
++            query_inputs["attention_mask"] = torch.cat((prefix_mask, query_inputs["attention_mask"]), dim=1)
++            query_inputs["cache_position"] = torch.arange(
++                max_prefix, max_prefix + query_inputs["input_ids"].shape[1], device=rows[0].ids.device,
++            )
++            query_output = model(
++                **query_inputs, past_key_values=working_cache, use_cache=True,
++                return_dict=True, output_hidden_states=False,
++            )
++            query_hidden = _hidden_state(query_output)
++            result = query_hidden.new_zeros((*inputs["input_ids"].shape, query_hidden.shape[-1]))
++            for index, row in enumerate(rows):
++                full_hidden = torch.cat((
++                    entries[row.key].hidden,
++                    query_hidden[index, :row.ids.numel() - row.prefix_length],
++                ))
++                result[index, row.active] = full_hidden
++            return result
+diff --git a/robometer/models/rbm.py b/robometer/models/rbm.py
+index 642e02b663088dcde2e5648ff506759220709fb4..7b7db4266a286cf5be9620fe3c41dfab81d23542 100755
+--- a/robometer/models/rbm.py
++++ b/robometer/models/rbm.py
+@@ -575,7 +575,16 @@ class RBM(PredictionHeadsMixin, PreTrainedModel):
+             is_qwen3 = "Qwen3" in self.base_model_id or (
+                 hasattr(self.model, "config") and "Qwen3" in str(type(self.model))
+             )
+-            if is_qwen3:
++            context_cache = getattr(self, "context_kv_cache", None)
++            if is_qwen3 and context_cache is not None:
++                hidden_state = context_cache.forward(
++                    self.model,
++                    context_frame_counts=context_frame_counts,
++                    context_progress_token_counts=context_progress_token_counts,
++                    sample_type=sample_type,
++                    **model_kwargs,
++                )
++            elif is_qwen3:
+                 outputs = self.model(**model_kwargs, output_hidden_states=True, return_dict=True)
+                 # Qwen3 uses hidden_states tuple, take the last layer
+                 hidden_state = (
+diff --git a/robometer/models/utils.py b/robometer/models/utils.py
+index 8eeb756ae32f98718b35ea82a20137fa1a978e7f..646506a2682d2016e9f1c3c775b9ebe146d5402e 100755
+--- a/robometer/models/utils.py
++++ b/robometer/models/utils.py
+@@ -1,7 +1,8 @@
+-import torch
+-import numpy as np
+ from dataclasses import dataclass
+ 
++import numpy as np
++import torch
++
+ 
+ @dataclass
+ class ModelOutput:
+@@ -13,27 +14,58 @@ class ModelOutput:
+     alignment_embeddings: torch.Tensor | list[torch.Tensor] | None = None
+ 
+ 
+-def convert_bins_to_continuous(bin_logits: torch.Tensor | np.ndarray) -> torch.Tensor | np.ndarray:
+-    """Convert discrete bins to continuous progress values in [0, 1] via weighted sum of bin centers."""
++def convert_bins_to_continuous(
++    bin_logits: torch.Tensor | np.ndarray, *, from_logits: bool = True
++) -> torch.Tensor | np.ndarray:
++    """Return expected progress from logits or explicit normalized probabilities.
++
++    The last axis contains bins with centers evenly spaced over [0, 1].
++    Low-precision inputs are accumulated in at least float32. Probability input
++    must be finite, nonnegative, and normalized within its dtype's precision.
++    """
++    if not isinstance(bin_logits, (torch.Tensor, np.ndarray)):
++        raise TypeError("Bin values must be a torch.Tensor or numpy.ndarray")
++    if bin_logits.ndim == 0 or bin_logits.shape[-1] == 0:
++        raise ValueError("Bin values require a nonempty final bin dimension")
+     num_bins = bin_logits.shape[-1]
+-    if (bin_logits.sum(dim=-1) == 1).all():
+-        bin_probs = bin_logits
++    if isinstance(bin_logits, torch.Tensor):
++        if bin_logits.is_complex():
++            raise ValueError("Bin values must be real numbers")
++        tolerance = max(1e-6, torch.finfo(bin_logits.dtype).eps) if bin_logits.is_floating_point() else 1e-6
++        values = bin_logits if bin_logits.dtype in (torch.float32, torch.float64) else bin_logits.float()
++        if not torch.isfinite(values).all():
++            raise ValueError("Bin values must be finite")
++        if from_logits:
++            bin_probs = torch.softmax(values, dim=-1)
++        else:
++            totals = values.sum(dim=-1, keepdim=True)
++            if (values < 0).any() or not torch.isclose(
++                totals, torch.ones_like(totals), rtol=1e-5, atol=tolerance
++            ).all():
++                raise ValueError("Bin probabilities must be nonnegative and sum to one")
++            bin_probs = values / totals
++        bin_centers = torch.linspace(0.0, 1.0, num_bins, device=values.device, dtype=values.dtype)
++        return (bin_probs * bin_centers).sum(dim=-1)
++
++    if not np.issubdtype(bin_logits.dtype, np.number) or np.iscomplexobj(bin_logits):
++        raise ValueError("Bin values must be real numbers")
++    tolerance = max(1e-6, np.finfo(bin_logits.dtype).eps) if np.issubdtype(bin_logits.dtype, np.floating) else 1e-6
++    values = bin_logits.astype(np.result_type(bin_logits.dtype, np.float32), copy=False)
++    if not np.isfinite(values).all():
++        raise ValueError("Bin values must be finite")
++    if from_logits:
++        # Subtracting opposite finite extremes can overflow to negative infinity.
++        with np.errstate(over="ignore", under="ignore"):
++            shifted = values - values.max(axis=-1, keepdims=True)
++            weights = np.exp(shifted)
++        bin_probs = weights / weights.sum(axis=-1, keepdims=True)
+     else:
+-        bin_probs = (
+-            torch.softmax(bin_logits, dim=-1)
+-            if isinstance(bin_logits, torch.Tensor)
+-            else np.softmax(bin_logits, axis=-1)
+-        )
+-    bin_centers = (
+-        torch.linspace(0.0, 1.0, num_bins, device=bin_logits.device, dtype=bin_logits.dtype)
+-        if isinstance(bin_logits, torch.Tensor)
+-        else np.linspace(0.0, 1.0, num_bins)
+-    )
+-    return (
+-        (bin_probs * bin_centers).sum(dim=-1)
+-        if isinstance(bin_logits, torch.Tensor)
+-        else (bin_probs * bin_centers).sum(axis=-1)
+-    )
++        totals = values.sum(axis=-1, keepdims=True)
++        if (values < 0).any() or not np.allclose(totals, 1.0, rtol=1e-5, atol=tolerance):
++            raise ValueError("Bin probabilities must be nonnegative and sum to one")
++        bin_probs = values / totals
++    bin_centers = np.linspace(0.0, 1.0, num_bins, dtype=values.dtype)
++    return (bin_probs * bin_centers).sum(axis=-1)
+ 
+ 
+ def convert_bins_to_continuous_hard(
+@@ -63,16 +95,47 @@ def convert_bins_to_continuous_hard(
+ 
+ 
+ def convert_bin_index_to_continuous(bin_index: torch.Tensor | np.ndarray, num_bins: int) -> torch.Tensor | np.ndarray:
+-    """Convert discrete bin index to continuous progress value in [0, 1] by selecting the argmax bin and returning its center."""
+-    bin_centers = torch.linspace(0.0, 1.0, num_bins, device=bin_index.device, dtype=bin_index.dtype)
+-    return bin_centers[bin_index.long()]
++    """Map integer-valued bin indices to floating-point bin centers in [0, 1]."""
++    if num_bins <= 0:
++        raise ValueError("num_bins must be positive")
++    if isinstance(bin_index, torch.Tensor):
++        if bin_index.is_complex() or not torch.isfinite(bin_index).all():
++            raise ValueError("Bin indices must be finite real integers")
++        indices = bin_index.long()
++        if (bin_index != indices).any() or (indices < 0).any() or (indices >= num_bins).any():
++            raise ValueError("Bin indices must be integers in [0, num_bins)")
++        dtype = torch.float64 if bin_index.dtype == torch.float64 else torch.float32
++        bin_centers = torch.linspace(0.0, 1.0, num_bins, device=bin_index.device, dtype=dtype)
++        return bin_centers[indices]
++    if not isinstance(bin_index, np.ndarray):
++        raise TypeError("Bin indices must be a torch.Tensor or numpy.ndarray")
++    if not np.issubdtype(bin_index.dtype, np.number) or np.iscomplexobj(bin_index) or not np.isfinite(bin_index).all():
++        raise ValueError("Bin indices must be finite real integers")
++    if (bin_index < 0).any() or (bin_index >= num_bins).any() or (bin_index != np.floor(bin_index)).any():
++        raise ValueError("Bin indices must be integers in [0, num_bins)")
++    return np.linspace(0.0, 1.0, num_bins)[bin_index.astype(np.int64)]
+ 
+ 
+ def convert_discrete_target_to_continuous(
+     target: torch.Tensor | np.ndarray, num_bins: int
+ ) -> torch.Tensor | np.ndarray:
+-    """Convert discrete target to continuous progress value in [0, 1] by selecting the argmax bin and returning its center."""
++    """Convert [batch, time] indices or bin-distribution targets to progress.
++
++    Distribution targets use their expected bin center. All-zero distribution
++    rows are collator padding and map to zero progress.
++    """
+     if len(target.shape) == 2:
+         return convert_bin_index_to_continuous(target, num_bins)
++    if target.ndim == 0 or target.shape[-1] != num_bins:
++        raise ValueError("Distribution targets must end with num_bins values")
++    if isinstance(target, torch.Tensor):
++        padding = (target == 0).all(dim=-1, keepdim=True)
++        zero_progress = torch.zeros_like(target)
++        zero_progress[..., 0] = 1
++        probabilities = torch.where(padding, zero_progress, target)
+     else:
+-        return convert_bins_to_continuous(target)
++        padding = (target == 0).all(axis=-1, keepdims=True)
++        zero_progress = np.zeros_like(target)
++        zero_progress[..., 0] = 1
++        probabilities = np.where(padding, zero_progress, target)
++    return convert_bins_to_continuous(probabilities, from_logits=False)

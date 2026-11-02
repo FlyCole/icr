@@ -1,0 +1,19 @@
+# @package _global_
+# Optional attribution control: the same fixes with the old entropy settings.
+defaults:
+  - /archive/_robotwin_adjust_bottle_pi05_dsrl_pilot_base
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/dsrl_sim_v2_repair_only_s1234
+
+algorithm:
+  entropy_tuning:
+    alpha_type: softplus
+    initial_alpha: 1.0
+    target_entropy: -16

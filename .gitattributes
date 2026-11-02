@@ -1,0 +1,2 @@
+# Keep generated vendor patches identical to their recorded checksums.
+vendor_patches/*.patch -text -whitespace

@@ -1,0 +1,59 @@
+# Shared Motus decoder and conservative SAC optimization for clean RoboTwin tasks.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_learned_reward
+  - _self_
+
+runner:
+  max_epochs: 400
+  max_steps: 400
+  save_interval: 400
+  val_check_interval: -1
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  train:
+    skip_intermediate_renders: false
+    video_cfg:
+      save_video: true
+  eval:
+    skip_intermediate_renders: false
+
+actor:
+  dsrl_compact_checkpoint: true
+  global_batch_size: 128
+  micro_batch_size: 64
+  optim:
+    lr: 0.00005
+  critic_optim:
+    lr: 0.0001
+  model:
+    model_path: /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2
+    num_action_chunks: 20
+    openpi_data:
+      norm_stats_path: /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json
+      adapt_to_pi: true
+      extra_delta_transform: true
+    openpi:
+      action_horizon: 32
+      action_chunk: 20
+
+rollout:
+  model:
+    num_action_chunks: 20
+    openpi:
+      action_horizon: 32
+      action_chunk: 20
+
+algorithm:
+  update_epoch: 20
+  critic_actor_ratio: 2
+  replay_buffer:
+    filter_terminal_padding: true
+
+reward:
+  model:
+    num_action_chunks: 20
+    reward_mode: single_stage
+    reward_scale: 1.0
+

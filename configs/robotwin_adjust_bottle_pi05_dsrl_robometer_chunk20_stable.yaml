@@ -1,0 +1,67 @@
+# Conservative optimization trial; retain the original Robometer raw rewards.
+defaults:
+  # Keep Hydra's search path in this primary config.
+  - /_robotwin_adjust_bottle_pi05_dsrl_learned_reward
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/robometer_dsrl_chunk20_stable_s1234
+    experiment_name: pi05_dsrl_robometer_chunk20_stable
+  max_epochs: 400
+  max_steps: 400
+  save_interval: 400
+  val_check_interval: -1
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  train:
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    task_config:
+      step_lim: 200
+  eval:
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    task_config:
+      step_lim: 200
+
+actor:
+  global_batch_size: 128
+  micro_batch_size: 64
+  optim:
+    lr: 0.00005
+  critic_optim:
+    lr: 0.0001
+  model:
+    num_action_chunks: 20
+    openpi:
+      action_horizon: 50
+      action_chunk: 20
+
+rollout:
+  model:
+    num_action_chunks: 20
+    openpi:
+      action_horizon: 50
+      action_chunk: 20
+
+algorithm:
+  # After the unchanged 25-batch warmup: 20 critic and 10 actor updates/iteration.
+  # Across 400 iterations: 7,520 critic and 3,760 actor optimizer steps.
+  update_epoch: 20
+  critic_actor_ratio: 2
+  replay_buffer:
+    filter_terminal_padding: true
+
+reward:
+  model:
+    server_url: http://127.0.0.1:8000
+    num_action_chunks: 20
+    reward_mode: single_stage
+    reward_scale: 1.0

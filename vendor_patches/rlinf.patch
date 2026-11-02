@@ -1,0 +1,3912 @@
+diff --git a/.gitignore b/.gitignore
+index 83919e863e368f3819faf650859682637acb4c65..4e6ad7a886b5d104bcf086d0d96c05a6ad40375c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,3 +23,23 @@ rlinf/envs/sim/maniskill/assets
+ PKG-INFO
+ *.egg-info/
+ .claude/settings.json
++
++# Local experiment artifacts and generated caches
++/runs/
++/models/
++/checkpoints/
++/logs/
++/outputs/
++.venv*/
++__pycache__/
++*.py[cod]
++.pytest_cache/
++.ruff_cache/
++.mypy_cache/
++*.log
++*.log.*
++*.pt
++*.pth
++*.ckpt
++*.safetensors
++*.onnx
+diff --git a/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml b/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml
+index 20cf1d1366c47a039f3011107a7ecba2fd656879..03762a7449846aea117023e04e786cf52ac13546 100644
+--- a/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml
++++ b/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml
+@@ -16,7 +16,7 @@ hydra:
+ cluster:
+   num_nodes: 1
+   component_placement:
+-    actor, env, rollout: 0-7
++    actor, env, rollout: 0-1
+ 
+ runner:
+   task_type: embodied
+@@ -24,7 +24,7 @@ runner:
+     log_path: "../results"
+     project_name: rlinf
+     experiment_name: "robotwin_ppo_openpi_pi05"
+-    logger_backends: ["tensorboard"] # wandb, swanlab
++    logger_backends: ["wandb"] # wandb, swanlab
+ 
+   max_epochs: 1000
+   max_steps: -1
+@@ -47,7 +47,7 @@ algorithm:
+   logprob_type: chunk_level
+   entropy_type: token_level
+ 
+-  update_epoch: 5
++  update_epoch: 1
+   adv_type: gae
+   loss_type: actor_critic
+   loss_agg_func: "token-mean" 
+@@ -70,13 +70,13 @@ env:
+   enable_offload: True
+   # Override the default values in env/robotwin_adjust_bottle
+   train:
+-    rollout_epoch: 4
+-    total_num_envs: 256
++    rollout_epoch: 8
++    total_num_envs: 8
+     reward_coef: ${algorithm.reward_coef}
+     max_episode_steps: 200
+     max_steps_per_rollout_epoch: 200
+     group_size: ${algorithm.group_size}
+-    assets_path: "/path/to/robotwin_assets"
++    assets_path: /home/yifei/icr/third_party/robotwin
+     seeds_path: ${oc.env:REPO_PATH}/rlinf/envs/sim/robotwin/seeds/train_seeds.json
+     center_crop: False
+     task_config:
+@@ -93,7 +93,7 @@ env:
+         crazy_random_light_rate: 0
+   eval:
+     rollout_epoch: 1
+-    total_num_envs: 128
++    total_num_envs: 8
+     auto_reset: True
+     ignore_terminations: True
+     max_episode_steps: 200
+@@ -102,7 +102,7 @@ env:
+     group_size: 1
+     use_fixed_reset_state_ids: True
+     is_eval: True
+-    assets_path: "/path/to/robotwin_assets"
++    assets_path: /home/yifei/icr/third_party/robotwin
+     seeds_path: ${oc.env:REPO_PATH}/rlinf/envs/sim/robotwin/seeds/eval_seeds.json
+     video_cfg:
+       save_video: True
+@@ -134,14 +134,14 @@ rollout:
+ actor:
+   group_name: "ActorGroup"
+   training_backend: "fsdp"
+-  micro_batch_size: 32
+-  global_batch_size: 2048 # 1024
++  micro_batch_size: 8
++  global_batch_size: 256 # 1024
+   seed: 1234
+   enable_offload: True
+ 
+   # Override the default values in model/openpi_pi05
+   model:
+-    model_path: "/path/to/RLinf/RLinf-Pi05-RoboTwin-SFT-adjust_bottle"
++    model_path: "/home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle"
+     num_action_chunks: 50 # interface for the env
+     action_dim: 14
+     add_value_head: True
+diff --git a/rlinf/data/storage/replay/buffer.py b/rlinf/data/storage/replay/buffer.py
+index 7240c2a9bfe0fbb583c3d0c379aee33043b45710..d9fbd04790b778ae5326663f33f96d798cf01d4f 100644
+--- a/rlinf/data/storage/replay/buffer.py
++++ b/rlinf/data/storage/replay/buffer.py
+@@ -44,6 +44,56 @@ def clone_dict_of_tensors(obj):
+         return obj
+ 
+ 
++def terminal_padding_sample_indices(
++    trajectory: Trajectory, chunks_per_rollout_epoch: int
++) -> torch.Tensor:
++    """Return flattened chunk indices up to and including each epoch's first done.
++
++    Native trajectories include a pre-action done boundary per rollout epoch.
++    Archived replay may omit those boundaries; its epoch length must be supplied
++    explicitly. Environments must reset between epochs and never auto-reset
++    within an epoch.
++    """
++    if chunks_per_rollout_epoch <= 0:
++        raise ValueError("chunks_per_rollout_epoch must be positive")
++    rewards = trajectory.rewards
++    if rewards is None or rewards.ndim < 2:
++        raise ValueError(
++            "Terminal-padding filtering requires rewards shaped [T, B, ...]"
++        )
++    time_steps, batch_size = rewards.shape[:2]
++    dones = trajectory.dones
++    if dones is None:
++        raise ValueError("Terminal-padding filtering requires trajectory.dones")
++    if dones.ndim < 2 or dones.shape[1] != batch_size:
++        raise ValueError("Trajectory dones must match the rewards' batch dimension")
++    extra_boundaries = dones.shape[0] - time_steps
++    if extra_boundaries < 0:
++        raise ValueError("Trajectory dones cannot be shorter than rewards")
++    dones = dones.reshape(dones.shape[0], batch_size, -1).any(dim=-1)
++    if extra_boundaries:
++        if time_steps % extra_boundaries:
++            raise ValueError("Epoch-start done boundaries do not evenly divide rewards")
++        epoch_length = time_steps // extra_boundaries
++        if epoch_length != chunks_per_rollout_epoch:
++            raise ValueError(
++                "Epoch-start done boundaries disagree with chunks_per_rollout_epoch"
++            )
++        boundaries = dones.reshape(extra_boundaries, epoch_length + 1, batch_size)
++        initial_done = boundaries[:, :1]
++        post_done = boundaries[:, 1:]
++    else:
++        if time_steps % chunks_per_rollout_epoch:
++            raise ValueError("Trajectory chunks do not evenly divide rollout epochs")
++        epoch_length = chunks_per_rollout_epoch
++        post_done = dones.reshape(-1, epoch_length, batch_size)
++        initial_done = torch.zeros_like(post_done[:, :1])
++
++    preceding_done = torch.cat([initial_done, post_done[:, :-1]], dim=1)
++    valid = preceding_done.to(torch.int64).cumsum(dim=1) == 0
++    return valid.reshape(-1).nonzero(as_tuple=True)[0].cpu()
++
++
+ class TrajectoryCache:
+     """FIFO cache for storing flattened trajectories."""
+ 
+@@ -241,6 +291,8 @@ class TrajectoryReplayBuffer:
+         auto_save: bool = False,
+         auto_save_path: str = "",
+         trajectory_format: str = "pt",
++        filter_terminal_padding: bool = False,
++        chunks_per_rollout_epoch: Optional[int] = None,
+     ):
+         """
+         Initialize trajectory-based replay buffer.
+@@ -253,11 +305,21 @@ class TrajectoryReplayBuffer:
+             trajectory_format: Storage format ("pt", "pkl")
+             sample_window_size: Number of trajectories to sample from for window cache
+             auto_save: Whether to automatically save trajectories to disk
++            filter_terminal_padding: Sample only chunks before or at each epoch's first done
++            chunks_per_rollout_epoch: Epoch length used for archived post-action done flags
+         """
+         self.trajectory_format = trajectory_format
+         self.enable_cache = enable_cache
+         self.sample_window_size = sample_window_size
+         self.auto_save = auto_save
++        self.filter_terminal_padding = filter_terminal_padding
++        self.chunks_per_rollout_epoch = chunks_per_rollout_epoch
++        if filter_terminal_padding and (
++            chunks_per_rollout_epoch is None or chunks_per_rollout_epoch <= 0
++        ):
++            raise ValueError(
++                "filter_terminal_padding requires positive chunks_per_rollout_epoch"
++            )
+         self.logger = get_logger()
+ 
+         if not self.auto_save:
+@@ -322,6 +384,7 @@ class TrajectoryReplayBuffer:
+         # Buffer state
+         self.size = 0  # Current number of trajectories
+         self._total_samples = 0  # Total number of samples across all trajectories
++        self._total_valid_samples = 0
+ 
+         # Random seed
+         self.seed = seed
+@@ -377,6 +440,19 @@ class TrajectoryReplayBuffer:
+                 "trajectory_counter": self._trajectory_counter,
+                 "seed": self.seed,
+             }
++            if self.filter_terminal_padding:
++                valid_samples = sum(
++                    self._trajectory_index[tid]["num_valid_samples"]
++                    for tid in (
++                        self._trajectory_id_list
++                        if trajectory_ids is None
++                        else trajectory_ids
++                    )
++                )
++                metadata["valid_samples"] = valid_samples
++                metadata["terminal_padding_samples"] = (
++                    metadata["total_samples"] - valid_samples
++                )
+             with open(self._get_metadata_path(save_path), "w") as f:
+                 json.dump(metadata, f)
+ 
+@@ -487,6 +563,14 @@ class TrajectoryReplayBuffer:
+             else:
+                 continue  # Skip empty trajectories
+ 
++            valid_indices = (
++                terminal_padding_sample_indices(
++                    trajectory, self.chunks_per_rollout_epoch
++                ).tolist()
++                if self.filter_terminal_padding
++                else None
++            )
++
+             # Save trajectory to disk if enabled
+             save_future = None
+             if self.auto_save:
+@@ -520,6 +604,9 @@ class TrajectoryReplayBuffer:
+                     "shape": tuple(trajectory_shape),
+                     "model_weights_id": model_weights_id,
+                 }
++                if valid_indices is not None:
++                    trajectory_info["valid_sample_indices"] = valid_indices
++                    trajectory_info["num_valid_samples"] = len(valid_indices)
+                 self._trajectory_index[trajectory_id] = trajectory_info
+                 self._trajectory_id_list.append(trajectory_id)
+ 
+@@ -527,6 +614,8 @@ class TrajectoryReplayBuffer:
+                 self._trajectory_counter += 1
+                 self.size += 1
+                 self._total_samples += num_samples
++                if valid_indices is not None:
++                    self._total_valid_samples += len(valid_indices)
+                 self._index_version += 1
+ 
+             if self._flat_trajectory_cache is not None:
+@@ -614,7 +703,12 @@ class TrajectoryReplayBuffer:
+                 cumulative_ends = []
+                 running = 0
+                 for single_id in window_ids:
+-                    running += self._trajectory_index[single_id]["num_samples"]
++                    sample_count_key = (
++                        "num_valid_samples"
++                        if self.filter_terminal_padding
++                        else "num_samples"
++                    )
++                    running += self._trajectory_index[single_id][sample_count_key]
+                     cumulative_ends.append(running)
+                 window_total_samples = running
+ 
+@@ -633,9 +727,13 @@ class TrajectoryReplayBuffer:
+             return {}
+ 
+         if window_total_samples == 0:
++            if self.filter_terminal_padding:
++                raise RuntimeError(
++                    "Replay sampling window contains no valid transitions"
++                )
+             return {}
+ 
+-        if num_chunks > window_total_samples:
++        if not self.filter_terminal_padding and num_chunks > window_total_samples:
+             num_chunks = window_total_samples
+ 
+         # Sample chunk indices directly from total samples
+@@ -668,6 +766,11 @@ class TrajectoryReplayBuffer:
+                 continue
+             trajectory_id = window_ids[idx]
+             local_sample_idx = int(local_sample_indices[idx_in_batch])
++            if self.filter_terminal_padding:
++                local_sample_idx = self._trajectory_index[trajectory_id][
++                    "valid_sample_indices"
++                ][local_sample_idx]
++                local_sample_indices[idx_in_batch] = local_sample_idx
+             grouped_indices.setdefault(trajectory_id, []).append(
+                 (idx_in_batch, local_sample_idx)
+             )
+@@ -942,6 +1045,7 @@ class TrajectoryReplayBuffer:
+         # Reset state
+         self.size = 0
+         self._total_samples = 0
++        self._total_valid_samples = 0
+         self._trajectory_counter = 0
+ 
+     def get_stats(self) -> dict[str, float]:
+@@ -953,6 +1057,11 @@ class TrajectoryReplayBuffer:
+             if self._flat_trajectory_cache
+             else 0,
+         }
++        if self.filter_terminal_padding:
++            stats["valid_samples"] = self._total_valid_samples
++            stats["terminal_padding_samples"] = (
++                self._total_samples - self._total_valid_samples
++            )
+         return stats
+ 
+     def save_checkpoint(self, save_path: str):
+@@ -1167,6 +1276,21 @@ class TrajectoryReplayBuffer:
+             self._total_samples = metadata.get("total_samples", 0)
+             self._trajectory_counter = metadata.get("trajectory_counter", 0)
+ 
++        self._total_valid_samples = 0
++        if self.filter_terminal_padding:
++            for trajectory_id in self._trajectory_id_list:
++                info = self._trajectory_index[trajectory_id]
++                if "valid_sample_indices" not in info:
++                    trajectory = self._load_trajectory(
++                        trajectory_id, info["model_weights_id"]
++                    )
++                    info["valid_sample_indices"] = terminal_padding_sample_indices(
++                        trajectory, self.chunks_per_rollout_epoch
++                    ).tolist()
++                info["num_valid_samples"] = len(info["valid_sample_indices"])
++                self._total_valid_samples += info["num_valid_samples"]
++        self._index_version += 1
++
+         if self._flat_trajectory_cache is not None:
+             self._flat_trajectory_cache.clear()
+             if self._trajectory_id_list:
+diff --git a/rlinf/envs/wrappers/record_video.py b/rlinf/envs/wrappers/record_video.py
+index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0a3bfe7c5 100644
+--- a/rlinf/envs/wrappers/record_video.py
++++ b/rlinf/envs/wrappers/record_video.py
+@@ -12,6 +12,7 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
++import json
+ import numbers
+ import os
+ import warnings
+@@ -78,6 +79,14 @@ class RecordVideo(gym.Wrapper):
+         self._num_envs = getattr(env, "num_envs", 1)
+         self._executor = ThreadPoolExecutor(max_workers=1)
+         self._save_futures: list[Future] = []
++        self._frame_reward_info: list[dict[int, dict[str, Any]]] = []
++        self._reward_trace: list[dict[str, Any]] = []
++        self._last_chunk_frames: list[int] = []
++        self._last_chunk_frame_mask: np.ndarray | None = None
++        self._last_chunk_reset_frames: dict[int, int] = {}
++        self._last_chunk_outcomes: dict[int, dict[str, Any]] = {}
++        self._reset_frame_indices: dict[int, int] = {}
++        self._last_scored_progress: dict[int, float] = {}
+ 
+         if fps is not None:
+             self._fps = fps
+@@ -330,6 +339,7 @@ class RecordVideo(gym.Wrapper):
+             self.render_images.append(full_image)
+         else:
+             self.render_images.append(images[0])
++        self._frame_reward_info.append({})
+ 
+     def add_new_frames(
+         self,
+@@ -359,7 +369,12 @@ class RecordVideo(gym.Wrapper):
+     def reset(self, *args, **kwargs):
+         """Reset env and record the initial frame."""
+         obs, info = self.env.reset(*args, **kwargs)
++        frame_index = len(self.render_images)
+         self.add_new_frames(obs, info)
++        if len(self.render_images) > frame_index:
++            self._reset_frame_indices = dict.fromkeys(
++                range(self._num_envs), frame_index
++            )
+         return obs, info
+ 
+     def step(self, action):
+@@ -375,13 +390,22 @@ class RecordVideo(gym.Wrapper):
+ 
+     def record_video_in_result(self, result) -> None:
+         """Record video frames from a chunk_step / async_chunk_step result tuple."""
++        self._last_chunk_frames = []
++        self._last_chunk_frame_mask = None
++        self._last_chunk_reset_frames = dict(self._reset_frame_indices)
++        self._last_chunk_outcomes = {}
+         if isinstance(result, tuple) and len(result) >= 5:
+-            obs_list, rewards, terminations, _truncations, infos_list = result[:5]
++            obs_list, rewards, terminations, truncations, infos_list = result[:5]
++            observation_count = (
++                len(obs_list) if isinstance(obs_list, (list, tuple)) else 1
++            )
++            kept_indices = list(range(observation_count))
+ 
+             # Some envs may skip intermediate observations for performance and return
+             # None entries. Filter them out for video collection.
+             if isinstance(obs_list, (list, tuple)):
+                 valid_indices = [i for i, obs in enumerate(obs_list) if obs is not None]
++                kept_indices = valid_indices
+                 if len(valid_indices) == 0:
+                     return
+                 if len(valid_indices) != len(obs_list):
+@@ -405,12 +429,39 @@ class RecordVideo(gym.Wrapper):
+             last_info = None
+             if isinstance(infos_list, (list, tuple)) and len(infos_list) > 0:
+                 last_info = infos_list[-1]
+-                if isinstance(last_info, dict):
+-                    if last_info.get("final_obs") is not None:
+-                        final_obs = last_info["final_obs"]
+-                    elif last_info.get("final_observation") is not None:
+-                        final_obs = last_info["final_observation"]
+-
++            elif isinstance(infos_list, dict):
++                last_info = infos_list
++            if isinstance(last_info, dict):
++                if last_info.get("final_obs") is not None:
++                    final_obs = last_info["final_obs"]
++                elif last_info.get("final_observation") is not None:
++                    final_obs = last_info["final_observation"]
++            for env_id in range(self._num_envs):
++                terminated = bool(np.any(self._value_for_env(terminations, env_id)))
++                truncated = bool(np.any(self._value_for_env(truncations, env_id)))
++                native_info = last_info
++                if (
++                    (terminated or truncated)
++                    and isinstance(last_info, dict)
++                    and isinstance(last_info.get("final_info"), dict)
++                ):
++                    native_info = last_info["final_info"]
++                outcome = {
++                    "terminated": terminated,
++                    "truncated": truncated,
++                    "simulator_success": None,
++                    "simulator_return": None,
++                }
++                for key, target, cast in (
++                    ("episode.success_once", "simulator_success", bool),
++                    ("episode.return", "simulator_return", float),
++                ):
++                    value = self._lookup_info_value(native_info, key)
++                    if value is not None:
++                        outcome[target] = cast(self._value_for_env(value, env_id))
++                self._last_chunk_outcomes[env_id] = outcome
++
++            frame_start = len(self.render_images)
+             if (
+                 final_obs is not None
+                 and isinstance(obs_list, (list, tuple))
+@@ -425,9 +476,157 @@ class RecordVideo(gym.Wrapper):
+                     else infos_list
+                 )
+                 self.add_new_frames(obs_main, infos_main, rewards, terminations)
++                self._last_chunk_frames = list(
++                    range(frame_start, len(self.render_images))
++                )
++                reset_frame = len(self.render_images)
+                 self.add_new_frames(reset_obs, None)
++                for env_id in range(self._num_envs):
++                    terminated = self._value_for_env(terminations, env_id)
++                    truncated = self._value_for_env(truncations, env_id)
++                    if np.any(terminated) or np.any(truncated):
++                        self._reset_frame_indices[env_id] = reset_frame
+             else:
+                 self.add_new_frames(obs_list, infos_list, rewards, terminations)
++                self._last_chunk_frames = list(
++                    range(frame_start, len(self.render_images))
++                )
++            frame_count = len(self._last_chunk_frames)
++            action_mask = self._lookup_info_value(last_info, "valid_action_mask")
++            if action_mask is None:
++                self._last_chunk_frame_mask = np.ones(
++                    (self._num_envs, frame_count), dtype=bool
++                )
++            else:
++                action_mask = self._to_numpy(action_mask).astype(bool, copy=True)
++                if action_mask.ndim != 2 or action_mask.shape[0] != self._num_envs:
++                    raise ValueError(
++                        "Video action validity must have shape [B,chunk_size]"
++                    )
++                if action_mask.shape[1] == observation_count:
++                    self._last_chunk_frame_mask = action_mask[:, kept_indices]
++                elif frame_count == 1:
++                    self._last_chunk_frame_mask = action_mask.any(axis=1, keepdims=True)
++                else:
++                    raise ValueError(
++                        "Video action validity must match full-render frame count"
++                    )
++
++    def annotate_reward(self, video_info: dict[str, Any]) -> None:
++        """Attach exact causal scores to buffered frames without changing observations.
++
++        Intermediate frames display the previous scored progress. Only a chunk's
++        endpoint displays the new progress and reward; reset baselines label the
++        corresponding reset frame after the first reward request completes.
++        """
++        if not self._last_chunk_frames:
++            return
++        for env_index in range(self._num_envs):
++            values = {}
++            for key, value in video_info.items():
++                scalar = self._value_for_env(value, env_index)
++                if isinstance(scalar, (np.ndarray, np.generic)):
++                    scalar = scalar.item()
++                if isinstance(scalar, float) and not np.isfinite(scalar):
++                    scalar = None
++                values[key] = scalar
++            valid = bool(values["valid"])
++            reset_frame = self._last_chunk_reset_frames.get(env_index)
++            if valid and values["episode_start"] and reset_frame is not None:
++                self._frame_reward_info[reset_frame][env_index] = {
++                    "env_id": values["env_id"],
++                    "progress": values["previous_progress"],
++                    "kind": (
++                        "reset baseline"
++                        if values["previous_progress"] is not None
++                        else "reset; not scored"
++                    ),
++                }
++            previous = (
++                values["previous_progress"]
++                if valid
++                else self._last_scored_progress.get(env_index)
++            )
++            valid_frames = [
++                frame_index
++                for offset, frame_index in enumerate(self._last_chunk_frames)
++                if self._last_chunk_frame_mask[env_index, offset]
++            ]
++            endpoint = valid_frames[-1] if valid and valid_frames else None
++            for offset, frame_index in enumerate(self._last_chunk_frames):
++                is_padding = (
++                    not valid or not self._last_chunk_frame_mask[env_index, offset]
++                )
++                after_endpoint = endpoint is not None and frame_index > endpoint
++                if is_padding:
++                    kind = (
++                        "intra-chunk padding; not scored"
++                        if valid
++                        else "padding; not scored"
++                    )
++                else:
++                    kind = (
++                        "not scored yet" if previous is None else "last scored progress"
++                    )
++                self._frame_reward_info[frame_index][env_index] = {
++                    "env_id": values["env_id"],
++                    "progress": values["progress"] if after_endpoint else previous,
++                    "kind": kind,
++                }
++            if endpoint is not None:
++                self._frame_reward_info[endpoint][env_index] = {
++                    **values,
++                    "kind": "scored chunk endpoint",
++                }
++                self._last_scored_progress[env_index] = values["progress"]
++            self._reward_trace.append(
++                {
++                    **values,
++                    **self._last_chunk_outcomes.get(env_index, {}),
++                    "env_index": env_index,
++                    "frame_start": self._last_chunk_frames[0],
++                    "frame_end": self._last_chunk_frames[-1],
++                    "endpoint_frame_index": endpoint,
++                    "valid_frame_count": len(valid_frames) if valid else 0,
++                    "reset_frame_index": (
++                        reset_frame if valid and values["episode_start"] else None
++                    ),
++                }
++            )
++
++    def _render_reward_footer(
++        self, frame: np.ndarray, info: dict[int, dict[str, Any]]
++    ) -> np.ndarray:
++        """Render per-env labels below the saved image, including tiled videos."""
++        from PIL import Image, ImageDraw, ImageFont
++
++        footer_height = 80 * self._num_envs
++        result = np.zeros(
++            (frame.shape[0] + footer_height, frame.shape[1], 3), dtype=np.uint8
++        )
++        result[: frame.shape[0]] = frame
++        image = Image.fromarray(result)
++        draw = ImageDraw.Draw(image)
++        font = ImageFont.load_default(size=14)
++        for env_index in range(self._num_envs):
++            item = info.get(env_index, {})
++            progress = item.get("progress")
++            progress_text = "unavailable" if progress is None else f"{progress:.4f}"
++            title = f"Robometer env {item.get('env_id', env_index)}: p={progress_text}"
++            detail = item.get("kind", "not scored")
++            y = frame.shape[0] + 80 * env_index + 3
++            draw.text((6, y), title, fill="white", font=font)
++            draw.text((6, y + 21), detail, fill="white", font=font)
++            if item.get("reward") is not None:
++                delta = item.get("delta")
++                delta_text = "unavailable" if delta is None else f"{delta:+.4f}"
++                draw.text(
++                    (6, y + 42),
++                    f"delta {delta_text}  reward {item['reward']:+.4f}",
++                    fill="white",
++                    font=font,
++                )
++        return np.asarray(image)
+ 
+     def chunk_step(self, *args, **kwargs):
+         """Step a chunk and record all frames from the chunk."""
+@@ -458,12 +657,43 @@ class RecordVideo(gym.Wrapper):
+         os.makedirs(output_dir, exist_ok=True)
+         mp4_path = os.path.join(output_dir, f"{self.video_cnt}.mp4")
+         frames = list(self.render_images)
++        image_height, image_width = frames[0].shape[:2]
++        reward_trace = list(self._reward_trace)
++        if reward_trace:
++            frames = [
++                self._render_reward_footer(frame, info)
++                for frame, info in zip(frames, self._frame_reward_info, strict=True)
++            ]
+         self.render_images = []
++        self._frame_reward_info = []
++        self._reward_trace = []
++        self._last_chunk_frames = []
++        self._last_chunk_frame_mask = None
++        self._last_chunk_reset_frames = {}
++        self._last_chunk_outcomes = {}
++        self._reset_frame_indices = {}
++        self._last_scored_progress = {}
+         self.video_cnt += 1
+         future = self._submit_save(frames, mp4_path)
+         # Block until the encode + writer.close() returns so the MP4 is valid
+         # on disk before the rollout loop continues (or the process exits).
+         future.result()
++        if reward_trace:
++            with open(os.path.splitext(mp4_path)[0] + ".json", "w") as handle:
++                json.dump(
++                    {
++                        "fps": self._fps,
++                        "frame_count": len(frames),
++                        "image_height": image_height,
++                        "image_width": image_width,
++                        "progress_sampling": "causal chunk endpoints; no interpolation",
++                        "scores": reward_trace,
++                    },
++                    handle,
++                    indent=2,
++                    allow_nan=False,
++                )
++                handle.write("\n")
+ 
+     def _submit_save(self, frames: list[np.ndarray], mp4_path: str) -> Future:
+         """Submit a background job to save the video, return its Future."""
+diff --git a/rlinf/models/embodiment/modules/gaussian_policy.py b/rlinf/models/embodiment/modules/gaussian_policy.py
+index 28ce50a367a60c3d41d8e53210fbac7b3ee3765c..220ba5637deaee0cc435aedcf03c420db87752d9 100644
+--- a/rlinf/models/embodiment/modules/gaussian_policy.py
++++ b/rlinf/models/embodiment/modules/gaussian_policy.py
+@@ -195,15 +195,34 @@ class GaussianPolicy(nn.Module):
+         # Bias initialized to 0 so log_std starts at 0 (std = exp(0) = 1.0)
+         nn.init.zeros_(self.log_std_layer.bias)
+ 
+-    def forward(self, features):
+-        """Forward pass returning a SquashedNormal distribution.
++    def forward(
++        self,
++        features,
++        *,
++        sample=False,
++        deterministic=False,
++        return_dist_params=False,
++    ):
++        """Return a distribution or sampled tensors through the module boundary.
+ 
+         Args:
+             features: [B, input_dim] feature vector.
++            sample: Return sampled actions and log probabilities for FSDP hooks.
++            deterministic: Use the policy mean when sampling.
++            return_dist_params: Include distribution mean/std with sampled tensors.
+ 
+         Returns:
+-            distribution: SquashedNormal distribution.
++            SquashedNormal by default, or (actions, log_prob, dist_params) when
++            sample=True. dist_params is (mean, std) when requested, otherwise None.
+         """
++        if sample:
++            actions, log_prob = self.sample(features, deterministic=deterministic)
++            dist_params = None
++            if return_dist_params:
++                dist = self.forward(features)
++                dist_params = (dist.mean, dist.stddev)
++            return actions, log_prob, dist_params
++
+         # Shared feature extraction
+         h = self.shared_net(features)
+ 
+diff --git a/rlinf/models/embodiment/openpi/__init__.py b/rlinf/models/embodiment/openpi/__init__.py
+index 57325eb01a1d778f6b912b5c1f61be14bb809830..0d2cae07e8d9f17432b45ff39d13424e6d10175e 100644
+--- a/rlinf/models/embodiment/openpi/__init__.py
++++ b/rlinf/models/embodiment/openpi/__init__.py
+@@ -238,6 +238,12 @@ def get_model(cfg: Any, torch_dtype: Any = None) -> Any:
+                 OmegaConf.select(model_cfg, "dsrl_state_latent_dim", default=64)
+             ),
+             hidden_dims=tuple(int(x) for x in hidden),
++            head_precision=str(
++                OmegaConf.select(model_cfg, "dsrl_head_precision", default="bf16")
++            ),
++            eval_noise_mode=str(
++                OmegaConf.select(model_cfg, "dsrl_eval_noise_mode", default="policy")
++            ),
+         )
+         model = Pi0DSRL(
+             pi0_config,
+diff --git a/rlinf/models/embodiment/openpi/tasks/dsrl.py b/rlinf/models/embodiment/openpi/tasks/dsrl.py
+index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108dd080cdb 100644
+--- a/rlinf/models/embodiment/openpi/tasks/dsrl.py
++++ b/rlinf/models/embodiment/openpi/tasks/dsrl.py
+@@ -40,6 +40,20 @@ class Pi0DSRLConfig:
+     image_latent_dim: int = 64
+     state_latent_dim: int = 64
+     hidden_dims: tuple[int, ...] = (128, 128, 128)
++    head_precision: Literal["bf16", "fp32"] = "bf16"
++    eval_noise_mode: Literal["policy", "zero", "sample"] = "policy"
++
++    def __post_init__(self) -> None:
++        if self.head_precision not in ("bf16", "fp32"):
++            raise ValueError(
++                "DSRL head_precision must be 'bf16' or 'fp32', "
++                f"got {self.head_precision!r}."
++            )
++        if self.eval_noise_mode not in ("policy", "zero", "sample"):
++            raise ValueError(
++                "DSRL eval_noise_mode must be 'policy', 'zero', or 'sample', "
++                f"got {self.eval_noise_mode!r}."
++            )
+ 
+ 
+ class Pi0DSRL(EnvIO, Pi0):
+@@ -66,7 +80,9 @@ class Pi0DSRL(EnvIO, Pi0):
+         )
+         cfg = dsrl_cfg or Pi0DSRLConfig()
+         self.dsrl_cfg = cfg
+-        dsrl_dtype = torch.bfloat16
++        # Head storage also determines the dtype of standard Adam's moments.
++        dsrl_dtype = torch.float32 if cfg.head_precision == "fp32" else torch.bfloat16
++        self.dsrl_dtype = dsrl_dtype
+         input_dim = cfg.state_latent_dim + cfg.image_latent_dim
+         self.dsrl_action_noise_net = GaussianPolicy(
+             input_dim=input_dim,
+@@ -135,15 +151,15 @@ class Pi0DSRL(EnvIO, Pi0):
+     def _preprocess_states(self, states):
+         if states.dim() > 2:
+             states = states.reshape(states.shape[0], -1)
+-        return states.to(torch.bfloat16)
++        return states.to(self.dsrl_dtype)
+ 
+     def _actor_features(self, obs: dict[str, Any], train: bool = False):
+         obs = self._normalize_dsrl_obs(obs)
+         images = self._preprocess_dsrl_images(obs["images"], train=train)
+         states = self._preprocess_states(obs["states"])
+         device = next(self.actor_image_encoder.parameters()).device
+-        images = images.to(device=device, dtype=torch.bfloat16)
+-        states = states.to(device=device, dtype=torch.bfloat16)
++        images = images.to(device=device, dtype=self.dsrl_dtype)
++        states = states.to(device=device, dtype=self.dsrl_dtype)
+         image_features = self.actor_image_encoder(images)
+         state_features = self.actor_state_encoder(states)
+         return torch.cat([state_features, image_features], dim=-1)
+@@ -155,11 +171,26 @@ class Pi0DSRL(EnvIO, Pi0):
+         mode: Literal["train", "eval"] = "eval",
+         **kwargs,
+     ) -> tuple[torch.Tensor, dict[str, Any]]:
++        """Decode latent actions; evaluation can select mean, zero, or sampled noise."""
+         del kwargs
+-        dsrl_obs = {"images": [env_obs["main_images"]], "states": env_obs["states"]}
+-        noise_actions, noise_logprob, _ = self.sac_forward(
+-            obs=dsrl_obs, train=False, mode=mode
+-        )
++        eval_noise_mode = self.dsrl_cfg.eval_noise_mode
++        if mode == "eval" and eval_noise_mode == "zero":
++            noise_actions = torch.zeros(
++                env_obs["states"].shape[0],
++                self.action_horizon,
++                self.dsrl_cfg.action_noise_dim,
++                device=next(self.actor_image_encoder.parameters()).device,
++                dtype=torch.float32,
++            )
++            noise_logprob = noise_actions.new_zeros(noise_actions.shape[0])
++        else:
++            dsrl_obs = {"images": [env_obs["main_images"]], "states": env_obs["states"]}
++            policy_mode = (
++                "train" if mode == "eval" and eval_noise_mode == "sample" else mode
++            )
++            noise_actions, noise_logprob, _ = self.sac_forward(
++                obs=dsrl_obs, train=False, mode=policy_mode
++            )
+         observation = self.env_obs_to_observation(env_obs)
+         noise = noise_actions.to(dtype=torch.float32)
+         if noise.shape[-1] != self.action_dim:
+@@ -191,14 +222,12 @@ class Pi0DSRL(EnvIO, Pi0):
+             obs = data.get("obs", data) if data is not None else kwargs.get("obs", {})
+         features = self._actor_features(obs, train=train)
+         deterministic = kwargs.get("mode", "train") == "eval"
+-        action_noise, logprobs = self.dsrl_action_noise_net.sample(
+-            features, deterministic=deterministic
++        return self.dsrl_action_noise_net(
++            features,
++            sample=True,
++            deterministic=deterministic,
++            return_dist_params=return_dist_params,
+         )
+-        dist_params = None
+-        if return_dist_params:
+-            dist = self.dsrl_action_noise_net.forward(features)
+-            dist_params = (dist.mean, dist.stddev)
+-        return action_noise, logprobs, dist_params
+ 
+     def sac_q_forward(
+         self,
+@@ -217,9 +246,9 @@ class Pi0DSRL(EnvIO, Pi0):
+         images = self._preprocess_dsrl_images(obs["images"], train=train)
+         states = self._preprocess_states(obs["states"])
+         device = next(self.critic_image_encoder.parameters()).device
+-        images = images.to(device=device, dtype=torch.bfloat16)
+-        states = states.to(device=device, dtype=torch.bfloat16)
+-        actions = actions.to(device=device, dtype=torch.bfloat16)
++        images = images.to(device=device, dtype=self.dsrl_dtype)
++        states = states.to(device=device, dtype=self.dsrl_dtype)
++        actions = actions.to(device=device, dtype=self.dsrl_dtype)
+         image_features = self.critic_image_encoder(images)
+         state_features = self.critic_state_encoder(states)
+         if detach_encoder:
+diff --git a/rlinf/models/embodiment/openpi/tasks/rl.py b/rlinf/models/embodiment/openpi/tasks/rl.py
+index 9dafb7f1ced52ce3bd18b2f432ec710e61e5e5c4..03f337a69709a1eab080abe1fb6bf3619c786806 100644
+--- a/rlinf/models/embodiment/openpi/tasks/rl.py
++++ b/rlinf/models/embodiment/openpi/tasks/rl.py
+@@ -119,6 +119,13 @@ class Pi0RL(EnvIO, Pi0):
+ 
+         self._mark_fsdp_wrap_names()
+ 
++    def train(self, mode: bool = True):
++        """Keep frozen vision on the rollout inference path during PPO replay."""
++        super().train(mode)
++        if self.rl_cfg.train_expert_only:
++            self.img.eval()
++        return self
++
+     @property
+     def _no_split_modules(self) -> list[str] | None:
+         names = list(super()._no_split_modules or [])
+diff --git a/rlinf/runners/async_embodied_runner.py b/rlinf/runners/async_embodied_runner.py
+index 477f7a44440e0137dca6a86323c78a8c76d750f5..a15ae110a73a21c523ae4bfd55a043055a593ab5 100644
+--- a/rlinf/runners/async_embodied_runner.py
++++ b/rlinf/runners/async_embodied_runner.py
+@@ -75,6 +75,14 @@ class AsyncEmbodiedRunner(AsyncWeightSyncMixin, EmbodiedRunner):
+         env_metrics, ranked_env_metrics_list = self._process_ranked_eval_results(
+             results, metric_field="env"
+         )
++        env_metrics.update(
++            {
++                f"env/{key}": value
++                for key, value in self.train_success_rate.update(
++                    [(result["rank"], result.get("env")) for result in results]
++                ).items()
++            }
++        )
+         if not env_metrics:
+             return {**time_metrics}, ranked_time_metrics_list, ranked_env_metrics_list
+ 
+diff --git a/rlinf/runners/async_ppo_embodied_runner.py b/rlinf/runners/async_ppo_embodied_runner.py
+index fdaa67df4d93f73db403179b56076486a546b462..79bc5749ccf58e9b4dc45b3e4f1f9f9397138686 100644
+--- a/rlinf/runners/async_ppo_embodied_runner.py
++++ b/rlinf/runners/async_ppo_embodied_runner.py
+@@ -94,6 +94,14 @@ class AsyncPPOEmbodiedRunner(AsyncWeightSyncMixin, EmbodiedRunner):
+         env_metrics, ranked_env_metrics_list = self._process_ranked_eval_results(
+             results, metric_field="env"
+         )
++        env_metrics.update(
++            {
++                f"env/{key}": value
++                for key, value in self.train_success_rate.update(
++                    [(result["rank"], result.get("env")) for result in results]
++                ).items()
++            }
++        )
+         if not env_metrics:
+             return {**time_metrics}, ranked_time_metrics_list, ranked_env_metrics_list
+ 
+diff --git a/rlinf/runners/embodied_runner.py b/rlinf/runners/embodied_runner.py
+index 49b2cbc2ce71f94a3c7067ca06cd1ed1c401878c..511b99cf492ef442d2a4abf433f265b0f8bcf11d 100644
+--- a/rlinf/runners/embodied_runner.py
++++ b/rlinf/runners/embodied_runner.py
+@@ -32,7 +32,11 @@ from rlinf.utils.checkpoint import parse_global_step_from_checkpoint_path
+ from rlinf.utils.distributed import ScopedTimer
+ from rlinf.utils.logging import get_logger
+ from rlinf.utils.metric_logger import MetricLogger
+-from rlinf.utils.metric_utils import compute_evaluate_metrics, print_metrics_table
++from rlinf.utils.metric_utils import (
++    RollingEpisodeSuccessRate,
++    compute_evaluate_metrics,
++    print_metrics_table,
++)
+ from rlinf.utils.runner_utils import check_progress
+ from rlinf.utils.timers import Timer
+ 
+@@ -127,6 +131,7 @@ class EmbodiedRunner:
+ 
+         self.logger = get_logger()
+         self.metric_logger = MetricLogger(cfg)
++        self.train_success_rate = RollingEpisodeSuccessRate(window_size=100)
+         self.enable_per_worker_metric_log = bool(
+             self.cfg.runner.get("per_worker_log", False)
+         )
+@@ -384,6 +389,7 @@ class EmbodiedRunner:
+         env_results = env_handle.wait()
+         env_results_list = [results for results in env_results if results is not None]
+         env_metrics = compute_evaluate_metrics(env_results_list)
++        env_metrics.update(self.train_success_rate.update(list(enumerate(env_results))))
+         env_metrics = {f"env/{k}": v for k, v in env_metrics.items()}
+         ranked_env_results = [
+             {"rank": rank, "env": rank_metrics}
+diff --git a/rlinf/utils/env_helpers/reward_context.py b/rlinf/utils/env_helpers/reward_context.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..c176c98df84c9cfe5b437ee126ed4086e7cc751d
+--- /dev/null
++++ b/rlinf/utils/env_helpers/reward_context.py
+@@ -0,0 +1,158 @@
++# Copyright 2026 The RLinf Authors.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++"""Episode boundaries and valid-transition metadata for external rewards."""
++
++from typing import Any
++
++import torch
++
++from rlinf.utils.nested_dict_process import clone_nested_to_cpu
++
++
++def build_reward_chunk_metadata(
++    observations: Any,
++    *,
++    valid_action_mask: Any = None,
++    final_observation: dict[str, Any] | None = None,
++    dones: Any = None,
++    env_infos: dict[str, Any] | None = None,
++    image_key: str = "main_images",
++) -> dict[str, torch.Tensor]:
++    """Snapshot post-action images and native outcomes for a causal reward prefix.
++
++    Full-render chunks retain every action frame and exclude padded actions with
++    ``valid_action_mask``. Endpoint-only observations use one frame whose validity
++    means that at least one action was executed. Auto-reset images are replaced
++    with true terminal observations before either payload reaches the model.
++    """
++    items = observations if isinstance(observations, (list, tuple)) else [observations]
++    indices = [index for index, item in enumerate(items) if item is not None]
++    if not indices:
++        raise ValueError("Reward chunks require at least one post-action observation")
++    frames = []
++    for index in indices:
++        item = items[index]
++        if not isinstance(item, dict) or image_key not in item:
++            raise ValueError(
++                f"Reward observation {index} requires image key {image_key!r}"
++            )
++        image = torch.as_tensor(item[image_key]).detach().cpu().clone()
++        if image.ndim != 4 or image.shape[-1] != 3 or image.dtype != torch.uint8:
++            raise ValueError(
++                f"Reward images must be uint8 [B,H,W,3], got {image.dtype} {image.shape}"
++            )
++        frames.append(image)
++    batch_size = frames[0].shape[0]
++    if any(frame.shape != frames[0].shape for frame in frames):
++        raise ValueError("Reward chunk image shapes must agree across action frames")
++    done_mask = torch.zeros(batch_size, dtype=torch.bool)
++    if dones is not None:
++        done_mask = torch.as_tensor(dones).detach().cpu().bool()
++        done_mask = done_mask.reshape(batch_size, -1).any(dim=1)
++    if valid_action_mask is None:
++        mask = torch.ones(batch_size, len(indices), dtype=torch.bool)
++    else:
++        mask = torch.as_tensor(valid_action_mask).detach().cpu().bool().clone()
++        if mask.ndim != 2 or mask.shape[0] != batch_size:
++            raise ValueError("Reward action validity must have shape [B,chunk_size]")
++        if mask.shape[1] == len(items):
++            mask = mask[:, indices]
++        elif len(items) == 1:
++            mask = mask.any(dim=1, keepdim=True)
++        else:
++            raise ValueError(
++                "Reward action validity must match full-render observation count"
++            )
++    if final_observation is not None and done_mask.any():
++        terminal_image = torch.as_tensor(final_observation[image_key]).detach().cpu()
++        if terminal_image.shape != frames[-1].shape:
++            raise ValueError("Terminal reward images must match the observation batch")
++        for env_index in done_mask.nonzero(as_tuple=True)[0].tolist():
++            valid_indices = mask[env_index].nonzero(as_tuple=True)[0]
++            if valid_indices.numel():
++                frames[int(valid_indices[-1])][env_index] = terminal_image[env_index]
++    metadata = {
++        "reward_observation_frames": torch.stack(frames, dim=1),
++        "reward_frame_mask": mask,
++    }
++    success = torch.zeros(batch_size, dtype=torch.bool)
++    all_success_known = True
++    for env_index in range(batch_size):
++        info = env_infos
++        if (
++            done_mask[env_index]
++            and isinstance(env_infos, dict)
++            and isinstance(env_infos.get("final_info"), dict)
++        ):
++            info = env_infos["final_info"]
++        value = info.get("success") if isinstance(info, dict) else None
++        if value is None and isinstance(info, dict):
++            episode = info.get("episode")
++            if isinstance(episode, dict):
++                value = episode.get("success_once")
++        if value is None:
++            all_success_known = False
++            break
++        value = torch.as_tensor(value).detach().cpu().bool().reshape(-1)
++        if value.numel() not in (1, batch_size):
++            raise ValueError(
++                "Simulator success must be scalar or have one value per env"
++            )
++        success[env_index] = value[0 if value.numel() == 1 else env_index]
++    if all_success_known:
++        metadata["reward_simulator_success"] = success
++    return metadata
++
++
++class RewardEpisodeContext:
++    """Track reset boundaries independently for each vector-environment slot."""
++
++    def __init__(self, num_envs: int, first_env_id: int = 0) -> None:
++        if num_envs < 1 or first_env_id < 0:
++            raise ValueError("num_envs must be positive and first_env_id nonnegative")
++        self.num_envs = num_envs
++        self.env_ids = torch.arange(first_env_id, first_env_id + num_envs)
++        self.episode_start = torch.ones(num_envs, dtype=torch.bool)
++        self.active = torch.ones(num_envs, dtype=torch.bool)
++
++    def reset(self) -> None:
++        """Mark an actual reset of all environment slots."""
++        self.episode_start.fill_(True)
++        self.active.fill_(True)
++
++    def build(self, initial_observation: dict[str, Any]) -> dict[str, Any]:
++        """Snapshot the pre-action frame before simulator-owned buffers change."""
++        return {
++            "reward_env_id": self.env_ids.clone(),
++            "reward_episode_start": self.episode_start.clone(),
++            "reward_valid": self.active.clone(),
++            "reward_initial_observation": clone_nested_to_cpu(initial_observation),
++        }
++
++    def advance(self, dones: torch.Tensor, *, auto_reset: bool) -> None:
++        """Retain terminal transitions and suppress later padding until reset."""
++        dones = dones.detach().to(device="cpu", dtype=torch.bool)
++        if dones.ndim > 1:
++            dones = dones.reshape(dones.shape[0], -1).any(dim=1)
++        if dones.shape != (self.num_envs,):
++            raise ValueError(
++                f"Expected dones shape ({self.num_envs},), got {dones.shape}"
++            )
++        if auto_reset:
++            self.episode_start.copy_(dones)
++            self.active.fill_(True)
++        else:
++            self.episode_start.zero_()
++            self.active.logical_and_(~dones)
+diff --git a/rlinf/utils/metric_utils.py b/rlinf/utils/metric_utils.py
+index b84cf99576899877a71fb5478dbd07b336120adc..8309f9fa1bc609fc85ea901d235ae3e1b464e2b2 100644
+--- a/rlinf/utils/metric_utils.py
++++ b/rlinf/utils/metric_utils.py
+@@ -15,6 +15,7 @@
+ import math
+ import os
+ import time
++from collections import deque
+ from collections.abc import Callable, Sequence
+ from typing import TYPE_CHECKING
+ 
+@@ -26,6 +27,123 @@ if TYPE_CHECKING:
+     from rlinf.data.schema.embodied_types import Trajectory
+ 
+ 
++TRAIN_EPISODE_OUTCOMES_KEY = "_train_episode_outcomes"
++
++
++class CompletedEpisodeSuccessTracker:
++    """Collect one success outcome per completed training episode.
++
++    Rows contain collection step, epoch, chunk, stage, environment slot, and
++    success. Non-resetting environments count their first done only; each
++    explicit epoch reset starts new episodes. Auto-resetting environments can
++    complete another episode on a later chunk.
++    """
++
++    def __init__(self, *, auto_reset: bool) -> None:
++        self.auto_reset = auto_reset
++        self._completed: dict[int, torch.Tensor] = {}
++        self._outcomes: list[list[int]] = []
++
++    def start_epoch(self) -> None:
++        if not self.auto_reset:
++            self._completed.clear()
++
++    def record(
++        self,
++        dones: torch.Tensor,
++        env_infos: dict | None,
++        *,
++        step: int,
++        epoch: int,
++        chunk: int,
++        stage: int,
++    ) -> None:
++        done = dones.detach().cpu().bool()
++        done = done.reshape(done.shape[0], -1).any(dim=1)
++        completed = self._completed.setdefault(stage, torch.zeros_like(done))
++        newly_done = done if self.auto_reset else done & ~completed
++        completed.logical_or_(done)
++        if not newly_done.any():
++            return
++
++        infos = env_infos or {}
++        if self.auto_reset:
++            infos = infos.get("final_info", {})
++        success = infos.get("episode", {}).get("success_once")
++        if success is None:
++            return
++        success = torch.as_tensor(success).detach().cpu().reshape(-1)
++        ended_slots = done.nonzero(as_tuple=True)[0]
++        if success.numel() == done.numel():
++            success = success[ended_slots]
++        elif success.numel() != ended_slots.numel():
++            raise ValueError(
++                "Completed episode success must have one value per environment "
++                f"or done slot; got {success.numel()} values for "
++                f"{done.numel()} environments and {ended_slots.numel()} done slots"
++            )
++        if (
++            not torch.isfinite(success).all()
++            or not ((success == 0) | (success == 1)).all()
++        ):
++            raise ValueError(
++                "Completed episode success values must be finite zero or one"
++            )
++        for slot, value in zip(ended_slots.tolist(), success.tolist()):
++            if newly_done[slot]:
++                self._outcomes.append([step, epoch, chunk, stage, slot, int(value)])
++
++    def as_tensor(self) -> torch.Tensor:
++        return torch.tensor(self._outcomes, dtype=torch.int64).reshape(-1, 6)
++
++
++class RollingEpisodeSuccessRate:
++    """Success mean over the latest completed episodes across environment ranks.
++
++    Each driver update orders parallel events by collection step, epoch, chunk,
++    stage, rank, and slot. Async updates include only events already received.
++    Warm-up uses available episodes and logs their count. State is driver-local
++    and resets on resume.
++    """
++
++    def __init__(self, window_size: int = 100) -> None:
++        if window_size < 1:
++            raise ValueError("Episode success window size must be positive")
++        self.window_size = window_size
++        self._successes: deque[int] = deque(maxlen=window_size)
++
++    def update(
++        self, worker_metrics: Sequence[tuple[int, dict | None]]
++    ) -> dict[str, float | int]:
++        events = []
++        for rank, metrics in worker_metrics:
++            if metrics is None:
++                continue
++            values = metrics.get(
++                TRAIN_EPISODE_OUTCOMES_KEY,
++                metrics.get(f"env/{TRAIN_EPISODE_OUTCOMES_KEY}"),
++            )
++            if values is None:
++                continue
++            rows = torch.as_tensor(values).detach().cpu()
++            if rows.ndim != 2 or rows.shape[1] != 6:
++                raise ValueError(
++                    "Completed episode outcomes must have shape [episodes, 6]"
++                )
++            for step, epoch, chunk, stage, slot, success in rows.tolist():
++                if success not in (0, 1):
++                    raise ValueError("Completed episode success must be zero or one")
++                events.append(((step, epoch, chunk, stage, rank, slot), int(success)))
++        self._successes.extend(success for _, success in sorted(events))
++        if not self._successes:
++            return {}
++        return {
++            f"success_rate_ma{self.window_size}": sum(self._successes)
++            / len(self._successes),
++            f"success_rate_ma{self.window_size}_count": len(self._successes),
++        }
++
++
+ def mean_bool_tensor_rate(
+     tensors: Sequence[torch.Tensor | None],
+     *,
+@@ -398,10 +516,14 @@ def count_trajectories(metrics_dict):
+         return 0
+ 
+     # Use a trajectory-shaped metric tensor to get the trajectory count.
+-    # Some metrics, such as interact delay samples, are auxiliary distributions and
+-    # should not define the trajectory count.
++    # Delay and chunk-reward distributions have different sample counts from
++    # episode metrics and cannot define the number of trajectories.
+     valid_metric_keys = [
+-        key for key in metrics_dict.keys() if not is_interact_delay_metric_key(key)
++        key
++        for key in metrics_dict.keys()
++        if not is_interact_delay_metric_key(key)
++        and key.rsplit("/", 1)[-1] != "reward_model_output"
++        and key.rsplit("/", 1)[-1] != TRAIN_EPISODE_OUTCOMES_KEY
+     ]
+     if not valid_metric_keys:
+         return 0
+@@ -433,7 +555,11 @@ def compute_evaluate_metrics(eval_metrics_list):
+     all_eval_metrics = {}
+     env_info_keys: set[str] = set()
+     for eval_metrics in eval_metrics_list:
+-        env_info_keys.update(eval_metrics.keys())
++        env_info_keys.update(
++            key
++            for key in eval_metrics
++            if key.rsplit("/", 1)[-1] != TRAIN_EPISODE_OUTCOMES_KEY
++        )
+ 
+     # Count trajectories from each process
+     trajectory_counts = []
+diff --git a/rlinf/workers/actor/fsdp_sac_policy_worker.py b/rlinf/workers/actor/fsdp_sac_policy_worker.py
+index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb7625432175c875 100644
+--- a/rlinf/workers/actor/fsdp_sac_policy_worker.py
++++ b/rlinf/workers/actor/fsdp_sac_policy_worker.py
+@@ -20,6 +20,10 @@ import numpy as np
+ import torch
+ import torch.nn.functional as F
+ from omegaconf import DictConfig
++from torch.distributed.checkpoint.state_dict import (
++    StateDictOptions,
++    get_model_state_dict,
++)
+ from torch.utils.data import DataLoader
+ 
+ from rlinf.config import SupportedModel
+@@ -43,7 +47,12 @@ from rlinf.utils.nested_dict_process import (
+     put_tensor_device,
+     split_dict_to_chunk,
+ )
+-from rlinf.utils.utils import clear_memory, collect_param_names_need_sync
++from rlinf.utils.utils import (
++    clear_memory,
++    collect_param_names_need_sync,
++    get_rng_state,
++    set_rng_state,
++)
+ from rlinf.workers.actor.embodied_fsdp_actor_worker import EmbodiedFSDPActor
+ 
+ 
+@@ -55,6 +64,27 @@ def _openpi_is_dsrl(cfg: DictConfig) -> bool:
+     return str(openpi_cfg.get("task", "")).lower() == "dsrl"
+ 
+ 
++def aggregate_dsrl_rewards(
++    rewards: torch.Tensor, aggregation: str = "first"
++) -> torch.Tensor:
++    """Return one scalar per replay transition from its per-action rewards.
++
++    ``first`` preserves the LIBERO DSRL reward convention. ``sum`` accepts
++    per-action rewards or a chunk reward stored in exactly one action slot.
++    """
++    if rewards.ndim != 2 or rewards.shape[-1] == 0:
++        raise ValueError(
++            f"DSRL rewards must have shape [batch, chunk_steps], got {tuple(rewards.shape)}"
++        )
++    if aggregation == "first":
++        return rewards[:, :1]
++    if aggregation == "sum":
++        return rewards.sum(dim=-1, keepdim=True)
++    raise ValueError(
++        f"algorithm.sac_reward_aggregation must be 'first' or 'sum', got {aggregation!r}"
++    )
++
++
+ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+     def __init__(self, cfg: DictConfig):
+         super().__init__(cfg)
+@@ -178,6 +208,27 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+ 
+     def setup_sac_components(self):
+         """Initialize SAC-specific components"""
++        filter_terminal_padding = self.cfg.algorithm.replay_buffer.get(
++            "filter_terminal_padding", False
++        )
++        chunks_per_rollout_epoch = None
++        if filter_terminal_padding:
++            if not self.use_dsrl:
++                raise ValueError("filter_terminal_padding requires a DSRL policy")
++            train_env = self.cfg.env.train
++            if train_env.auto_reset or train_env.ignore_terminations:
++                raise ValueError(
++                    "filter_terminal_padding requires env.train.auto_reset=False "
++                    "and env.train.ignore_terminations=False"
++                )
++            chunk_size = self.cfg.actor.model.num_action_chunks
++            rollout_steps = train_env.max_steps_per_rollout_epoch
++            if chunk_size <= 0 or rollout_steps <= 0 or rollout_steps % chunk_size:
++                raise ValueError(
++                    "Terminal-padding filtering requires positive rollout steps "
++                    "divisible by num_action_chunks"
++                )
++            chunks_per_rollout_epoch = rollout_steps // chunk_size
+         # Initialize replay buffer
+         seed = self.cfg.actor.get("seed", 1234)
+         auto_save_path = self.cfg.algorithm.replay_buffer.get("auto_save_path", None)
+@@ -197,6 +248,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+             trajectory_format=self.cfg.algorithm.replay_buffer.get(
+                 "trajectory_format", "pt"
+             ),
++            filter_terminal_padding=filter_terminal_padding,
++            chunks_per_rollout_epoch=chunks_per_rollout_epoch,
+         )
+ 
+         min_demo_buffer_size = 0
+@@ -258,7 +311,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         )
+ 
+     def _init_target_shadow(self):
+-        """Create persistent float32 shadow of target model parameters.
++        """Create a float32 EMA shadow for trainable online parameters only.
+ 
+         bfloat16 has only 7 mantissa bits (ULP ~0.002 at magnitude 0.3).
+         With tau=0.005, per-step EMA delta can be smaller than ULP/2, so
+@@ -266,9 +319,13 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         keeps the accumulated EMA state in float32 (ULP ~3.6e-8) across
+         steps, preventing precision loss.
+         """
++        trainable_names = {
++            name for name, param in self.model.named_parameters() if param.requires_grad
++        }
+         self._target_shadow_f32 = {}
+         for name, param in self.target_model.named_parameters():
+-            self._target_shadow_f32[name] = param.data.float().clone()
++            if name in trainable_names:
++                self._target_shadow_f32[name] = param.data.float().clone()
+ 
+     def soft_update_target_model(self, tau: Optional[float] = None):
+         """Soft update target model parameters.
+@@ -307,6 +364,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                     self.target_model.named_parameters(),
+                 ):
+                     assert name1 == name2
++                    if name1 not in self._target_shadow_f32:
++                        continue
+                     if "q_head" not in name1 and self.target_update_type != "all":
+                         shadow = self._target_shadow_f32[name1]
+                         shadow.copy_(online_param.data.float())
+@@ -360,7 +419,10 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         if use_dsrl:
+             num_action_chunks = self.cfg.actor.model.get("num_action_chunks", 1)
+             discount = self.cfg.algorithm.gamma**num_action_chunks
+-            rewards_for_bootstrap = batch["rewards"][:, 0:1].to(self.torch_dtype)
++            rewards_for_bootstrap = aggregate_dsrl_rewards(
++                batch["rewards"],
++                self.cfg.algorithm.get("sac_reward_aggregation", "first"),
++            ).to(self.torch_dtype)
+         else:
+             discount = self.cfg.algorithm.gamma
+             rewards_for_bootstrap = (
+@@ -578,6 +640,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                 drq.apply_drq(batch["next_obs"], pad=4)
+             train_micro_batch_list[i] = batch
+ 
++        if self.use_dsrl:
++            # Native FSDP clipping includes every parameter with a gradient.
++            self.optimizer.zero_grad(set_to_none=True)
+         self.qf_optimizer.zero_grad()
+         gbs_critic_loss = []
+         all_critic_metrics = {}
+@@ -606,6 +671,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+ 
+         if self.update_step % self.critic_actor_ratio == 0 and train_actor:
+             self.optimizer.zero_grad()
++            if self.use_dsrl:
++                self.qf_optimizer.zero_grad(set_to_none=True)
+             gbs_actor_loss = []
+             gbs_entropy = []
+             all_actor_metrics = {}
+@@ -620,6 +687,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                 f"actor/{key}": np.mean(value)
+                 for key, value in all_actor_metrics.items()
+             }
++            if self.use_dsrl:
++                # Keep dQ/da for the actor, then exclude Q weights from clipping.
++                self.qf_optimizer.zero_grad(set_to_none=True)
+             actor_grad_norm = self.model.clip_grad_norm_(
+                 max_norm=self.cfg.actor.optim.clip_grad
+             )
+@@ -770,16 +840,35 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+             self.load_optimizer(self.device)
+             self.is_optimizer_offloaded = False
+ 
+-        # Save model
+-        self._strategy.save_checkpoint(
+-            model=self.model,
+-            optimizers=[self.optimizer, self.qf_optimizer],
+-            lr_schedulers=[self.lr_scheduler, self.qf_lr_scheduler],
+-            save_path=save_base_path,
+-            checkpoint_format="local_shard"
+-            if self.cfg.actor.fsdp_config.use_orig_params
+-            else "dcp",
++        compact_dsrl = self.use_dsrl and self.cfg.actor.get(
++            "dsrl_compact_checkpoint", False
+         )
++        if compact_dsrl:
++            self._save_dsrl_compact_checkpoint(save_base_path)
++        else:
++            self._strategy.save_checkpoint(
++                model=self.model,
++                optimizers=[self.optimizer, self.qf_optimizer],
++                lr_schedulers=[self.lr_scheduler, self.qf_lr_scheduler],
++                save_path=save_base_path,
++                checkpoint_format="local_shard"
++                if self.cfg.actor.fsdp_config.use_orig_params
++                else "dcp",
++            )
++
++            target_model_save_path = os.path.join(
++                save_base_path, "sac_components/target_model"
++            )
++            os.makedirs(target_model_save_path, exist_ok=True)
++            target_model_state_dict = self._strategy.get_model_state_dict(
++                self.target_model, cpu_offload=False, full_state_dict=True
++            )
++            torch.save(
++                target_model_state_dict,
++                os.path.join(
++                    target_model_save_path, f"checkpoint_rank_{self._rank}.pt"
++                ),
++            )
+ 
+         # Save sac components
+         # save alpha
+@@ -793,36 +882,203 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                 save_full_model_weights=False,
+             )
+ 
+-        # save target model
+-        target_model_save_path = os.path.join(
+-            save_base_path, "sac_components/target_model"
++        # save replay buffer
++        buffer_save_path = os.path.join(
++            save_base_path, f"sac_components/replay_buffer/rank_{self._rank}"
+         )
+-        os.makedirs(target_model_save_path, exist_ok=True)
+-        target_model_state_dict = self._strategy.get_model_state_dict(
++        self.replay_buffer.save_checkpoint(buffer_save_path)
++        self._save_sac_training_state(save_base_path)
++
++    def _validate_dsrl_compact_checkpoint(self) -> None:
++        if (
++            not self.use_dsrl
++            or str(self.cfg.actor.fsdp_config.sharding_strategy).lower() != "no_shard"
++        ):
++            raise ValueError(
++                "actor.dsrl_compact_checkpoint requires DSRL with "
++                "actor.fsdp_config.sharding_strategy='no_shard'"
++            )
++
++    def _dsrl_trainable_state_dict(self) -> dict[str, torch.Tensor]:
++        """Collect canonical trainable parameter names and persistent buffers."""
++        return get_model_state_dict(
++            self.model,
++            options=StateDictOptions(full_state_dict=True, ignore_frozen_params=True),
++        )
++
++    def _save_dsrl_compact_checkpoint(self, save_base_path: str) -> None:
++        """Keep one full inference policy and per-rank SAC state without its decoder."""
++        self._validate_dsrl_compact_checkpoint()
++        full_weights = self._strategy.get_model_state_dict(
++            self.model, cpu_offload=True, full_state_dict=True
++        )
++        if self._rank == 0:
++            full_dir = os.path.join(save_base_path, "model_state_dict")
++            os.makedirs(full_dir, exist_ok=True)
++            torch.save(full_weights, os.path.join(full_dir, "full_weights.pt"))
++        del full_weights
++
++        online_state = self._dsrl_trainable_state_dict()
++        target_state = self._strategy.get_model_state_dict(
+             self.target_model, cpu_offload=False, full_state_dict=True
+         )
++        state = {
++            "format": "dsrl_compact_v1",
++            "world_size": self._world_size,
++            "fsdp_version": self._strategy.get_fsdp_version().value,
++            "frozen_base_path": "../model_state_dict/full_weights.pt",
++            "model": {
++                name: value.detach().cpu() for name, value in online_state.items()
++            },
++            "target_model": {
++                name: target_state[name].detach().cpu() for name in online_state
++            },
++            "optimizers": [self.optimizer.state_dict(), self.qf_optimizer.state_dict()],
++            "lr_schedulers": [
++                self.lr_scheduler.state_dict(),
++                self.qf_lr_scheduler.state_dict(),
++            ],
++            "rng": get_rng_state(),
++            "critic_sample_rng": self.critic_sample_generator.get_state(),
++        }
++        checkpoint_dir = os.path.join(save_base_path, "dsrl_checkpoint")
++        os.makedirs(checkpoint_dir, exist_ok=True)
+         torch.save(
+-            target_model_state_dict,
+-            os.path.join(target_model_save_path, f"checkpoint_rank_{self._rank}.pt"),
++            state,
++            os.path.join(checkpoint_dir, f"checkpoint_rank_{self._rank}.pt"),
+         )
+ 
+-        # save replay buffer
+-        buffer_save_path = os.path.join(
+-            save_base_path, f"sac_components/replay_buffer/rank_{self._rank}"
++    def _load_dsrl_compact_checkpoint(self, checkpoint_path: str) -> None:
++        """Restore both policies against the full frozen base stored beside the state."""
++        self._validate_dsrl_compact_checkpoint()
++        state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
++        if (
++            state["format"] != "dsrl_compact_v1"
++            or state["world_size"] != self._world_size
++            or state["fsdp_version"] != self._strategy.get_fsdp_version().value
++        ):
++            raise ValueError(
++                "Compact DSRL checkpoints require the saved format, world size, "
++                "and FSDP strategy"
++            )
++        trainable_keys = self._dsrl_trainable_state_dict().keys()
++        if (
++            state["model"].keys() != trainable_keys
++            or state["target_model"].keys() != trainable_keys
++        ):
++            raise ValueError("Compact DSRL checkpoint trainable parameter names differ")
++        base_path = os.path.join(
++            os.path.dirname(checkpoint_path), state["frozen_base_path"]
+         )
+-        self.replay_buffer.save_checkpoint(buffer_save_path)
++        base_state = torch.load(base_path, map_location="cpu", weights_only=True)
++        base_state.update(state["model"])
++        self._strategy.load_model_with_state_dict(
++            self.model, base_state, cpu_offload=False, full_state_dict=True
++        )
++        base_state.update(state["target_model"])
++        self._strategy.load_model_with_state_dict(
++            self.target_model, base_state, cpu_offload=False, full_state_dict=True
++        )
++        for optimizer, optimizer_state in zip(
++            (self.optimizer, self.qf_optimizer), state["optimizers"]
++        ):
++            optimizer.load_state_dict(optimizer_state)
++        for scheduler, scheduler_state in zip(
++            (self.lr_scheduler, self.qf_lr_scheduler), state["lr_schedulers"]
++        ):
++            scheduler.load_state_dict(scheduler_state)
++        set_rng_state(state["rng"])
++        self.critic_sample_generator.set_state(state["critic_sample_rng"])
++
++    def _save_sac_training_state(self, save_base_path: str) -> None:
++        """Save update scheduling and the unrounded target EMA on each rank."""
++        state = {"update_step": self.update_step}
++        if self.use_dsrl:
++            state["target_shadow_f32"] = {
++                name: shadow.detach().cpu()
++                for name, shadow in self._target_shadow_f32.items()
++            }
++        state_dir = os.path.join(save_base_path, "sac_components")
++        os.makedirs(state_dir, exist_ok=True)
++        torch.save(
++            state, os.path.join(state_dir, f"training_state_rank_{self._rank}.pt")
++        )
++
++    def _load_sac_training_state(self, load_base_path: str) -> None:
++        """Restore local EMA shards after loading the target model weights."""
++        state_path = os.path.join(
++            load_base_path,
++            "sac_components",
++            f"training_state_rank_{self._rank}.pt",
++        )
++        if not os.path.isfile(state_path):
++            self.update_step = 0
++            if self.use_dsrl:
++                self._init_target_shadow()
++            self.log_warning(
++                "SAC checkpoint has no training state; update_step restarts at 0 "
++                "and the target EMA is initialized from the restored target weights."
++            )
++            return
++
++        state = torch.load(state_path, map_location="cpu", weights_only=True)
++        self.update_step = state["update_step"]
++        if self.use_dsrl:
++            shadows = state["target_shadow_f32"]
++            trainable_names = {
++                name
++                for name, param in self.model.named_parameters()
++                if param.requires_grad
++            }
++            target_params = {
++                name: param
++                for name, param in self.target_model.named_parameters()
++                if name in trainable_names
++            }
++            if shadows.keys() != target_params.keys():
++                raise ValueError(
++                    "SAC target EMA parameter names differ from the restored target model"
++                )
++            for name, param in target_params.items():
++                if shadows[name].shape != param.shape:
++                    raise ValueError(
++                        f"SAC target EMA shape for {name!r} must be {tuple(param.shape)}, "
++                        f"got {tuple(shadows[name].shape)}"
++                    )
++            self._target_shadow_f32 = {
++                name: shadows[name].to(device=param.device, dtype=torch.float32)
++                for name, param in target_params.items()
++            }
+ 
+     def load_checkpoint(self, load_base_path):
+-        # load model
+-        self._strategy.load_checkpoint(
+-            model=self.model,
+-            optimizers=[self.optimizer, self.qf_optimizer],
+-            lr_schedulers=[self.lr_scheduler, self.qf_lr_scheduler],
+-            load_path=load_base_path,
+-            checkpoint_format="local_shard"
+-            if self.cfg.actor.fsdp_config.use_orig_params
+-            else "dcp",
++        compact_path = os.path.join(
++            load_base_path, "dsrl_checkpoint", f"checkpoint_rank_{self._rank}.pt"
+         )
++        if os.path.isfile(compact_path):
++            self._load_dsrl_compact_checkpoint(compact_path)
++        else:
++            self._strategy.load_checkpoint(
++                model=self.model,
++                optimizers=[self.optimizer, self.qf_optimizer],
++                lr_schedulers=[self.lr_scheduler, self.qf_lr_scheduler],
++                load_path=load_base_path,
++                checkpoint_format="local_shard"
++                if self.cfg.actor.fsdp_config.use_orig_params
++                else "dcp",
++            )
++
++            target_model_load_path = os.path.join(
++                load_base_path, "sac_components/target_model"
++            )
++            target_model_state_dict = torch.load(
++                os.path.join(target_model_load_path, f"checkpoint_rank_{self._rank}.pt")
++            )
++            self._strategy.load_model_with_state_dict(
++                self.target_model,
++                target_model_state_dict,
++                cpu_offload=False,
++                full_state_dict=True,
++            )
+ 
+         # load alpha
+         if self.alpha_optimizer is not None:
+@@ -834,22 +1090,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                 load_path=alpha_load_path,
+             )
+ 
+-        # load target model
+-        target_model_load_path = os.path.join(
+-            load_base_path, "sac_components/target_model"
+-        )
+-        target_model_state_dict = torch.load(
+-            os.path.join(target_model_load_path, f"checkpoint_rank_{self._rank}.pt")
+-        )
+-        self._strategy.load_model_with_state_dict(
+-            self.target_model,
+-            target_model_state_dict,
+-            cpu_offload=False,
+-            full_state_dict=True,
+-        )
+-
+         # load replay buffer
+         buffer_load_path = os.path.join(
+             load_base_path, f"sac_components/replay_buffer/rank_{self._rank}"
+         )
+         self.replay_buffer.load_checkpoint(buffer_load_path)
++        self._load_sac_training_state(load_base_path)
+diff --git a/rlinf/workers/env/env_worker.py b/rlinf/workers/env/env_worker.py
+index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a39e47d54c 100644
+--- a/rlinf/workers/env/env_worker.py
++++ b/rlinf/workers/env/env_worker.py
+@@ -34,6 +34,14 @@ from rlinf.envs.utils import get_env_attr
+ from rlinf.envs.wrappers import InsertDelay, RecordVideo
+ from rlinf.scheduler import Channel, Cluster, Worker
+ from rlinf.utils.env_helpers import HistoryManager, SmoothInterveneController
++from rlinf.utils.env_helpers.reward_context import (
++    RewardEpisodeContext,
++    build_reward_chunk_metadata,
++)
++from rlinf.utils.metric_utils import (
++    TRAIN_EPISODE_OUTCOMES_KEY,
++    CompletedEpisodeSuccessTracker,
++)
+ from rlinf.utils.nested_dict_process import (
+     clone_nested_to_cpu,
+     copy_dict_tensor,
+@@ -52,6 +60,7 @@ class EnvWorker(Worker):
+     _obs_split_fn = None
+     _policy_input_split_fn = None
+     collect_final_values = True
++    include_reward_episode_context = False
+ 
+     def __init__(self, cfg: DictConfig):
+         Worker.__init__(self)
+@@ -107,6 +116,9 @@ class EnvWorker(Worker):
+         self.use_external_reward_model = (
+             self.use_reward_model and not self.use_realworld_reward
+         )
++        self.include_reward_episode_context = self.use_external_reward_model and bool(
++            self.cfg.reward.get("include_episode_context", False)
++        )
+         self.env_infos_reward_keys = ("success", "episode", "final_info")
+         if self.use_external_reward_model:
+             self.reward_weight = self.cfg.reward.get("reward_weight", 1.0)
+@@ -241,6 +253,15 @@ class EnvWorker(Worker):
+                 ), "eval envs must have an offload method to enable offload!"
+ 
+         if self.enable_train:
++            if self.include_reward_episode_context:
++                self.train_reward_contexts = [
++                    RewardEpisodeContext(
++                        self.train_num_envs_per_stage,
++                        (self._rank * self.stage_num + stage_id)
++                        * self.train_num_envs_per_stage,
++                    )
++                    for stage_id in range(self.stage_num)
++                ]
+             if self.reward_mode == "history_buffer":
+                 self.train_history_managers = [
+                     HistoryManager(self.cfg.reward, self.train_num_envs_per_stage)
+@@ -434,10 +455,11 @@ class EnvWorker(Worker):
+             infos = infos_list[-1] if infos_list else None
+         infos = infos or {}
+         valid_action_mask = None
+-        if self.enable_online_lerobot and isinstance(infos, dict):
+-            # The train env publishes this after auto-reset. Removing it keeps
+-            # the mask out of the stored step metadata.
+-            valid_action_mask = infos.pop("valid_action_mask", None)
++        if isinstance(infos, dict):
++            valid_action_mask = infos.get("valid_action_mask")
++            if self.enable_online_lerobot:
++                # Keep the action mask out of stored LeRobot step metadata.
++                infos.pop("valid_action_mask", None)
+         chunk_dones = torch.logical_or(chunk_terminations, chunk_truncations)
+         final_obs = (
+             self._build_chunk_final_obs(obs_list, infos_list)
+@@ -666,6 +688,7 @@ class EnvWorker(Worker):
+         recv_channel: Channel,
+         stage_id: int | None = None,
+         last_run: bool = False,
++        reward_metadata: dict[str, Any] | None = None,
+     ):
+         if self.reward_mode in {"per_step", "history_buffer"}:
+             observations = (
+@@ -678,6 +701,8 @@ class EnvWorker(Worker):
+         else:
+             return None
+         reward_input = dict(observations)
++        if reward_metadata is not None:
++            reward_input.update(reward_metadata)
+         if env_output.env_infos is not None:
+             reward_input["env_infos"] = self._select_reward_env_infos(
+                 env_output.env_infos
+@@ -685,7 +710,7 @@ class EnvWorker(Worker):
+ 
+         dones = env_output.dones
+         if dones is not None and getattr(dones, "ndim", 0) > 1:
+-            dones = dones[:, -1]
++            dones = dones.any(dim=1) if reward_metadata is not None else dones[:, -1]
+             reward_input.update({"dones": dones})
+ 
+         if self.reward_mode == "history_buffer":
+@@ -722,6 +747,15 @@ class EnvWorker(Worker):
+             batch_size=self.train_batch_size,
+             decoupled_mode=self.env_decoupled_mode,
+         )
++        if isinstance(reward_output, dict):
++            video_info = reward_output.get("video_info")
++            if video_info is not None and stage_id is not None:
++                annotate_reward = get_env_attr(
++                    self.env_list[stage_id], "annotate_reward"
++                )
++                if callable(annotate_reward):
++                    annotate_reward(video_info)
++            reward_output = reward_output["rewards"]
+         if self.reward_mode != "terminal" or reward_output is None:
+             return reward_output
+         return self._scatter_terminal_reward_output(
+@@ -769,6 +803,8 @@ class EnvWorker(Worker):
+             for stage_id in range(self.stage_num):
+                 self.env_list[stage_id].is_start = True
+                 extracted_obs, infos = self.env_list[stage_id].reset()
++                if self.include_reward_episode_context:
++                    self.train_reward_contexts[stage_id].reset()
+                 dones = get_zero_dones()
+                 terminations = dones.clone()
+                 truncations = dones.clone()
+@@ -1108,9 +1144,13 @@ class EnvWorker(Worker):
+         cooperative_yield: bool,
+     ) -> dict[str, torch.Tensor]:
+         env_metrics = defaultdict(list)
++        episode_successes = CompletedEpisodeSuccessTracker(
++            auto_reset=self.cfg.env.train.auto_reset
++        )
+         final_env_parts: dict[int, EnvPart] = {}
+ 
+         for epoch in range(self.rollout_epoch):
++            episode_successes.start_epoch()
+             if epoch == 0 and self._prefetched_train_bootstrap is not None:
+                 env_outputs = self._prefetched_train_bootstrap
+                 self._prefetched_train_bootstrap = None
+@@ -1138,10 +1178,36 @@ class EnvWorker(Worker):
+                     actions = self._recv_actions(input_channel, stage_id)
+                     self.smooth_intervene.remember_actions(stage_id, actions)
+ 
++                    reward_metadata = None
++                    if self.include_reward_episode_context:
++                        reward_metadata = self.train_reward_contexts[stage_id].build(
++                            env_outputs[stage_id].obs
++                        )
+                     env_output, env_info, chunk_step_data = self.env_interact_step(
+                         actions,
+                         stage_id,
+                     )
++                    episode_successes.record(
++                        env_output.dones,
++                        env_output.env_infos,
++                        step=self._trajectory_step,
++                        epoch=epoch,
++                        chunk=chunk_step_idx,
++                        stage=stage_id,
++                    )
++                    if reward_metadata is not None:
++                        reward_metadata.update(
++                            build_reward_chunk_metadata(
++                                chunk_step_data["obs_list"],
++                                valid_action_mask=chunk_step_data["valid_action_mask"],
++                                final_observation=env_output.final_obs,
++                                dones=env_output.dones,
++                                env_infos=env_output.env_infos,
++                                image_key=self.cfg.reward.model.get(
++                                    "image_key", "main_images"
++                                ),
++                            )
++                        )
+ 
+                     # LeRobot stores the observation from before each action.
+                     # The env returns the frame after each action, so prepend the
+@@ -1168,16 +1234,30 @@ class EnvWorker(Worker):
+                             send_channel=reward_channel,
+                             recv_channel=input_channel,
+                             stage_id=stage_id,
++                            reward_metadata=reward_metadata,
+                             last_run=(
+                                 epoch == self.rollout_epoch - 1
+                                 and chunk_step_idx == self.n_train_chunk_steps - 1
+                             ),
+                         )
+                         if reward_model_output is not None:
++                            reward_metric = reward_model_output.detach().float().cpu()
++                            if self.include_reward_episode_context:
++                                reward_metric = reward_metric.reshape(
++                                    reward_metric.shape[0], -1
++                                ).sum(dim=1)
++                                reward_metric = reward_metric[
++                                    reward_metadata["reward_valid"]
++                                ]
+                             env_metrics["reward_model_output"].append(
+-                                reward_model_output.detach().float().reshape(-1).cpu()
++                                reward_metric.reshape(-1)
+                             )
+ 
++                    if self.include_reward_episode_context:
++                        self.train_reward_contexts[stage_id].advance(
++                            env_output.dones, auto_reset=self.cfg.env.train.auto_reset
++                        )
++
+                     env_part = self._publish_step(
+                         rollout_channel,
+                         env_output,
+@@ -1219,6 +1299,7 @@ class EnvWorker(Worker):
+ 
+         for key, value in env_metrics.items():
+             env_metrics[key] = torch.cat(value, dim=0).contiguous().cpu()
++        env_metrics[TRAIN_EPISODE_OUTCOMES_KEY] = episode_successes.as_tensor()
+ 
+         return env_metrics
+ 
+diff --git a/rlinf/workers/reward/reward_worker.py b/rlinf/workers/reward/reward_worker.py
+index 7db018b691fc107acd4d52976cdd3a37a8208f53..e043802bf1d9a8a366aa351a17d045b8a85cfa80 100644
+--- a/rlinf/workers/reward/reward_worker.py
++++ b/rlinf/workers/reward/reward_worker.py
+@@ -35,6 +35,7 @@ from rlinf.scheduler import (
+ from rlinf.utils.distributed import all_reduce_dict
+ from rlinf.utils.down_sampling import down_sample_batch
+ from rlinf.utils.metric_utils import append_to_dict
++from rlinf.utils.nested_dict_process import clone_nested_to_cpu
+ from rlinf.utils.placement import (
+     HybridComponentPlacement,
+ )
+@@ -317,8 +318,8 @@ class EmbodiedRewardWorker(Worker):
+ 
+     @staticmethod
+     def _format_reward_output(
+-        rewards: torch.Tensor | np.ndarray | None,
+-    ) -> torch.Tensor | np.ndarray | None:
++        rewards: torch.Tensor | np.ndarray | dict[str, Any] | None,
++    ) -> torch.Tensor | np.ndarray | dict[str, Any] | None:
+         """Normalize reward tensors for env/bootstrap broadcasting and RPC.
+ 
+         Env rewards are typically ``(N, T)``; a 1-D ``(N,)`` model output must
+@@ -328,19 +329,33 @@ class EmbodiedRewardWorker(Worker):
+             if rewards.dim() == 1:
+                 rewards = rewards.unsqueeze(-1)
+             return rewards.detach().cpu()
++        if isinstance(rewards, dict):
++            return {
++                key: (
++                    EmbodiedRewardWorker._format_reward_output(value)
++                    if key == "rewards"
++                    else clone_nested_to_cpu(value)
++                )
++                for key, value in rewards.items()
++            }
+         return rewards
+ 
+     @Worker.timer("compute_reward")
+     def compute_reward(
+         self, observations: dict[str, Any]
+-    ) -> torch.Tensor | np.ndarray | None:
++    ) -> torch.Tensor | np.ndarray | dict[str, Any] | None:
+         """Score a batched observation payload for embodied reward inference.
+ 
+         Default path uses the local ``self.model``. Subclasses (e.g. API workers)
+         may override this method; they should return through
+         :meth:`_format_reward_output` so env-side broadcasting stays consistent.
+         """
+-        return self._format_reward_output(self.model.compute_reward(observations))
++        rewards = self.model.compute_reward(observations)
++        get_video_info = getattr(self.model, "get_video_info", None)
++        video_info = get_video_info() if callable(get_video_info) else None
++        if video_info is not None:
++            rewards = {"rewards": rewards, "video_info": video_info}
++        return self._format_reward_output(rewards)
+ 
+     async def compute_rewards_async(
+         self, input_channel: Channel, output_channel: Channel
+diff --git a/tests/unit_tests/test_data.py b/tests/unit_tests/test_data.py
+index 1062511160ffadca19105fb1ec5272805b2f9e40..b6082d571afb8d8546745aa2d96f5b7347fbc181 100644
+--- a/tests/unit_tests/test_data.py
++++ b/tests/unit_tests/test_data.py
+@@ -77,6 +77,7 @@ from rlinf.scheduler.cluster.utils import (
+     unpack_dataclass_tensors,
+ )
+ from rlinf.utils.env_helpers import SmoothInterveneController
++from rlinf.utils.env_helpers.reward_context import RewardEpisodeContext
+ from rlinf.utils.nested_dict_process import split_dict_to_chunk
+ from rlinf.utils.obs_compression import (
+     _CODEC_KEY,
+@@ -100,6 +101,225 @@ def _scalar_trajectory(value: float) -> Trajectory:
+     return Trajectory(max_episode_length=1, rewards=torch.full((1, 1, 1), float(value)))
+ 
+ 
++def _terminal_padding_trajectory(native_boundaries=True, offset=0.0):
++    ids = torch.arange(16, dtype=torch.float32).reshape(8, 2, 1) + offset
++    rewards = torch.zeros(8, 2, 2)
++    post_done = torch.zeros(2, 4, 2, 2, dtype=torch.bool)
++    for epoch, env, first_done in [(0, 0, 1), (0, 1, 3), (1, 0, 0), (1, 1, 2)]:
++        post_done[epoch, first_done:, env, -1] = True
++        rewards[epoch * 4 + first_done, env, -1] = 1.0
++    if native_boundaries:
++        flags = torch.cat([torch.zeros_like(post_done[:, :1]), post_done], dim=1)
++        flags = flags.reshape(10, 2, 2)
++    else:
++        flags = post_done.reshape(8, 2, 2)
++    return Trajectory(
++        max_episode_length=8,
++        actions=ids,
++        rewards=rewards,
++        dones=flags,
++        terminations=flags.clone(),
++        truncations=torch.zeros_like(flags),
++        curr_obs={"states": ids + 1000},
++        next_obs={"states": ids + 2000},
++        forward_inputs={"action": ids.clone(), "model_action": ids + 0.5},
++    )
++
++
++def _assert_terminal_padding_sample(batch, offsets=(0.0,)):
++    expected = {
++        index + offset
++        for offset in offsets
++        for index in [0, 1, 2, 3, 5, 7, 8, 9, 11, 13]
++    }
++    actions = batch["actions"].reshape(-1)
++    assert set(actions.tolist()) == expected
++    torch.testing.assert_close(batch["curr_obs"]["states"], batch["actions"] + 1000)
++    torch.testing.assert_close(batch["next_obs"]["states"], batch["actions"] + 2000)
++    torch.testing.assert_close(batch["forward_inputs"]["action"], batch["actions"])
++    successful_ids = torch.tensor(
++        [index + offset for offset in offsets for index in [2, 7, 8, 13]]
++    )
++    torch.testing.assert_close(
++        batch["rewards"].sum(-1), torch.isin(actions, successful_ids).float()
++    )
++
++
++@pytest.mark.parametrize("native_boundaries", [False, True])
++def test_replay_terminal_padding_sampling_preserves_success_and_epoch_resets(
++    native_boundaries,
++):
++    buffer = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    try:
++        buffer.add_trajectories([_terminal_padding_trajectory(native_boundaries)])
++        batch = buffer.sample(512)
++        assert batch["actions"].shape[0] == 512
++        _assert_terminal_padding_sample(batch)
++        assert buffer.get_stats() == {
++            "num_trajectories": 1,
++            "total_samples": 16,
++            "cache_size": 1,
++            "valid_samples": 10,
++            "terminal_padding_samples": 6,
++        }
++    finally:
++        buffer.close()
++
++
++def test_replay_terminal_padding_filter_is_disabled_by_default():
++    buffer = TrajectoryReplayBuffer(sample_window_size=2)
++    try:
++        buffer.add_trajectories([_terminal_padding_trajectory()])
++        assert buffer.get_stats() == {
++            "num_trajectories": 1,
++            "total_samples": 16,
++            "cache_size": 1,
++        }
++        samples = torch.cat([buffer.sample(16)["actions"] for _ in range(16)])
++        assert set(samples.reshape(-1).tolist()) == set(range(16))
++    finally:
++        buffer.close()
++
++
++@pytest.mark.parametrize("timeout", [False, True])
++def test_replay_terminal_padding_sampling_preserves_nonterminal_and_timeout_chunks(
++    timeout,
++):
++    buffer = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    try:
++        trajectory = _terminal_padding_trajectory(native_boundaries=False)
++        trajectory.dones[:] = False
++        trajectory.terminations[:] = False
++        trajectory.rewards[:] = 0
++        if timeout:
++            trajectory.dones[[3, 7], :, -1] = True
++            trajectory.truncations[[3, 7], :, -1] = True
++        buffer.add_trajectories([trajectory])
++        assert buffer.get_stats()["valid_samples"] == 16
++        assert buffer.get_stats()["terminal_padding_samples"] == 0
++        assert set(buffer.sample(512)["actions"].reshape(-1).tolist()) == set(range(16))
++    finally:
++        buffer.close()
++
++
++@pytest.mark.parametrize("legacy_checkpoint", [False, True])
++def test_replay_terminal_padding_checkpoint_preserves_raw_archive(
++    tmp_path, legacy_checkpoint
++):
++    checkpoint = tmp_path / "checkpoint"
++    buffer = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=not legacy_checkpoint,
++        chunks_per_rollout_epoch=4,
++    )
++    restored = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    unfiltered = TrajectoryReplayBuffer(sample_window_size=2)
++    try:
++        original = _terminal_padding_trajectory()
++        buffer.add_trajectories([original])
++        buffer.save_checkpoint(str(checkpoint))
++        raw = torch.load(next(checkpoint.glob("trajectory_*.pt")), weights_only=False)
++        torch.testing.assert_close(raw["actions"], original.actions)
++        torch.testing.assert_close(raw["rewards"], original.rewards)
++        assert raw["dones"].shape == (8, 2, 2)
++        restored.load_checkpoint(str(checkpoint))
++        _assert_terminal_padding_sample(restored.sample(512))
++        assert restored.get_stats()["valid_samples"] == 10
++        unfiltered.load_checkpoint(str(checkpoint))
++        assert unfiltered.get_stats()["total_samples"] == 16
++        if not legacy_checkpoint:
++            metadata = json.loads((checkpoint / "metadata.json").read_text())
++            assert metadata["valid_samples"] == 10
++            assert metadata["terminal_padding_samples"] == 6
++        restored.clear()
++        assert restored.get_stats()["valid_samples"] == 0
++    finally:
++        buffer.close()
++        restored.close()
++        unfiltered.close()
++
++
++def test_replay_terminal_padding_sampling_handles_cache_misses(tmp_path):
++    buffer = TrajectoryReplayBuffer(
++        auto_save=True,
++        auto_save_path=str(tmp_path / "source"),
++        cache_size=1,
++        sample_window_size=3,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    restored = TrajectoryReplayBuffer(
++        sample_window_size=3,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    try:
++        buffer.add_trajectories([_terminal_padding_trajectory(offset=0.0)])
++        buffer.add_trajectories([_terminal_padding_trajectory(offset=100.0)])
++        buffer.add_trajectories([_terminal_padding_trajectory(offset=200.0)])
++        buffer.save_checkpoint(str(tmp_path / "checkpoint"))
++        _assert_terminal_padding_sample(
++            buffer.sample(1536), offsets=(0.0, 100.0, 200.0)
++        )
++        restored.load_checkpoint(str(tmp_path / "checkpoint"))
++        _assert_terminal_padding_sample(
++            restored.sample(1536), offsets=(0.0, 100.0, 200.0)
++        )
++    finally:
++        buffer.close()
++        restored.close()
++
++
++def test_replay_terminal_padding_sampling_rejects_no_valid_transition():
++    buffer = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=4,
++    )
++    try:
++        trajectory = _terminal_padding_trajectory()
++        trajectory.dones[:] = True
++        buffer.add_trajectories([trajectory])
++        assert buffer.get_stats()["valid_samples"] == 0
++        with pytest.raises(RuntimeError, match="no valid transitions"):
++            buffer.sample(16)
++    finally:
++        buffer.close()
++
++
++def test_replay_terminal_padding_filter_requires_explicit_epoch_geometry():
++    with pytest.raises(ValueError, match="positive chunks_per_rollout_epoch"):
++        TrajectoryReplayBuffer(filter_terminal_padding=True)
++
++
++@pytest.mark.parametrize("native_boundaries", [False, True])
++def test_replay_terminal_padding_filter_rejects_incompatible_epoch_geometry(
++    native_boundaries,
++):
++    buffer = TrajectoryReplayBuffer(
++        sample_window_size=2,
++        filter_terminal_padding=True,
++        chunks_per_rollout_epoch=3,
++    )
++    try:
++        with pytest.raises(ValueError, match="rollout_epoch|rollout epochs"):
++            buffer.add_trajectories([_terminal_padding_trajectory(native_boundaries)])
++    finally:
++        buffer.close()
++
++
+ def test_memory_checkpoint_indexes_only_cached_trajectories(tmp_path):
+     """A memory checkpoint records only the trajectories still held in cache."""
+     checkpoint = tmp_path / "checkpoint"
+@@ -3610,3 +3830,46 @@ def test_reward_loaders_accept_one_batch_per_rank(tmp_path):
+ 
+     assert len(train_loader) == 1
+     assert len(val_loader) == 1
++
++
++def test_reward_episode_context_snapshots_reset_frames_and_filters_padding():
++    context = RewardEpisodeContext(num_envs=2, first_env_id=4)
++    observation = {
++        "main_images": torch.zeros(2, 3, 4, 3, dtype=torch.uint8),
++        "task_descriptions": ["adjust bottle", "adjust bottle"],
++    }
++    initial = context.build(observation)
++    torch.testing.assert_close(initial["reward_env_id"], torch.tensor([4, 5]))
++    assert initial["reward_episode_start"].tolist() == [True, True]
++    assert initial["reward_valid"].tolist() == [True, True]
++    observation["main_images"].fill_(123)
++    assert not initial["reward_initial_observation"]["main_images"].any()
++
++    # A terminal event before the final action still closes that episode.
++    context.advance(
++        torch.tensor([[False, True, False], [False, False, False]]), auto_reset=False
++    )
++    padded = context.build(observation)
++    assert padded["reward_episode_start"].tolist() == [False, False]
++    assert padded["reward_valid"].tolist() == [False, True]
++    assert initial["reward_valid"].tolist() == [True, True]
++    context.advance(torch.zeros(2, 3, dtype=torch.bool), auto_reset=False)
++    assert context.build(observation)["reward_valid"].tolist() == [False, True]
++
++    context.reset()
++    reset = context.build(observation)
++    assert reset["reward_episode_start"].tolist() == [True, True]
++    assert reset["reward_valid"].tolist() == [True, True]
++
++
++def test_reward_episode_context_autoreset_is_independent_per_environment():
++    context = RewardEpisodeContext(num_envs=2)
++    observation = {"main_images": torch.zeros(2, 3, 4, 3, dtype=torch.uint8)}
++    context.advance(torch.tensor([True, False]), auto_reset=True)
++    next_chunk = context.build(observation)
++    assert next_chunk["reward_episode_start"].tolist() == [True, False]
++    assert next_chunk["reward_valid"].tolist() == [True, True]
++    context.advance(torch.tensor([False, True]), auto_reset=True)
++    assert context.build(observation)["reward_episode_start"].tolist() == [False, True]
++    with pytest.raises(ValueError, match="Expected dones shape"):
++        context.advance(torch.zeros(3, dtype=torch.bool), auto_reset=True)
+diff --git a/tests/unit_tests/test_fsdp.py b/tests/unit_tests/test_fsdp.py
+index 5053cf185b75a638ae14f116cf7d7179ed11bb89..75f394b0db4f526865b007b128c0973ae9a6b793 100644
+--- a/tests/unit_tests/test_fsdp.py
++++ b/tests/unit_tests/test_fsdp.py
+@@ -12,10 +12,11 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
+-"""Tests for FSDP meshes, wrapping, precision policies, and optimizer dtypes."""
++"""Tests for FSDP workers, meshes, wrapping, and precision policies."""
+ 
+ import logging
+ import os
++import shutil
+ import socket
+ from datetime import timedelta
+ 
+@@ -33,14 +34,24 @@ from torch.distributed.fsdp import (
+ from torch.distributed.fsdp.wrap import lambda_auto_wrap_policy
+ 
+ from rlinf.config import validate_fsdp_cfg
++from rlinf.data.schema.embodied_types import Trajectory
++from rlinf.data.storage.replay import TrajectoryReplayBuffer
+ from rlinf.hybrid_engines.fsdp.compat import apply_buffer_dtype_compatibility
+ from rlinf.hybrid_engines.fsdp.mixed_precision import (
+     build_mixed_precision,
+     get_mixed_precision_wrap_policy,
+ )
++from rlinf.hybrid_engines.fsdp.strategy.fsdp import FSDPStrategy
+ from rlinf.hybrid_engines.fsdp.utils import apply_fsdp2_to_model, create_device_mesh
++from rlinf.models.embodiment.base_policy import ForwardType
++from rlinf.models.embodiment.modules.entropy_tunning import EntropyTemperature
+ from rlinf.scheduler import Worker
+ from rlinf.scheduler.cluster import Cluster
++from rlinf.scheduler.hardware import AcceleratorType
++from rlinf.workers.actor.fsdp_sac_policy_worker import (
++    EmbodiedSACFSDPPolicy,
++    aggregate_dsrl_rewards,
++)
+ 
+ # The timeout a bare init_process_group() installs is backend-specific -- 30
+ # minutes for NCCL and Gloo, 3636 seconds for HCCL on Ascend -- so no test here
+@@ -52,6 +63,411 @@ CONFIGURED_TIMEOUT = timedelta(minutes=97)
+ RLINF_DEFAULT_TIMEOUT = timedelta(minutes=180)
+ 
+ 
++def test_dsrl_reward_aggregation_preserves_libero_first_slot():
++    rewards = torch.tensor([[1.0, 1.0, 1.0], [-1.0, -1.0, 0.0]])
++    torch.testing.assert_close(
++        aggregate_dsrl_rewards(rewards), torch.tensor([[1.0], [-1.0]])
++    )
++
++
++def test_dsrl_reward_aggregation_includes_robotwin_terminal_success():
++    rewards = torch.zeros(2, 50)
++    rewards[0, -1] = 1.0
++    torch.testing.assert_close(
++        aggregate_dsrl_rewards(rewards, "sum"), torch.tensor([[1.0], [0.0]])
++    )
++
++
++def test_dsrl_reward_aggregation_counts_chunk_reward_once():
++    rewards = torch.zeros(2, 50)
++    rewards[:, -1] = torch.tensor([0.25, -0.125])
++    torch.testing.assert_close(
++        aggregate_dsrl_rewards(rewards, "sum"), torch.tensor([[0.25], [-0.125]])
++    )
++
++
++@pytest.mark.parametrize("shape", [(2,), (2, 0), (2, 3, 1)])
++def test_dsrl_reward_aggregation_rejects_invalid_reward_layout(shape):
++    with pytest.raises(ValueError, match="shape.*batch, chunk_steps"):
++        aggregate_dsrl_rewards(torch.zeros(shape), "sum")
++
++
++def test_dsrl_reward_aggregation_rejects_unknown_mode():
++    with pytest.raises(ValueError, match="sac_reward_aggregation.*first.*sum"):
++        aggregate_dsrl_rewards(torch.zeros(2, 50), "last")
++
++
++@pytest.mark.parametrize(
++    ("use_dsrl", "auto_reset", "ignore_terminations", "steps", "message"),
++    [
++        (False, False, False, 200, "DSRL policy"),
++        (True, True, False, 200, "auto_reset=False"),
++        (True, False, True, 200, "ignore_terminations=False"),
++        (True, False, False, 201, "divisible by num_action_chunks"),
++    ],
++)
++def test_dsrl_terminal_padding_filter_rejects_incompatible_collection(
++    use_dsrl, auto_reset, ignore_terminations, steps, message
++):
++    worker = object.__new__(EmbodiedSACFSDPPolicy)
++    worker.use_dsrl = use_dsrl
++    worker.cfg = OmegaConf.create(
++        {
++            "algorithm": {"replay_buffer": {"filter_terminal_padding": True}},
++            "actor": {"model": {"num_action_chunks": 50}},
++            "env": {
++                "train": {
++                    "auto_reset": auto_reset,
++                    "ignore_terminations": ignore_terminations,
++                    "max_steps_per_rollout_epoch": steps,
++                }
++            },
++        }
++    )
++    with pytest.raises(ValueError, match=message):
++        worker.setup_sac_components()
++
++
++class _ScalarSACPolicy(nn.Module):
++    """CPU policy with an analytic actor gradient through its trainable Q head."""
++
++    def __init__(self):
++        super().__init__()
++        self.actor = nn.Parameter(torch.tensor(2.0))
++        self.critic = nn.Parameter(torch.tensor(5.0))
++        self.clip_inputs = []
++
++    def forward(self, forward_type, obs, actions=None, **kwargs):
++        batch_size = obs["states"].shape[0]
++        if forward_type == ForwardType.SAC:
++            pi = self.actor.expand(batch_size, 1)
++            return pi, pi * 0, None
++        if forward_type == ForwardType.SAC_Q:
++            return self.critic * actions.reshape(batch_size, -1)[:, :1]
++        raise NotImplementedError(forward_type)
++
++    def clip_grad_norm_(self, max_norm):
++        self.clip_inputs.append(
++            {
++                name: None if param.grad is None else param.grad.detach().clone()
++                for name, param in self.named_parameters()
++            }
++        )
++        return torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm)
++
++
++@pytest.mark.parametrize("stale_gradient", [0.0, 1000.0])
++@pytest.mark.parametrize("train_actor", [False, True])
++def test_dsrl_sac_clips_only_active_optimizer_gradients(stale_gradient, train_actor):
++    worker = object.__new__(EmbodiedSACFSDPPolicy)
++    worker._timer_metrics = {}
++    worker._accelerator_type = AcceleratorType.NO_ACCEL
++    worker._world_size = 1
++    worker.use_dsrl = True
++    worker.update_step = 0
++    worker.device = torch.device("cpu")
++    worker.torch_dtype = torch.float32
++    worker.gradient_accumulation = 2
++    worker.enable_drq = False
++    worker.critic_actor_ratio = 1
++    worker.critic_subsample_size = 0
++    worker.target_model_initialized = False
++    worker.alpha_optimizer = None
++    worker.entropy_temp = EntropyTemperature(0.0, alpha_type="fixed_alpha")
++    worker.cfg = OmegaConf.create(
++        {
++            "actor": {
++                "global_batch_size": 2,
++                "micro_batch_size": 1,
++                "model": {
++                    "model_type": "openpi",
++                    "num_action_chunks": 1,
++                    "num_q_heads": 1,
++                    "openpi": {"task": "dsrl"},
++                },
++                "optim": {"clip_grad": 1.0},
++                "critic_optim": {"clip_grad": 0.25},
++            },
++            "algorithm": {"gamma": 0.0, "backup_entropy": False, "agg_q": "mean"},
++        }
++    )
++    worker.model = _ScalarSACPolicy()
++    worker.target_model = _ScalarSACPolicy().requires_grad_(False)
++    worker.optimizer = torch.optim.SGD([worker.model.actor], lr=0.1)
++    worker.qf_optimizer = torch.optim.SGD([worker.model.critic], lr=0.1)
++    worker.lr_scheduler = torch.optim.lr_scheduler.StepLR(
++        worker.optimizer, step_size=10
++    )
++    worker.qf_lr_scheduler = torch.optim.lr_scheduler.StepLR(
++        worker.qf_optimizer, step_size=10
++    )
++    worker.buffer_dataloader_iter = iter(
++        [
++            {
++                "curr_obs": {"states": torch.ones(2, 1)},
++                "next_obs": {"states": torch.ones(2, 1)},
++                "actions": torch.ones(2, 1),
++                "rewards": torch.zeros(2, 1),
++                "terminations": torch.zeros(2, 1, dtype=torch.bool),
++            }
++        ]
++    )
++    worker.model.actor.grad = torch.tensor(stale_gradient)
++    worker.model.critic.grad = torch.tensor(stale_gradient)
++
++    metrics = worker.update_one_epoch(train_actor=train_actor)
++
++    # d(Q^2)/dQ = 10, clipped to 0.25 independently of stale actor gradients.
++    assert worker.model.clip_inputs[0]["actor"] is None
++    assert metrics["critic/grad_norm"].item() == pytest.approx(10.0)
++    assert worker.model.critic.item() == pytest.approx(4.975)
++    if train_actor:
++        # d(-Q*pi)/dpi = -4.975; Q gradients must not alter its clipping.
++        assert worker.model.clip_inputs[1]["critic"] is None
++        assert metrics["actor/grad_norm"].item() == pytest.approx(4.975)
++        assert worker.model.actor.item() == pytest.approx(2.1)
++        assert worker.model.critic.grad is None
++    else:
++        assert len(worker.model.clip_inputs) == 1
++        assert worker.model.actor.item() == 2.0
++
++
++def _sac_checkpoint_worker(use_dsrl: bool = True) -> EmbodiedSACFSDPPolicy:
++    """Construct CPU-only state owned by the SAC checkpoint/EMA methods."""
++    worker = object.__new__(EmbodiedSACFSDPPolicy)
++    worker._rank = 0
++    worker._logger = logging.getLogger(__name__)
++    worker._stacklevel = 1
++    worker.use_dsrl = use_dsrl
++    worker.update_step = 0
++    worker.cfg = OmegaConf.create({"algorithm": {"tau": 0.005}})
++    worker.model = nn.Linear(1, 1, bias=False, dtype=torch.bfloat16)
++    worker.target_model = nn.Linear(1, 1, bias=False, dtype=torch.bfloat16)
++    for model in (worker.model, worker.target_model):
++        model.register_parameter(
++            "frozen", nn.Parameter(torch.tensor(0.125), requires_grad=False)
++        )
++    with torch.no_grad():
++        worker.model.weight.fill_(0.5)
++        worker.target_model.weight.fill_(0.25)
++    worker.target_model_initialized = True
++    worker.target_update_type = "all"
++    if use_dsrl:
++        worker._init_target_shadow()
++    return worker
++
++
++def test_dsrl_checkpoint_preserves_update_schedule_and_unrounded_target(tmp_path):
++    original = _sac_checkpoint_worker()
++    original.update_step = 7
++    original._target_shadow_f32["weight"].add_(0.0001)
++    original._save_sac_training_state(str(tmp_path))
++
++    restored = _sac_checkpoint_worker()
++    restored.target_model.load_state_dict(original.target_model.state_dict())
++    restored._load_sac_training_state(str(tmp_path))
++
++    assert restored.update_step == 7
++    torch.testing.assert_close(
++        restored._target_shadow_f32["weight"],
++        original._target_shadow_f32["weight"],
++        rtol=0,
++        atol=0,
++    )
++    assert restored._target_shadow_f32["weight"].dtype == torch.float32
++    assert not torch.equal(
++        restored._target_shadow_f32["weight"], restored.target_model.weight.float()
++    )
++    for _ in range(5):
++        original.soft_update_target_model()
++        restored.soft_update_target_model()
++    torch.testing.assert_close(
++        restored._target_shadow_f32["weight"],
++        original._target_shadow_f32["weight"],
++        rtol=0,
++        atol=0,
++    )
++    torch.testing.assert_close(
++        restored.target_model.weight, original.target_model.weight, rtol=0, atol=0
++    )
++
++
++def test_dsrl_target_shadow_excludes_frozen_decoder_parameters():
++    worker = _sac_checkpoint_worker()
++    assert set(worker._target_shadow_f32) == {"weight"}
++    frozen_before = worker.target_model.frozen.detach().clone()
++    for _ in range(20):
++        worker.soft_update_target_model()
++    torch.testing.assert_close(
++        worker.target_model.frozen, frozen_before, rtol=0, atol=0
++    )
++    assert worker.target_model.weight.item() > 0.25
++
++
++def test_sac_checkpoint_restores_update_schedule_without_dsrl(tmp_path):
++    original = _sac_checkpoint_worker(use_dsrl=False)
++    original.update_step = 13
++    original._save_sac_training_state(str(tmp_path))
++    restored = _sac_checkpoint_worker(use_dsrl=False)
++    restored._load_sac_training_state(str(tmp_path))
++    assert restored.update_step == 13
++    assert not hasattr(restored, "_target_shadow_f32")
++
++
++@pytest.mark.parametrize("mismatch", ["names", "shape"])
++def test_dsrl_checkpoint_rejects_incompatible_target_shadow(tmp_path, mismatch):
++    worker = _sac_checkpoint_worker()
++    worker._save_sac_training_state(str(tmp_path))
++    path = tmp_path / "sac_components" / "training_state_rank_0.pt"
++    state = torch.load(path, weights_only=True)
++    if mismatch == "names":
++        state["target_shadow_f32"]["other"] = state["target_shadow_f32"].pop("weight")
++    else:
++        state["target_shadow_f32"]["weight"] = torch.zeros(1)
++    torch.save(state, path)
++    with pytest.raises(ValueError, match=f"SAC target EMA.*{mismatch}"):
++        worker._load_sac_training_state(str(tmp_path))
++
++
++def test_legacy_dsrl_checkpoint_rebuilds_shadow_from_loaded_target(tmp_path, caplog):
++    worker = _sac_checkpoint_worker()
++    worker.update_step = 99
++    with torch.no_grad():
++        worker.target_model.weight.fill_(0.75)
++    with caplog.at_level(logging.WARNING):
++        worker._load_sac_training_state(str(tmp_path))
++    assert worker.update_step == 0
++    torch.testing.assert_close(
++        worker._target_shadow_f32["weight"], worker.target_model.weight.float()
++    )
++    assert "no training state" in caplog.text
++
++
++def _compact_dsrl_worker() -> EmbodiedSACFSDPPolicy:
++    worker = _sac_checkpoint_worker()
++    worker._world_size = 1
++    worker.cfg = OmegaConf.create(
++        {
++            "actor": {
++                "dsrl_compact_checkpoint": True,
++                "fsdp_config": {"sharding_strategy": "no_shard"},
++            }
++        }
++    )
++    worker._strategy = FSDPStrategy(worker.cfg.actor, world_size=1)
++    worker.model = nn.Linear(1, 1)
++    worker.target_model = nn.Linear(1, 1)
++    for model in (worker.model, worker.target_model):
++        model.register_parameter(
++            "frozen", nn.Parameter(torch.full((131072,), 0.125), requires_grad=False)
++        )
++        model.register_buffer("running_value", torch.tensor(0.75))
++    worker.target_model.requires_grad_(False)
++    worker.optimizer = torch.optim.Adam([worker.model.weight], lr=0.001)
++    worker.qf_optimizer = torch.optim.Adam([worker.model.bias], lr=0.002)
++    worker.lr_scheduler = torch.optim.lr_scheduler.StepLR(worker.optimizer, step_size=1)
++    worker.qf_lr_scheduler = torch.optim.lr_scheduler.StepLR(
++        worker.qf_optimizer, step_size=1
++    )
++    worker.critic_sample_generator = torch.Generator().manual_seed(31)
++    worker.is_weight_offloaded = False
++    worker.is_optimizer_offloaded = False
++    worker.alpha_optimizer = None
++    worker._init_target_shadow()
++    return worker
++
++
++def test_compact_dsrl_checkpoint_restores_frozen_base_heads_optimizer_and_rng(tmp_path):
++    original_rng = torch.get_rng_state()
++    buffers = []
++    try:
++        original = _compact_dsrl_worker()
++        original.replay_buffer = TrajectoryReplayBuffer(sample_window_size=2)
++        buffers.append(original.replay_buffer)
++        original.replay_buffer.add_trajectories(
++            [Trajectory(max_episode_length=1, rewards=torch.ones(1, 1, 1))]
++        )
++        original.update_step = 7
++        original.model(torch.ones(1, 1)).sum().backward()
++        for optimizer, scheduler in (
++            (original.optimizer, original.lr_scheduler),
++            (original.qf_optimizer, original.qf_lr_scheduler),
++        ):
++            optimizer.step()
++            scheduler.step()
++        with torch.no_grad():
++            original.target_model.weight.fill_(0.375)
++            original.target_model.bias.fill_(0.625)
++            original.target_model.running_value.fill_(0.5)
++        checkpoint = tmp_path / "original"
++        original.save_checkpoint(str(checkpoint), step=2)
++        expected_random = torch.rand(3)
++        expected_critic_random = torch.rand(
++            3, generator=original.critic_sample_generator
++        )
++
++        moved = tmp_path / "moved"
++        shutil.move(checkpoint, moved)
++        compact_path = moved / "dsrl_checkpoint" / "checkpoint_rank_0.pt"
++        state = torch.load(compact_path, weights_only=False)
++        assert "frozen" not in state["model"]
++        assert "frozen" not in state["target_model"]
++        assert (
++            compact_path.stat().st_size
++            < (moved / "model_state_dict" / "full_weights.pt").stat().st_size / 10
++        )
++
++        restored = _compact_dsrl_worker()
++        restored.replay_buffer = TrajectoryReplayBuffer(sample_window_size=2)
++        buffers.append(restored.replay_buffer)
++        with torch.no_grad():
++            restored.model.frozen.fill_(0.875)
++            restored.target_model.frozen.fill_(0.875)
++        restored.load_checkpoint(str(moved))
++        assert restored.update_step == 7
++        assert restored.replay_buffer.get_stats()["num_trajectories"] == 1
++        torch.testing.assert_close(torch.rand(3), expected_random, rtol=0, atol=0)
++        torch.testing.assert_close(
++            torch.rand(3, generator=restored.critic_sample_generator),
++            expected_critic_random,
++            rtol=0,
++            atol=0,
++        )
++        for name, value in original.model.state_dict().items():
++            torch.testing.assert_close(
++                restored.model.state_dict()[name], value, rtol=0, atol=0
++            )
++        for name, value in original.target_model.state_dict().items():
++            torch.testing.assert_close(
++                restored.target_model.state_dict()[name], value, rtol=0, atol=0
++            )
++        for expected, actual in (
++            (original.optimizer, restored.optimizer),
++            (original.qf_optimizer, restored.qf_optimizer),
++        ):
++            assert expected.param_groups[0]["lr"] == actual.param_groups[0]["lr"]
++            expected_state = next(iter(expected.state.values()))
++            actual_state = next(iter(actual.state.values()))
++            for name, value in expected_state.items():
++                torch.testing.assert_close(actual_state[name], value, rtol=0, atol=0)
++        assert original.lr_scheduler.state_dict() == restored.lr_scheduler.state_dict()
++        assert (
++            original.qf_lr_scheduler.state_dict()
++            == restored.qf_lr_scheduler.state_dict()
++        )
++    finally:
++        for buffer in buffers:
++            buffer.close()
++        torch.set_rng_state(original_rng)
++
++
++def test_compact_dsrl_checkpoint_rejects_sharded_training(tmp_path):
++    worker = _compact_dsrl_worker()
++    worker.cfg.actor.fsdp_config.sharding_strategy = "full_shard"
++    with pytest.raises(ValueError, match="requires DSRL.*no_shard"):
++        worker._save_dsrl_compact_checkpoint(str(tmp_path))
++
++
+ def free_port() -> str:
+     """Reserve an ephemeral port for the rendezvous.
+ 
+diff --git a/tests/unit_tests/test_models.py b/tests/unit_tests/test_models.py
+index c06a0f2caa72c8fc960cdd0b677357f5501222d0..e192fd5c9bd0175838c22f4322f0147db9e7904e 100644
+--- a/tests/unit_tests/test_models.py
++++ b/tests/unit_tests/test_models.py
+@@ -142,6 +142,222 @@ def test_custom_model_registration_with_fsdp_wrap_policy():
+     assert wrap_policy(module=model.head, recurse=False, nonwrapped_numel=0)
+ 
+ 
++@pytest.mark.parametrize("train_expert_only", [False, True])
++def test_openpi_rl_parent_train_preserves_frozen_vision(train_expert_only):
++    from rlinf.models.embodiment.openpi.modules import gemma, siglip
++    from rlinf.models.embodiment.openpi.pi0_config import Pi0Config
++    from rlinf.models.embodiment.openpi.tasks.rl import Pi0RL, Pi0RLConfig
++
++    with torch.device("meta"):
++        model = Pi0RL(
++            Pi0Config(
++                dtype="float32",
++                pi05=True,
++                paligemma_variant="dummy",
++                action_expert_variant="dummy",
++                action_horizon=2,
++                max_token_len=4,
++            ),
++            rl_cfg=Pi0RLConfig(train_expert_only=train_expert_only),
++        )
++    model.img = siglip.SigLIPViT(
++        variant="mu/14",
++        num_classes=gemma.get_config("dummy").width,
++    )
++    if train_expert_only:
++        model.freeze_vlm()
++    parent = torch.nn.Sequential(model).eval()
++    image = torch.randn(1, 224, 224, 3)
++    with torch.no_grad():
++        rollout_features = model.img(image)[0]
++
++    assert parent.train() is parent
++    assert model.training
++    assert model.llm.training
++    assert model.llm.layers[0].mlps[1].training
++    assert model.action_out_proj.training
++    assert model.img.training is not train_expert_only
++    if train_expert_only:
++        assert not any(param.requires_grad for param in model.img.parameters())
++        with torch.no_grad():
++            replay_features = model.img(image)[0]
++        torch.testing.assert_close(replay_features, rollout_features, rtol=0, atol=0)
++
++    parent.eval()
++    assert not any(module.training for module in parent.modules())
++    parent.train()
++    assert model.img.training is not train_expert_only
++    assert model.llm.layers[0].mlps[1].training
++
++
++@pytest.mark.parametrize(
++    ("head_precision", "expected_dtype"),
++    [(None, torch.bfloat16), ("bf16", torch.bfloat16), ("fp32", torch.float32)],
++)
++def test_openpi_dsrl_head_precision_and_legacy_checkpoint(
++    head_precision, expected_dtype
++):
++    from rlinf.models.embodiment.openpi.pi0_config import Pi0Config
++    from rlinf.models.embodiment.openpi.tasks.dsrl import Pi0DSRL, Pi0DSRLConfig
++
++    options = {} if head_precision is None else {"head_precision": head_precision}
++    with torch.device("meta"):
++        model = Pi0DSRL(
++            Pi0Config(
++                dtype="bfloat16",
++                pi05=True,
++                paligemma_variant="dummy",
++                action_expert_variant="dummy",
++                action_horizon=2,
++                max_token_len=4,
++            ),
++            dsrl_cfg=Pi0DSRLConfig(state_dim=14, num_q_heads=2, **options),
++        )
++    model.to_bfloat16_for_selected_params("bfloat16")
++    model.freeze_vlm(freeze_action_expert=True)
++    head_names = (
++        "dsrl_action_noise_net",
++        "actor_image_encoder",
++        "actor_state_encoder",
++        "critic_image_encoder",
++        "critic_state_encoder",
++        "q_head",
++    )
++    for name in head_names:
++        head = getattr(model, name)
++        assert all(parameter.dtype == expected_dtype for parameter in head.parameters())
++        head.to_empty(device="cpu")
++        # Existing checkpoint tensors keep their shapes and cast on load.
++        legacy = {
++            key: torch.full(value.shape, 0.03125, dtype=torch.bfloat16)
++            for key, value in head.state_dict().items()
++        }
++        head.load_state_dict(legacy, strict=True)
++        for parameter in head.parameters():
++            assert parameter.requires_grad
++            assert parameter.dtype == expected_dtype
++            torch.testing.assert_close(parameter, torch.full_like(parameter, 0.03125))
++
++    decoder = [
++        parameter
++        for name, parameter in model.named_parameters()
++        if not name.startswith(tuple(prefix + "." for prefix in head_names))
++    ]
++    assert all(parameter.device.type == "meta" for parameter in decoder)
++    assert not any(parameter.requires_grad for parameter in decoder)
++    assert model.llm.layers[0].attn.q_proj[0].weight.dtype == torch.bfloat16
++    assert model.action_out_proj.weight.dtype == torch.float32
++
++    obs = {
++        "main_images": torch.zeros(1, 64, 64, 3, dtype=torch.uint8),
++        "states": torch.full((1, 14), 1.0001, dtype=torch.float32),
++    }
++    received_states = []
++    handle = model.actor_state_encoder.register_forward_pre_hook(
++        lambda module, inputs: received_states.append(inputs[0].clone())
++    )
++    with torch.no_grad():
++        actions, _, _ = model.sac_forward(obs=obs, mode="eval")
++        values = model.sac_q_forward(obs=obs, actions=actions)
++    handle.remove()
++    assert actions.dtype == values.dtype == expected_dtype
++    assert actions.shape == (1, 2, 32)
++    assert torch.isfinite(actions).all() and torch.isfinite(values).all()
++    torch.testing.assert_close(received_states[0], obs["states"].to(expected_dtype))
++    if head_precision == "fp32":
++        assert torch.equal(received_states[0], obs["states"])
++
++
++def test_openpi_dsrl_rejects_invalid_head_precision():
++    from rlinf.models.embodiment.openpi.tasks.dsrl import Pi0DSRLConfig
++
++    with pytest.raises(ValueError, match="head_precision must be 'bf16' or 'fp32'"):
++        Pi0DSRLConfig(head_precision="fp16")
++
++
++@pytest.mark.parametrize(
++    ("eval_noise_mode", "mode", "expected_mode"),
++    [
++        (None, "eval", "eval"),
++        ("zero", "eval", "zero"),
++        ("sample", "eval", "train"),
++        ("zero", "train", "train"),
++        ("sample", "train", "train"),
++    ],
++)
++def test_openpi_dsrl_eval_noise_routing(
++    monkeypatch, eval_noise_mode, mode, expected_mode
++):
++    from rlinf.models.embodiment.openpi.pi0_config import Pi0Config
++    from rlinf.models.embodiment.openpi.tasks.dsrl import Pi0DSRL, Pi0DSRLConfig
++
++    options = {} if eval_noise_mode is None else {"eval_noise_mode": eval_noise_mode}
++    with torch.device("meta"):
++        model = Pi0DSRL(
++            Pi0Config(
++                dtype="bfloat16",
++                pi05=True,
++                paligemma_variant="dummy",
++                action_expert_variant="dummy",
++                action_horizon=2,
++                max_token_len=4,
++            ),
++            dsrl_cfg=Pi0DSRLConfig(state_dim=14, head_precision="fp32", **options),
++        )
++    for name in ("dsrl_action_noise_net", "actor_image_encoder", "actor_state_encoder"):
++        head = getattr(model, name).to_empty(device="cpu")
++        head.load_state_dict(
++            {
++                key: torch.full_like(value, 0.03125)
++                for key, value in head.state_dict().items()
++            }
++        )
++    obs = {
++        "main_images": torch.zeros(2, 64, 64, 3, dtype=torch.uint8),
++        "states": torch.zeros(2, 14),
++    }
++    with torch.no_grad():
++        mean, _, _ = model.sac_forward(obs=obs, mode="eval")
++        torch.manual_seed(1234)
++        expected = (
++            torch.zeros(2, 2, 32)
++            if expected_mode == "zero"
++            else model.sac_forward(obs=obs, mode=expected_mode)[0]
++        )
++    decoder_noise = []
++
++    def record_decoder(observation, *, noise):
++        decoder_noise.append(noise.clone())
++        return torch.zeros(2, 2, 14), {"forward_inputs": {}}
++
++    # The decoder boundary is recorded; no meta decoder parameters are read.
++    monkeypatch.setattr(
++        model, "env_obs_to_observation", lambda observation: observation
++    )
++    monkeypatch.setattr(model, "_predict_eval", record_decoder)
++    controller_calls = []
++    handle = model.dsrl_action_noise_net.register_forward_pre_hook(
++        lambda module, inputs: controller_calls.append(True)
++    )
++    torch.manual_seed(1234)
++    _, result = model.predict_action_batch(obs, mode=mode)
++    handle.remove()
++    assert torch.equal(decoder_noise[0], expected.float())
++    assert torch.equal(result["forward_inputs"]["action"], expected)
++    assert len(controller_calls) == (0 if expected_mode == "zero" else 1)
++    if expected_mode == "train":
++        assert not torch.equal(expected, mean)
++    elif expected_mode == "zero":
++        assert result["forward_inputs"]["action"].dtype == torch.float32
++
++
++def test_openpi_dsrl_rejects_invalid_eval_noise_mode():
++    from rlinf.models.embodiment.openpi.tasks.dsrl import Pi0DSRLConfig
++
++    with pytest.raises(ValueError, match="eval_noise_mode must be"):
++        Pi0DSRLConfig(eval_noise_mode="unsupported")
++
++
+ def _make_model(*, prefix_seq_len: int = 5) -> RLTTokenTransformer:
+     torch.manual_seed(0)
+     return RLTTokenTransformer(
+@@ -1540,3 +1756,92 @@ def test_cosmos3_sglang_response_keeps_every_env_in_input_order():
+     assert actions.shape == (2, 16, 7)
+     assert torch.all(actions[0, :, 6] == -0.5)
+     assert torch.all(actions[1, :, 6] == 0.5)
++
++
++@pytest.mark.parametrize("deterministic", [False, True])
++@pytest.mark.parametrize("return_dist_params", [False, True])
++def test_gaussian_policy_forward_sampling_preserves_public_sample(
++    deterministic, return_dist_params
++):
++    from rlinf.models.embodiment.modules.gaussian_policy import GaussianPolicy
++
++    policy = GaussianPolicy(4, 2, hidden_dims=(8,), action_horizon=3)
++    features = torch.randn(2, 4)
++    rng = torch.get_rng_state()
++    expected_actions, expected_log_prob = policy.sample(
++        features, deterministic=deterministic
++    )
++    torch.set_rng_state(rng)
++    actions, log_prob, params = policy(
++        features,
++        sample=True,
++        deterministic=deterministic,
++        return_dist_params=return_dist_params,
++    )
++    torch.testing.assert_close(actions, expected_actions, rtol=0, atol=0)
++    torch.testing.assert_close(log_prob, expected_log_prob, rtol=0, atol=0)
++    dist = policy(features)
++    if return_dist_params:
++        torch.testing.assert_close(params[0], dist.mean, rtol=0, atol=0)
++        torch.testing.assert_close(params[1], dist.stddev, rtol=0, atol=0)
++    else:
++        assert params is None
++
++
++def test_openpi_dsrl_sampling_uses_noise_module_forward_and_output_hooks():
++    from rlinf.models.embodiment.modules.compact_encoders import (
++        CompactStateEncoder,
++        LightweightImageEncoder64,
++    )
++    from rlinf.models.embodiment.modules.gaussian_policy import GaussianPolicy
++    from rlinf.models.embodiment.openpi.pi0_config import Pi0Config
++    from rlinf.models.embodiment.openpi.tasks.dsrl import Pi0DSRL, Pi0DSRLConfig
++
++    with torch.device("meta"):
++        model = Pi0DSRL(
++            Pi0Config(
++                paligemma_variant="dummy",
++                action_expert_variant="dummy",
++                action_horizon=2,
++            ),
++            dsrl_cfg=Pi0DSRLConfig(
++                state_dim=2,
++                action_noise_dim=2,
++                image_latent_dim=4,
++                state_latent_dim=4,
++                hidden_dims=(8,),
++            ),
++        )
++    model.actor_image_encoder = LightweightImageEncoder64(latent_dim=4).to(
++        dtype=torch.bfloat16
++    )
++    model.actor_state_encoder = CompactStateEncoder(state_dim=2, hidden_dim=4).to(
++        dtype=torch.bfloat16
++    )
++    model.dsrl_action_noise_net = GaussianPolicy(
++        8, 2, hidden_dims=(8,), action_horizon=2
++    ).to(dtype=torch.bfloat16)
++
++    forward_outputs = []
++    output_gradients = []
++
++    def record_output(module, inputs, output):
++        forward_outputs.append(output)
++        output[0].register_hook(output_gradients.append)
++
++    handle = model.dsrl_action_noise_net.register_forward_hook(record_output)
++    try:
++        actions, log_prob, _ = model.sac_forward(
++            obs={
++                "main_images": torch.zeros(2, 64, 64, 3, dtype=torch.uint8),
++                "states": torch.ones(2, 2),
++            }
++        )
++        (actions.float().square().mean() + log_prob.float().mean()).backward()
++    finally:
++        handle.remove()
++    assert len(forward_outputs) == 1
++    assert len(output_gradients) == 1
++    for parameter in model.dsrl_action_noise_net.parameters():
++        assert parameter.grad is not None
++        assert torch.isfinite(parameter.grad).all()
+diff --git a/tests/unit_tests/test_real_env.py b/tests/unit_tests/test_real_env.py
+index d662a39f01d6cb42ac45d429571f3364a13a98c8..14f2bb63dad4387f26cf9b978b27432a97fe87f5 100644
+--- a/tests/unit_tests/test_real_env.py
++++ b/tests/unit_tests/test_real_env.py
+@@ -20,6 +20,7 @@ import dataclasses
+ import importlib
+ import importlib.util
+ import io
++import json
+ import os
+ import pickle
+ import re
+@@ -4830,3 +4831,485 @@ def test_robotwin_eval_success_seed_order_is_controlled_by_base_seed():
+ 
+     assert selected_seed_0 == selected_seed_0_again
+     assert selected_seed_0 != selected_seed_1
++
++
++class _RewardVideoEnv:
++    """Small observation source at the simulator boundary of RecordVideo."""
++
++    seed = 123
++
++    def __init__(self, num_envs=1):
++        self.num_envs = num_envs
++        self.results = []
++
++    def observation(self, value):
++        return {
++            "main_images": np.full((self.num_envs, 32, 256, 3), value, dtype=np.uint8)
++        }
++
++    def reset(self):
++        return self.observation(10), {}
++
++    def chunk_step(self, _actions):
++        return self.results.pop(0)
++
++
++def _video_scores(*, starts, previous, progress, valid=None, done=None, chunk=1):
++    count = len(starts)
++    valid = [True] * count if valid is None else valid
++    return {
++        "valid": torch.tensor(valid),
++        "episode_start": torch.tensor(starts),
++        "previous_progress": torch.tensor(previous),
++        "progress": torch.tensor(progress),
++        "delta": torch.tensor(progress) - torch.tensor(previous),
++        "reward": 2 * (torch.tensor(progress) - torch.tensor(previous)),
++        "done": torch.tensor([False] * count if done is None else done),
++        "chunk_index": torch.tensor([chunk if item else 0 for item in valid]),
++        "env_id": torch.arange(100, 100 + count),
++    }
++
++
++def _record_video_with_memory_encoder(tmp_path, monkeypatch, num_envs=1):
++    import imageio
++
++    from rlinf.envs.wrappers.record_video import RecordVideo
++
++    written = []
++
++    class Writer:
++        def append_data(self, frame):
++            written.append(frame.copy())
++
++        def close(self):
++            pass
++
++    monkeypatch.setattr(imageio, "get_writer", lambda *_args, **_kwargs: Writer())
++    env = _RewardVideoEnv(num_envs)
++    recorder = RecordVideo(
++        env,
++        OmegaConf.create(
++            {"video_base_dir": str(tmp_path), "info_on_video": False, "fps": 10}
++        ),
++    )
++    return env, recorder, written
++
++
++def test_record_video_preserves_pixels_and_labels_causal_chunk_endpoints(
++    tmp_path, monkeypatch
++):
++    env, recorder, written = _record_video_with_memory_encoder(
++        tmp_path, monkeypatch, num_envs=2
++    )
++    initial, _ = recorder.reset()
++    observations = [env.observation(value) for value in (20, 30, 40)]
++    snapshot = [obs["main_images"].copy() for obs in [initial, *observations]]
++    zeros = torch.zeros(2, 3)
++    env.results.append((observations, zeros, zeros.bool(), zeros.bool(), [{}, {}, {}]))
++    recorder.chunk_step(None)
++    recorder.annotate_reward(
++        _video_scores(starts=[True, True], previous=[0.1, 0.2], progress=[0.4, 0.6])
++    )
++    recorder.flush_video()
++
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert len(written) == trace["frame_count"] == 4
++    assert [score["env_id"] for score in trace["scores"]] == [100, 101]
++    assert [score["reset_frame_index"] for score in trace["scores"]] == [0, 0]
++    assert [score["endpoint_frame_index"] for score in trace["scores"]] == [3, 3]
++    assert trace["scores"][0]["progress"] == pytest.approx(0.4)
++    assert trace["scores"][0]["reward"] == pytest.approx(0.6)
++    for obs, before in zip([initial, *observations], snapshot, strict=True):
++        np.testing.assert_array_equal(obs["main_images"], before)
++    for frame, value in zip(written, (10, 20, 30, 40), strict=True):
++        assert np.all(frame[:32] == value)
++    # Intermediate frames retain the same previous score; the endpoint changes it.
++    np.testing.assert_array_equal(written[1][32:], written[2][32:])
++    assert not np.array_equal(written[2][32:], written[3][32:])
++    recorder._executor.shutdown(wait=True)
++
++
++def test_record_video_keeps_terminal_and_autoreset_scores_in_their_episodes(
++    tmp_path, monkeypatch
++):
++    env, recorder, written = _record_video_with_memory_encoder(tmp_path, monkeypatch)
++    recorder.reset()
++    done = torch.ones(1, 1, dtype=torch.bool)
++    zeros = torch.zeros(1, 1)
++    env.results.append(
++        (
++            [env.observation(80)],
++            zeros,
++            done,
++            ~done,
++            [
++                {
++                    "final_observation": env.observation(30),
++                    "valid_action_mask": (torch.arange(50) < 7).unsqueeze(0),
++                    "episode": {
++                        "success_once": torch.tensor([False]),
++                        "return": torch.tensor([0.0]),
++                    },
++                    "final_info": {
++                        "episode": {
++                            "success_once": torch.tensor([True]),
++                            "return": torch.tensor([1.0]),
++                        }
++                    },
++                }
++            ],
++        )
++    )
++    recorder.chunk_step(None)
++    recorder.annotate_reward(
++        _video_scores(starts=[True], previous=[0.1], progress=[0.3], done=[True])
++    )
++    env.results.append(([env.observation(90)], zeros, ~done, done, [{}]))
++    recorder.chunk_step(None)
++    recorder.annotate_reward(
++        _video_scores(starts=[True], previous=[0.8], progress=[0.9], done=[True])
++    )
++    recorder.flush_video()
++
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert [item["reset_frame_index"] for item in trace["scores"]] == [0, 2]
++    assert [item["endpoint_frame_index"] for item in trace["scores"]] == [1, 3]
++    assert [item["previous_progress"] for item in trace["scores"]] == pytest.approx(
++        [0.1, 0.8]
++    )
++    assert [item["terminated"] for item in trace["scores"]] == [True, False]
++    assert [item["truncated"] for item in trace["scores"]] == [False, True]
++    assert [item["simulator_success"] for item in trace["scores"]] == [True, None]
++    assert [item["simulator_return"] for item in trace["scores"]] == [1.0, None]
++    for frame, value in zip(written, (10, 30, 80, 90), strict=True):
++        assert np.all(frame[:32] == value)
++    recorder._executor.shutdown(wait=True)
++
++
++def test_record_video_marks_post_terminal_padding_as_unscored(tmp_path, monkeypatch):
++    env, recorder, written = _record_video_with_memory_encoder(tmp_path, monkeypatch)
++    recorder.reset()
++    zeros = torch.zeros(1, 1)
++    done = torch.ones(1, 1, dtype=torch.bool)
++    env.results.append(([env.observation(30)], zeros, done, ~done, [{}]))
++    recorder.chunk_step(None)
++    recorder.annotate_reward(
++        _video_scores(starts=[True], previous=[0.1], progress=[0.3], done=[True])
++    )
++    env.results.append(([env.observation(30)], zeros, done, ~done, [{}]))
++    recorder.chunk_step(None)
++    recorder.annotate_reward(
++        _video_scores(
++            starts=[False],
++            previous=[float("nan")],
++            progress=[float("nan")],
++            valid=[False],
++            done=[True],
++        )
++    )
++    recorder.flush_video()
++
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert len(written) == 3
++    assert trace["scores"][1]["valid"] is False
++    assert trace["scores"][1]["progress"] is None
++    assert trace["scores"][1]["endpoint_frame_index"] is None
++    assert trace["scores"][1]["terminated"] is True
++    assert trace["scores"][1]["truncated"] is False
++    assert trace["scores"][1]["simulator_success"] is None
++    recorder._executor.shutdown(wait=True)
++
++
++def test_record_video_handles_unscored_reset_baseline_in_raw_progress_mode(
++    tmp_path, monkeypatch
++):
++    env, recorder, written = _record_video_with_memory_encoder(tmp_path, monkeypatch)
++    recorder.reset()
++    zeros = torch.zeros(1, 1)
++    env.results.append(([env.observation(40)], zeros, zeros.bool(), zeros.bool(), [{}]))
++    recorder.chunk_step(None)
++    metadata = _video_scores(starts=[True], previous=[float("nan")], progress=[0.4])
++    metadata["reward"] = torch.tensor([0.4])
++    recorder.annotate_reward(metadata)
++    recorder.flush_video()
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert len(written) == 2
++    assert trace["scores"][0]["previous_progress"] is None
++    assert trace["scores"][0]["delta"] is None
++    assert trace["scores"][0]["reward"] == pytest.approx(0.4)
++    recorder._executor.shutdown(wait=True)
++
++
++def test_reward_video_payload_preserves_metadata_shapes_through_routing():
++    from rlinf.scheduler.worker.routing import merge_batches, split_batch
++    from rlinf.workers.reward.reward_worker import EmbodiedRewardWorker
++
++    source = {
++        "rewards": torch.tensor([0.2, 0.3], requires_grad=True),
++        "video_info": _video_scores(
++            starts=[True, False], previous=[0.1, 0.2], progress=[0.3, 0.5]
++        ),
++    }
++    source["video_info"]["progress"].requires_grad_()
++    output = EmbodiedRewardWorker._format_reward_output(source)
++    assert output["rewards"].shape == (2, 1)
++    assert output["video_info"]["progress"].shape == (2,)
++    assert not output["rewards"].requires_grad
++    assert not output["video_info"]["progress"].requires_grad
++    merged = merge_batches(split_batch(output, [1, 1]))
++    torch.testing.assert_close(merged["rewards"], source["rewards"].detach()[:, None])
++    for key, value in source["video_info"].items():
++        torch.testing.assert_close(merged["video_info"][key], value.detach())
++
++
++def test_env_worker_unwraps_video_metadata_before_returning_training_rewards(
++    tmp_path, monkeypatch
++):
++    import inspect
++
++    from rlinf.data.schema.embodied_types import EnvOutput, EnvTransition
++    from rlinf.workers.env.env_worker import EnvWorker
++
++    env, recorder, _written = _record_video_with_memory_encoder(tmp_path, monkeypatch)
++    recorder.reset()
++    observation = env.observation(40)
++    zeros = torch.zeros(1, 1)
++    env.results.append(([observation], zeros, zeros.bool(), zeros.bool(), [{}]))
++    recorder.chunk_step(None)
++    video_info = _video_scores(starts=[True], previous=[0.1], progress=[0.4])
++    rewards = torch.tensor([[0.6]])
++    sent = []
++    # The RPC boundary supplies the same structured payload used by the reward worker.
++    worker = SimpleNamespace(
++        reward_mode="per_step",
++        cfg=OmegaConf.create({"reward": {"group_name": "RewardGroup"}}),
++        env_list=[recorder],
++        train_batch_size=1,
++        env_decoupled_mode=False,
++        send_to=lambda **kwargs: sent.append(kwargs["data"]),
++        recv_from=lambda **_kwargs: {"rewards": rewards, "video_info": video_info},
++    )
++    env_output = EnvOutput(
++        obs=observation,
++        transition=EnvTransition(dones=torch.zeros(1, 1, dtype=torch.bool)),
++    )
++    result = inspect.unwrap(EnvWorker.get_reward_model_output)(
++        worker, env_output, send_channel=None, recv_channel=None, stage_id=0
++    )
++    assert result is rewards
++    np.testing.assert_array_equal(sent[0]["main_images"], observation["main_images"])
++    recorder.flush_video()
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert trace["scores"][0]["progress"] == pytest.approx(0.4)
++    recorder._executor.shutdown(wait=True)
++
++
++def test_reward_chunk_metadata_transports_full_render_without_lerobot():
++    import inspect
++
++    from rlinf.utils.env_helpers.reward_context import (
++        RewardEpisodeContext,
++        build_reward_chunk_metadata,
++    )
++    from rlinf.workers.env.env_worker import EnvWorker
++
++    env = _RewardVideoEnv(num_envs=2)
++    observations = [
++        {
++            "main_images": torch.stack(
++                [
++                    torch.full((2, 3, 3), min(index + 1, 7), dtype=torch.uint8),
++                    torch.full((2, 3, 3), index + 101, dtype=torch.uint8),
++                ]
++            )
++        }
++        for index in range(50)
++    ]
++    # A reset-owned buffer at the ending action must be replaced with final_obs.
++    observations[6]["main_images"][0].fill_(200)
++    observations[-1]["main_images"][0].fill_(200)
++    original = [item["main_images"].clone() for item in observations]
++    final_observation = {
++        "main_images": torch.stack(
++            [
++                torch.full((2, 3, 3), 7, dtype=torch.uint8),
++                torch.full((2, 3, 3), 99, dtype=torch.uint8),
++            ]
++        )
++    }
++    action_mask = torch.ones(2, 50, dtype=torch.bool)
++    action_mask[0, 7:] = False
++    terminations = torch.zeros(2, 50, dtype=torch.bool)
++    terminations[0, -1] = True
++    info = {
++        "valid_action_mask": action_mask,
++        "success": torch.tensor([False, False]),
++        "final_observation": final_observation,
++        "_final_observation": torch.tensor([True, False]),
++        "final_info": {
++            "success": torch.tensor([True, False]),
++            "episode": {"success_once": torch.tensor([True, False])},
++        },
++    }
++    infos = [{} for _ in range(49)] + [info]
++    env.results.append(
++        (
++            observations,
++            torch.zeros(2, 50),
++            terminations,
++            torch.zeros_like(terminations),
++            infos,
++        )
++    )
++    worker = SimpleNamespace(
++        cfg=OmegaConf.create(
++            {
++                "env": {
++                    "train": {
++                        "env_type": "robotwin",
++                        "auto_reset": True,
++                        "ignore_terminations": False,
++                    }
++                },
++                "reward": {"group_name": "RewardGroup"},
++            }
++        ),
++        model_cfg=OmegaConf.create(
++            {"model_type": "openpi", "num_action_chunks": 50, "action_dim": 14}
++        ),
++        env_list=[env],
++        enable_online_lerobot=False,
++        use_external_reward_model=True,
++    )
++    worker._build_chunk_final_obs = types.MethodType(
++        inspect.unwrap(EnvWorker._build_chunk_final_obs), worker
++    )
++    output, _env_info, chunk = inspect.unwrap(EnvWorker.env_interact_step)(
++        worker, torch.zeros(2, 50, 14), stage_id=0
++    )
++    assert chunk["valid_action_mask"] is action_mask
++    metadata = RewardEpisodeContext(2).build(env.observation(0))
++    metadata.update(
++        build_reward_chunk_metadata(
++            chunk["obs_list"],
++            valid_action_mask=chunk["valid_action_mask"],
++            final_observation=output.final_obs,
++            dones=output.dones,
++            env_infos=output.env_infos,
++        )
++    )
++    frames = metadata["reward_observation_frames"]
++    mask = metadata["reward_frame_mask"]
++    assert frames.shape == (2, 50, 2, 3, 3)
++    assert frames.dtype == torch.uint8
++    assert mask.sum(dim=1).tolist() == [7, 50]
++    assert frames[0, mask[0], 0, 0, 0].tolist() == list(range(1, 8))
++    assert frames[1, mask[1], 0, 0, 0].tolist() == list(range(101, 151))
++    assert metadata["reward_simulator_success"].tolist() == [True, False]
++    for item, before in zip(observations, original, strict=True):
++        torch.testing.assert_close(item["main_images"], before)
++
++    sent = []
++    worker.reward_mode = "per_step"
++    worker.train_batch_size = 2
++    worker.env_decoupled_mode = False
++    worker.env_infos_reward_keys = []
++    worker._select_reward_env_infos = types.MethodType(
++        inspect.unwrap(EnvWorker._select_reward_env_infos), worker
++    )
++    worker.send_to = lambda **kwargs: sent.append(kwargs["data"])
++    worker.recv_from = lambda **_kwargs: torch.zeros(2, 50)
++    inspect.unwrap(EnvWorker.get_reward_model_output)(
++        worker,
++        output,
++        send_channel=None,
++        recv_channel=None,
++        stage_id=0,
++        reward_metadata=metadata,
++    )
++    assert sent[0]["reward_observation_frames"].shape[1] == 50
++    torch.testing.assert_close(sent[0]["reward_frame_mask"], action_mask)
++    assert sent[0]["reward_simulator_success"].tolist() == [True, False]
++
++
++def test_reward_chunk_metadata_endpoint_and_absorbing_padding_masks():
++    from rlinf.utils.env_helpers.reward_context import build_reward_chunk_metadata
++
++    observation = {"main_images": torch.zeros(2, 2, 3, 3, dtype=torch.uint8)}
++    mask = torch.zeros(2, 50, dtype=torch.bool)
++    mask[0, :3] = True
++    metadata = build_reward_chunk_metadata(
++        [observation], valid_action_mask=mask, dones=torch.ones(2, 50, dtype=torch.bool)
++    )
++    assert metadata["reward_observation_frames"].shape == (2, 1, 2, 3, 3)
++    assert metadata["reward_frame_mask"].tolist() == [[True], [False]]
++    # Generic termination is not evidence of simulator task success.
++    assert "reward_simulator_success" not in metadata
++
++
++def test_reward_chunk_metadata_rejects_ambiguous_action_alignment():
++    from rlinf.utils.env_helpers.reward_context import build_reward_chunk_metadata
++
++    observation = {"main_images": torch.zeros(1, 2, 3, 3, dtype=torch.uint8)}
++    with pytest.raises(ValueError, match="observation count"):
++        build_reward_chunk_metadata(
++            [observation, observation], valid_action_mask=torch.ones(1, 50)
++        )
++
++
++def test_record_video_labels_last_real_action_before_intra_chunk_padding(
++    tmp_path, monkeypatch
++):
++    env, recorder, written = _record_video_with_memory_encoder(
++        tmp_path, monkeypatch, num_envs=2
++    )
++    recorder.reset()
++    observations = [env.observation(index + 20) for index in range(50)]
++    action_mask = torch.ones(2, 50, dtype=torch.bool)
++    action_mask[0, 7:] = False
++    terminations = torch.zeros(2, 50, dtype=torch.bool)
++    terminations[0, -1] = True
++    infos = [{} for _ in range(49)] + [{"valid_action_mask": action_mask}]
++    env.results.append(
++        (
++            observations,
++            torch.zeros(2, 50),
++            terminations,
++            torch.zeros_like(terminations),
++            infos,
++        )
++    )
++    recorder.chunk_step(None)
++    # Match EnvWorker's removal of this field after video collection.
++    infos[-1].pop("valid_action_mask")
++    video_info = _video_scores(
++        starts=[True, True],
++        previous=[float("nan"), 0.2],
++        progress=[0.7, 0.8],
++        done=[True, False],
++    )
++    video_info["reward"] = torch.tensor([0.16, 0.6])
++    recorder.annotate_reward(video_info)
++    recorder.flush_video()
++
++    trace = json.loads((tmp_path / "seed_123/0.json").read_text())
++    assert len(written) == 51
++    assert [score["endpoint_frame_index"] for score in trace["scores"]] == [7, 50]
++    assert [score["frame_end"] for score in trace["scores"]] == [50, 50]
++    assert [score["valid_frame_count"] for score in trace["scores"]] == [7, 50]
++    assert trace["scores"][0]["previous_progress"] is None
++    # Each env owns an 80-pixel footer row below the 32-pixel source image.
++    first_env_footer = slice(32, 112)
++    np.testing.assert_array_equal(
++        written[1][first_env_footer], written[6][first_env_footer]
++    )
++    np.testing.assert_array_equal(
++        written[8][first_env_footer], written[50][first_env_footer]
++    )
++    assert not np.array_equal(
++        written[6][first_env_footer], written[7][first_env_footer]
++    )
++    assert not np.array_equal(
++        written[7][first_env_footer], written[8][first_env_footer]
++    )
++    recorder._executor.shutdown(wait=True)
+diff --git a/tests/unit_tests/test_utils.py b/tests/unit_tests/test_utils.py
+index 0a274b19186d87b9d93153a75cc30d5b226b9a50..65e7849a1db56f07e6331aecc99bfbf60d396ff8 100644
+--- a/tests/unit_tests/test_utils.py
++++ b/tests/unit_tests/test_utils.py
+@@ -32,7 +32,328 @@ from omegaconf import OmegaConf
+ from rlinf.algorithms.registry import calculate_adv_and_returns
+ from rlinf.algorithms.utils import compute_entropy_loss
+ from rlinf.runners.reasoning_runner import ReasoningRunner
+-from rlinf.utils.metric_utils import compute_evaluate_metrics, compute_rollout_metrics
++from rlinf.utils.metric_utils import (
++    TRAIN_EPISODE_OUTCOMES_KEY,
++    CompletedEpisodeSuccessTracker,
++    RollingEpisodeSuccessRate,
++    compute_evaluate_metrics,
++    compute_rollout_metrics,
++)
++
++
++def test_completed_episode_successes_exclude_padding_and_unfinished_slots():
++    tracker = CompletedEpisodeSuccessTracker(auto_reset=False)
++    tracker.start_epoch()
++    infos = {"episode": {"success_once": torch.tensor([True, True, False])}}
++    tracker.record(
++        torch.tensor([[False, True], [False, False], [False, False]]),
++        infos,
++        step=0,
++        epoch=0,
++        chunk=0,
++        stage=0,
++    )
++    for chunk in (1, 2, 3):
++        tracker.record(
++            torch.tensor([[True, True], [False, False], [False, True]]),
++            infos,
++            step=0,
++            epoch=0,
++            chunk=chunk,
++            stage=0,
++        )
++    assert tracker.as_tensor().tolist() == [
++        [0, 0, 0, 0, 0, 1],
++        [0, 0, 1, 0, 2, 0],
++    ]
++
++    tracker.start_epoch()
++    tracker.record(
++        torch.tensor([[False, True], [False, False], [False, False]]),
++        {"episode": {"success_once": torch.tensor([False, False, False])}},
++        step=0,
++        epoch=1,
++        chunk=0,
++        stage=0,
++    )
++    assert tracker.as_tensor().tolist()[-1] == [0, 1, 0, 0, 0, 0]
++
++
++def test_completed_episode_successes_autoreset_counts_each_new_episode():
++    tracker = CompletedEpisodeSuccessTracker(auto_reset=True)
++    tracker.record(
++        torch.tensor([[False], [True]]),
++        {"final_info": {"episode": {"success_once": torch.tensor([True])}}},
++        step=0,
++        epoch=0,
++        chunk=0,
++        stage=0,
++    )
++    tracker.record(
++        torch.tensor([[True], [True]]),
++        {"final_info": {"episode": {"success_once": torch.tensor([False, True])}}},
++        step=0,
++        epoch=0,
++        chunk=1,
++        stage=0,
++    )
++    assert tracker.as_tensor().tolist() == [
++        [0, 0, 0, 0, 1, 1],
++        [0, 0, 1, 0, 0, 0],
++        [0, 0, 1, 0, 1, 1],
++    ]
++
++
++def test_completed_episode_successes_support_independent_pipeline_stages():
++    tracker = CompletedEpisodeSuccessTracker(auto_reset=False)
++    for stage, success in ((0, True), (1, False)):
++        tracker.record(
++            torch.tensor([[True]]),
++            {"episode": {"success_once": torch.tensor([success])}},
++            step=2,
++            epoch=0,
++            chunk=0,
++            stage=stage,
++        )
++    assert tracker.as_tensor().tolist() == [[2, 0, 0, 0, 0, 1], [2, 0, 0, 1, 0, 0]]
++
++
++def test_completed_episode_successes_missing_success_does_not_count_later_padding():
++    tracker = CompletedEpisodeSuccessTracker(auto_reset=False)
++    tracker.record(torch.tensor([[True]]), {}, step=0, epoch=0, chunk=0, stage=0)
++    tracker.record(
++        torch.tensor([[True]]),
++        {"episode": {"success_once": torch.tensor([True])}},
++        step=0,
++        epoch=0,
++        chunk=1,
++        stage=0,
++    )
++    assert tracker.as_tensor().shape == (0, 6)
++
++
++@pytest.mark.parametrize("success", [torch.tensor([0.5]), torch.tensor([float("nan")])])
++def test_completed_episode_successes_reject_invalid_outcomes(success):
++    tracker = CompletedEpisodeSuccessTracker(auto_reset=False)
++    with pytest.raises(ValueError, match="finite zero or one"):
++        tracker.record(
++            torch.tensor([[True]]),
++            {"episode": {"success_once": success}},
++            step=0,
++            epoch=0,
++            chunk=0,
++            stage=0,
++        )
++
++
++def test_rolling_episode_success_rate_counts_episodes_and_evicts_across_batches():
++    window = RollingEpisodeSuccessRate(window_size=100)
++    expected = []
++    for step in range(13):
++        shards = {0: [], 1: []}
++        for epoch in range(4):
++            for rank in (0, 1):
++                success = int((step * 8 + epoch * 2 + rank) % 3 != 0)
++                expected.append(success)
++                shards[rank].append([step, epoch, 0, 0, 0, success])
++        metrics = window.update(
++            [
++                (rank, {TRAIN_EPISODE_OUTCOMES_KEY: torch.tensor(shards[rank])})
++                for rank in (1, 0)
++            ]
++        )
++        last100 = expected[-100:]
++        assert metrics == {
++            "success_rate_ma100": pytest.approx(sum(last100) / len(last100)),
++            "success_rate_ma100_count": len(last100),
++        }
++    assert len(expected) == 104
++    assert metrics["success_rate_ma100_count"] == 100
++
++
++def test_rolling_episode_success_rate_orders_terminal_chunks_before_worker_rank():
++    window = RollingEpisodeSuccessRate(window_size=2)
++    metrics = window.update(
++        [
++            (0, {TRAIN_EPISODE_OUTCOMES_KEY: torch.tensor([[0, 0, 4, 0, 0, 0]])}),
++            (
++                1,
++                {
++                    TRAIN_EPISODE_OUTCOMES_KEY: torch.tensor(
++                        [[0, 0, 0, 0, 0, 1], [0, 0, 1, 0, 1, 1]]
++                    )
++                },
++            ),
++        ]
++    )
++    assert metrics == {"success_rate_ma2": 0.5, "success_rate_ma2_count": 2}
++
++
++def test_rolling_episode_success_rate_weights_outcomes_not_rank_means():
++    window = RollingEpisodeSuccessRate()
++    metrics = window.update(
++        [
++            (0, {TRAIN_EPISODE_OUTCOMES_KEY: torch.tensor([[0, 0, 0, 0, 0, 1]])}),
++            (
++                1,
++                {
++                    f"env/{TRAIN_EPISODE_OUTCOMES_KEY}": torch.tensor(
++                        [[0, 0, 0, 0, slot, 0] for slot in range(3)]
++                    )
++                },
++            ),
++        ]
++    )
++    assert metrics == {"success_rate_ma100": 0.25, "success_rate_ma100_count": 4}
++    assert window.update([(0, {"success_once": torch.tensor([True] * 150)})]) == metrics
++    assert RollingEpisodeSuccessRate().update([(0, None)]) == {}
++
++
++@pytest.mark.parametrize("prefix", ["", "env/"])
++def test_completed_episode_stream_preserves_legacy_metric_aggregation(prefix):
++    metrics = compute_evaluate_metrics(
++        [
++            {
++                f"{prefix}{TRAIN_EPISODE_OUTCOMES_KEY}": torch.tensor(
++                    [[0, 0, 0, 0, 0, 1]]
++                ),
++                f"{prefix}success_once": torch.tensor([True, False]),
++            }
++        ]
++    )
++    assert metrics == {
++        f"{prefix}success_once": pytest.approx(0.5),
++        "num_trajectories": 2,
++    }
++
++
++def test_embodied_training_logs_episode_window_to_tensorboard(tmp_path):
++    import queue
++
++    pytest.importorskip("tensorboard")
++    from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
++
++    from rlinf.runners.embodied_runner import EmbodiedRunner
++    from rlinf.utils.distributed import ScopedTimer
++    from rlinf.utils.metric_logger import MetricLogger
++
++    class FinishedWorkers:
++        def __init__(self, results):
++            self.results = results
++
++        def wait(self):
++            return self.results
++
++        def consume_durations(self, *, return_per_rank):
++            assert return_per_rank
++            return {}, [{}, {}]
++
++    cfg = OmegaConf.create(
++        {
++            "runner": {
++                "logger": {
++                    "log_path": str(tmp_path),
++                    "logger_backends": ["tensorboard"],
++                }
++            }
++        }
++    )
++    runner = object.__new__(EmbodiedRunner)
++    runner.timer = ScopedTimer(reduction="max", sync_cuda=False)
++    runner.metric_logger = MetricLogger(cfg)
++    runner.train_success_rate = RollingEpisodeSuccessRate()
++    runner.enable_per_worker_metric_log = False
++    runner.actor = SimpleNamespace(worker_group_name="ActorGroup")
++    runner.rollout = SimpleNamespace(worker_group_name="RolloutGroup")
++    runner.env = SimpleNamespace(worker_group_name="EnvGroup")
++    runner.reward = None
++    runner.log_queue = queue.Queue()
++    runner.max_steps = 2
++    payloads = [
++        {
++            "success_once": torch.tensor([True, False, True, False]),
++            TRAIN_EPISODE_OUTCOMES_KEY: torch.tensor(
++                [[0, epoch, 0, 0, 0, epoch % 2] for epoch in range(4)]
++            ),
++        }
++        for _ in range(2)
++    ]
++    runner._log_step_metrics(
++        step=0,
++        start_time=0.0,
++        start_step=0,
++        env_handle=FinishedWorkers(payloads),
++        rollout_handle=FinishedWorkers([]),
++        actor_training_handle=FinishedWorkers([]),
++        reward_handle=None,
++        actor_rollout_metrics=[],
++        actor_training_metrics=[],
++        eval_metrics={"eval/success_once": 1.0},
++    )
++    _, table_args = runner.log_queue.get_nowait()
++    assert table_args[3]["env/success_rate_ma100"] == 0.5
++    assert table_args[3]["env/success_rate_ma100_count"] == 8
++    runner.metric_logger.finish()
++
++    events = EventAccumulator(str(tmp_path / "tensorboard"))
++    events.Reload()
++    assert events.Scalars("env/success_rate_ma100")[0].value == pytest.approx(0.5)
++    assert events.Scalars("env/success_rate_ma100_count")[0].value == 8
++    assert events.Scalars("env/num_trajectories")[0].value == 8
++    assert events.Scalars("env/success_once")[0].value == pytest.approx(0.5)
++
++
++@pytest.mark.parametrize(
++    ("module", "runner_name"),
++    [
++        ("rlinf.runners.async_embodied_runner", "AsyncEmbodiedRunner"),
++        ("rlinf.runners.async_ppo_embodied_runner", "AsyncPPOEmbodiedRunner"),
++    ],
++)
++def test_async_training_episode_window_combines_available_worker_packets(
++    module, runner_name
++):
++    import asyncio
++    import importlib
++
++    class ReceivedWorkerMetrics:
++        def __init__(self, packets):
++            self.packets = iter(packets)
++
++        def get_nowait(self):
++            try:
++                return next(self.packets)
++            except StopIteration:
++                raise asyncio.QueueEmpty from None
++
++    runner_cls = getattr(importlib.import_module(module), runner_name)
++    runner = object.__new__(runner_cls)
++    runner.train_success_rate = RollingEpisodeSuccessRate()
++    runner.env_metric_channel = ReceivedWorkerMetrics(
++        [
++            {
++                "rank": rank,
++                "time": {},
++                "env": {
++                    "env/success_once": torch.tensor(successes),
++                    f"env/{TRAIN_EPISODE_OUTCOMES_KEY}": torch.tensor(
++                        [
++                            [0, 0, 0, 0, slot, value]
++                            for slot, value in enumerate(successes)
++                        ]
++                    ),
++                },
++            }
++            for rank, successes in ((1, [0, 0, 0]), (0, [1]))
++        ]
++    )
++    metrics, _, ranked_metrics = runner.get_env_metrics()
++    assert metrics["env/success_rate_ma100"] == 0.25
++    assert metrics["env/success_rate_ma100_count"] == 4
++    assert metrics["env/success_once"] == pytest.approx(0.25)
++    assert metrics["num_trajectories"] == 4
++    assert len(ranked_metrics) == 2
++    assert runner.get_env_metrics() == ({}, [], [])
+ 
+ 
+ def test_compute_evaluate_metrics_reports_interact_delay_wait_time_stats():
+@@ -66,6 +387,22 @@ def test_compute_evaluate_metrics_ignores_delay_samples_for_trajectory_count():
+     assert metrics["num_trajectories"] == 0
+ 
+ 
++@pytest.mark.parametrize("prefix", ["", "env/"])
++def test_reward_chunk_samples_do_not_count_as_episode_trajectories(prefix):
++    metrics = compute_evaluate_metrics(
++        [
++            {
++                f"{prefix}reward_model_output": torch.tensor([0.1, 0.2] * 8),
++                f"{prefix}episode_len": torch.tensor([200.0] * 4),
++                f"{prefix}success_once": torch.tensor([1.0, 0.0, 1.0, 1.0]),
++            }
++        ]
++    )
++    assert metrics["num_trajectories"] == 4
++    assert float(metrics[f"{prefix}reward_model_output"]) == pytest.approx(0.15)
++    assert float(metrics[f"{prefix}success_once"]) == pytest.approx(0.75)
++
++
+ def test_compute_evaluate_metrics_reports_prefixed_interact_delay_stats():
+     metrics = compute_evaluate_metrics(
+         [

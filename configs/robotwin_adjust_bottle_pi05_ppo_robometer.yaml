@@ -1,0 +1,38 @@
+# Matched PPO experiment using only Robometer progress-difference rewards.
+defaults:
+  - _robotwin_adjust_bottle_pi05_ppo
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+cluster:
+  component_placement:
+    reward: 0
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/ppo_robometer_raster_s1234
+    experiment_name: pi05_ppo_robometer
+
+reward:
+  use_reward_model: true
+  group_name: RewardGroup
+  worker_type: model
+  enable_offload: false
+  reward_mode: per_step
+  history_reward_assign: false
+  include_episode_context: true
+  env_reward_weight: 0.0
+  reward_weight: 1.0
+  model:
+    model_type: robometer_http
+    server_url: http://127.0.0.1:8000
+    image_key: main_images
+    num_action_chunks: ${actor.model.num_action_chunks}
+    max_frames: 8
+    reward_mode: progress_delta
+    reward_scale: 1.0
+    connect_timeout_s: 5.0
+    read_timeout_s: 120.0

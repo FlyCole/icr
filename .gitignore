@@ -1,6 +1,37 @@
+# Local environments and package metadata
+.venv*/
+/rlinf/
+/robometer/
+/robometer_v2/
+*.egg-info/
+
+# Downloaded models, datasets, and experiment artifacts
 /checkpoints/
+/models/
 /data/
 /outputs/
+/runs/
+/logs/
+/wandb/
+/tensorboard/
+*.log
+*.log.*
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Generated test, Python, and tool caches
 __pycache__/
-*.pyc
-.venv*/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local credentials and agent state
+/.aws/
+/.codex/

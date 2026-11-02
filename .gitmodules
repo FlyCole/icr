@@ -8,3 +8,7 @@
 [submodule "third_party/robometer"]
 	path = third_party/robometer
 	url = https://github.com/robometer/robometer.git
+[submodule "third_party/robometer_v2"]
+	path = third_party/robometer_v2
+	url = git@github.com:sNiper-Qian/robometer-v2.git
+	branch = full_training

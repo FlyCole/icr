@@ -1,0 +1,84 @@
+# Edit this file for the filtered simulator-reward experiment.
+# These explicit overrides retain the completed 86% simulator run's settings;
+# the learning change is excluding post-terminal chunks from replay sampling.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_base
+  - _self_
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/dsrl_sim_v2_large_filtered_s1234
+    experiment_name: pi05_dsrl_v2_large_filtered
+  # Change both limits together. Keep save_interval <= the selected budget.
+  max_epochs: 400
+  max_steps: 400
+  save_interval: 400
+  # -1 disables training-time evaluation; final evaluation uses 150 seeds.
+  val_check_interval: -1
+  # Start from SFT and empty replay for this filtering comparison.
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  train:
+    # Two worker processes, one simulator each, on the current two GPUs.
+    # Increase rollout_epoch for more collected episodes per iteration.
+    total_num_envs: 2
+    rollout_epoch: 4
+    # 200 / 50 = four action chunks per episode attempt, including padding.
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    task_config:
+      step_lim: 200
+    auto_reset: false
+    ignore_terminations: false
+    # Sparse simulator reward: +1 on first success, zero otherwise.
+    use_custom_reward: true
+    use_rel_reward: true
+    reward_coef: 1.0
+    # Match the earlier simulator run's capture cost.
+    skip_intermediate_renders: true
+    video_cfg:
+      save_video: false
+  eval:
+    # Used only if val_check_interval is enabled. Final eval has its own config.
+    total_num_envs: 2
+    rollout_epoch: 1
+
+actor:
+  seed: 1234
+  global_batch_size: 128
+  # Per GPU; global_batch_size must be divisible by 2 * micro_batch_size.
+  micro_batch_size: 32
+  model:
+    model_path: /home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle
+    # Retain checkpoint-compatible chunking for this comparison.
+    num_action_chunks: 50
+    num_steps: 5
+  optim:
+    lr: 0.0001
+  critic_optim:
+    lr: 0.0003
+
+algorithm:
+  # SAC update rounds after each collection iteration once replay is ready.
+  update_epoch: 20
+  gamma: 0.999
+  tau: 0.005
+  sac_reward_aggregation: sum
+  entropy_tuning:
+    alpha_type: fixed_alpha
+    initial_alpha: 0.01
+  # Readiness counts received trajectory batches per rank, not episodes.
+  train_actor_steps: 25
+  replay_buffer:
+    min_buffer_size: 25
+    cache_size: 512
+    sample_window_size: 512
+    # Keep every real transition and the first terminal chunk/reward.
+    # Exclude later chunks after termination until the next reset.
+    filter_terminal_padding: true
+
+reward:
+  # No Robometer service or progress-based shaping is used in this experiment.
+  use_reward_model: false

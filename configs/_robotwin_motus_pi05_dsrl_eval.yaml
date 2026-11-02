@@ -1,0 +1,19 @@
+# Reconstruct the learned noise controller while retaining the base normalization.
+defaults:
+  - /_robotwin_motus_pi05_eval
+  - _self_
+
+rollout:
+  model:
+    add_q_head: true
+    openpi:
+      task: dsrl
+      dsrl_head_precision: fp32
+      dsrl_eval_noise_mode: policy
+      dsrl_state_dim: 14
+      dsrl_action_noise_dim: 32
+      dsrl_num_q_heads: 10
+      dsrl_image_latent_dim: 64
+      dsrl_state_latent_dim: 64
+      dsrl_hidden_dims: [128, 128, 128]
+

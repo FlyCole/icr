@@ -1,0 +1,39 @@
+# @package _global_
+# Larger experience and replay batches; retain v2's objective and model settings.
+defaults:
+  - /archive/_robotwin_adjust_bottle_pi05_dsrl_pilot_base
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/dsrl_sim_v2_large_s1234
+    experiment_name: pi05_dsrl_v2_large
+  max_epochs: 400
+  max_steps: 400
+  save_interval: 400
+  val_check_interval: -1
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  train:
+    # Preserve one simulator per worker; increase sequential collection instead.
+    total_num_envs: 2
+    rollout_epoch: 4
+
+actor:
+  global_batch_size: 128
+  micro_batch_size: 32
+
+algorithm:
+  update_epoch: 20
+  replay_buffer:
+    # These are trajectory-batch slots per rank, not episode counts.
+    min_buffer_size: 25
+    cache_size: 512
+    sample_window_size: 512
+  train_actor_steps: 25

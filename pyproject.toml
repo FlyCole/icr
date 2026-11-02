@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "icl-reward"
+version = "0.1.0"
+description = "Robometer HTTP reward integration for the local RLinf experiments"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "requests>=2.32"]
+
+[project.optional-dependencies]
+video = ["imageio[ffmpeg]>=2.37"]
+test = ["pytest>=8"]
+
+[project.scripts]
+icr-score-video = "icl_reward.score_video:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["icl_reward*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

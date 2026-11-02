@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - /archive/_robotwin_adjust_bottle_pi05_dsrl_pilot_base
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config

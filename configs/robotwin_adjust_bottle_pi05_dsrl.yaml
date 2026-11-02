@@ -1,0 +1,8 @@
+# Canonical filtered simulator-reward DSRL recipe (400 iterations, 50-action execution).
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_simulator
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config

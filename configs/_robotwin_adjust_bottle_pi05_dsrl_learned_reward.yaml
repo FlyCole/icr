@@ -1,0 +1,49 @@
+# Shared learned-reward settings; public entry configs own Hydra search paths.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_base
+  - _self_
+
+cluster:
+  component_placement:
+    reward: 0
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/robometer_dsrl_dense8_single_stage_large_s1234
+    experiment_name: pi05_dsrl_dense8_single_stage_large
+
+algorithm:
+  replay_buffer:
+    filter_terminal_padding: true
+
+env:
+  train:
+    # Render real action frames; the reward model samples eight across the prefix.
+    skip_intermediate_renders: false
+    video_cfg:
+      save_video: true
+      video_base_dir: ${runner.logger.log_path}/video/train
+      fps: 30
+      info_on_video: true
+      extra_info_on_video: [episode.success_once, episode.return, episode.episode_len]
+
+reward:
+  use_reward_model: true
+  group_name: RewardGroup
+  worker_type: model
+  enable_offload: false
+  reward_mode: per_step
+  history_reward_assign: false
+  include_episode_context: true
+  env_reward_weight: 0.0
+  reward_weight: 1.0
+  model:
+    model_type: robometer_http
+    server_url: http://127.0.0.1:8000
+    image_key: main_images
+    num_action_chunks: 50
+    max_frames: 8
+    reward_mode: single_stage
+    reward_scale: 1.0
+    connect_timeout_s: 5.0
+    read_timeout_s: 120.0

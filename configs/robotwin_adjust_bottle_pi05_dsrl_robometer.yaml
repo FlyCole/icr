@@ -1,0 +1,9 @@
+# Large learned-reward DSRL; exclude post-terminal chunks from SAC sampling.
+defaults:
+  - /_robotwin_adjust_bottle_pi05_dsrl_learned_reward
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+

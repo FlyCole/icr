@@ -18,6 +18,7 @@ class ProgressSample:
     frames: np.ndarray
     task: str
     sample_id: str
+    context_object_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,8 @@ class ProgressPrediction:
 
     progress: np.ndarray
     success: np.ndarray | None = None
+    context_object_key: str | None = None
+    context_demo_sha256: str | None = None
 
     @property
     def endpoint(self) -> float:
@@ -116,7 +119,14 @@ class RobometerClient:
                         "frames_shape": list(frames.shape),
                         "task": sample.task,
                         "id": sample.sample_id,
-                        "metadata": {"subsequence_length": len(frames)},
+                        "metadata": {
+                            "subsequence_length": len(frames),
+                            **(
+                                {"context_object_key": sample.context_object_key}
+                                if sample.context_object_key is not None
+                                else {}
+                            ),
+                        },
                         "video_embeddings": None,
                     },
                 }
@@ -131,7 +141,20 @@ class RobometerClient:
             raise RuntimeError(
                 f"Robometer request failed at {self.url}: {error}"
             ) from error
-        return self._parse_response(result, [len(sample.frames) for sample in samples])
+        predictions = self._parse_response(
+            result, [len(sample.frames) for sample in samples]
+        )
+        for sample, prediction in zip(samples, predictions, strict=True):
+            if sample.context_object_key is not None and (
+                prediction.context_object_key != sample.context_object_key
+                or prediction.context_demo_sha256 is None
+            ):
+                raise RuntimeError(
+                    "ICON must confirm the requested object-matched context: "
+                    f"requested {sample.context_object_key!r}, "
+                    f"received {prediction.context_object_key!r}"
+                )
+        return predictions
 
     @staticmethod
     def _parse_response(
@@ -141,6 +164,15 @@ class RobometerClient:
             count = len(frame_counts)
             progress = result["outputs_progress"]["progress_pred"]
             success = (result.get("outputs_success") or {}).get("success_probs")
+            context = result.get("outputs_context")
+            selections = None
+            if context is not None:
+                selections = context["selections"]
+                if (
+                    context.get("context_match_mode") != "object"
+                    or len(selections) != count
+                ):
+                    raise ValueError("Expected one object-context selection per sample")
             if len(progress) != count or (
                 success is not None and len(success) != count
             ):
@@ -177,7 +209,25 @@ class RobometerClient:
                             f"for sample {index}, got {len(success_scores)}; "
                             "the reward server must return query scores only"
                         )
-                predictions.append(ProgressPrediction(scores, success_scores))
+                object_key = demo_sha = None
+                if selections is not None:
+                    selection = selections[index]
+                    object_key = selection["context_object_key"]
+                    demo_sha = selection["frames_sha256"]
+                    if (
+                        not isinstance(object_key, str)
+                        or not object_key.strip()
+                        or not isinstance(demo_sha, str)
+                        or len(demo_sha) != 64
+                        or any(
+                            character not in "0123456789abcdef"
+                            for character in demo_sha
+                        )
+                    ):
+                        raise ValueError("Invalid object-context identity")
+                predictions.append(
+                    ProgressPrediction(scores, success_scores, object_key, demo_sha)
+                )
             return predictions
         except (KeyError, TypeError, ValueError, AttributeError) as error:
             raise RuntimeError(f"Invalid Robometer response: {error}") from error

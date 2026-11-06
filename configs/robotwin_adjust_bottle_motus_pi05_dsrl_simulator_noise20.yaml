@@ -1,0 +1,26 @@
+# Matched control: native binary success only, with no learned progress reward.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20/adjust_bottle/simulator_train
+    experiment_name: pi05_motus_adjust_bottle_dsrl_simulator_noise20
+
+env:
+  train:
+    # RoboTwin emits +1 at first native success, zero otherwise. SAC sums each
+    # 20-action chunk once; replay excludes chunks after terminal success.
+    use_custom_reward: true
+    use_rel_reward: true
+    reward_coef: 1.0
+
+reward:
+  use_reward_model: false
+  env_reward_weight: 1.0
+  reward_weight: 0.0

@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-06T05:39:45.157061+00:00",
+  "cleanup_allocated_bytes": 619639910400,
+  "cleanup_extra_temporary_logical_bytes": 1825720779,
+  "final_comparison_policy_count": 18,
+  "retained_final_policies": [
+    {
+      "weights_path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/icon_dsrl_chunk20_stable_s1234/pi05_dsrl_icon_chunk20_stable/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/robometer_dsrl_chunk20_large_s1234/pi05_dsrl_robometer_chunk20_large/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/robometer_dsrl_benchmark_s1234_fixed/pi05_dsrl_robometer/checkpoints/global_step_200/actor/model_state_dict/full_weights.pt",
+      "bytes": 13423733194,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20/adjust_bottle/simulator_train/pi05_motus_adjust_bottle_dsrl_simulator_noise20/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/robometer_dsrl_chunk20_stable_s1234/pi05_dsrl_robometer_chunk20_stable/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/dsrl_sim_v2_large_s1234/pi05_dsrl_v2_large/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/icon_dsrl_dense8_single_stage_large_s1234/pi05_dsrl_icon_dense8_single_stage_large/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/icon_dsrl_chunk20_large_s1234/pi05_dsrl_icon_chunk20_large/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/motus_noise20_object_context/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13437189066,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/dsrl_sim_v2_large_filtered_s1234/pi05_dsrl_v2_large_filtered/checkpoints/global_step_400/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/ppo_sim_raster_s1234/pi05_ppo/checkpoints/global_step_100/actor/model_state_dict/full_weights.pt",
+      "bytes": 13416729662,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    },
+    {
+      "weights_path": "outputs/robometer_dsrl_dense8_single_stage_s1234/pi05_dsrl_dense8_single_stage/checkpoints/global_step_100/actor/model_state_dict/full_weights.pt",
+      "bytes": 13433448586,
+      "use": "evaluation",
+      "exact_training_resume_supported": false
+    }
+  ],
+  "removed": [
+    {
+      "path": "outputs/motus_noise20_click_bell_lambda01",
+      "category": "stale_roots",
+      "allocated_bytes": 347496448
+    },
+    {
+      "path": "outputs/motus_multitask_kv_cache/move_can_pot",
+      "category": "stale_roots",
+      "allocated_bytes": 188833792
+    },
+    {
+      "path": "outputs/motus_noise20/diagnostics/startup_long_ray_path_20261103",
+      "category": "stale_roots",
+      "allocated_bytes": 289505280
+    },
+    {
+      "path": "outputs/staged_rollout_defaults_20261105/repo",
+      "category": "stale_roots",
+      "allocated_bytes": 28184576
+    },
+    {
+      "path": "outputs/staged_rollout_defaults_20261105/backups_f4447dc3aca84443aa3c24b607167e20",
+      "category": "stale_roots",
+      "allocated_bytes": 434176
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288194560
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/robometer_smoke/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288202752
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/simulator_smoke/pi05_motus_adjust_bottle_dsrl_simulator_noise20/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288202752
+    },
+    {
+      "path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288202752
+    },
+    {
+      "path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_smoke/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288198656
+    },
+    {
+      "path": "outputs/motus_object_context_smoke/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288198656
+    },
+    {
+      "path": "outputs/motus_object_context_smoke/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_1",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 260333568
+    },
+    {
+      "path": "outputs/motus_noise20_object_context/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_2",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 288202752
+    },
+    {
+      "path": "outputs/motus_noise20_object_context/adjust_bottle/icon_smoke/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_1",
+      "category": "smoke_checkpoint_dirs",
+      "allocated_bytes": 260333568
+    },
+    {
+      "path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44682747904
+    },
+    {
+      "path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44682747904
+    },
+    {
+      "path": "outputs/icon_dsrl_chunk20_stable_s1234/pi05_dsrl_icon_chunk20_stable/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44921921536
+    },
+    {
+      "path": "outputs/robometer_dsrl_chunk20_large_s1234/pi05_dsrl_robometer_chunk20_large/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44921942016
+    },
+    {
+      "path": "outputs/robometer_dsrl_benchmark_s1234_fixed/pi05_dsrl_robometer/checkpoints/global_step_200/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 4474544128
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571320320
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/simulator_train/pi05_motus_adjust_bottle_dsrl_simulator_noise20/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571320320
+    },
+    {
+      "path": "outputs/motus_noise20/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571320320
+    },
+    {
+      "path": "outputs/robometer_dsrl_chunk20_stable_s1234/pi05_dsrl_robometer_chunk20_stable/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44921921536
+    },
+    {
+      "path": "outputs/dsrl_sim_v2_large_s1234/pi05_dsrl_v2_large/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 17976664064
+    },
+    {
+      "path": "outputs/icon_dsrl_dense8_single_stage_large_s1234/pi05_dsrl_icon_dense8_single_stage_large/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 17976745984
+    },
+    {
+      "path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571320320
+    },
+    {
+      "path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571324416
+    },
+    {
+      "path": "outputs/icon_dsrl_chunk20_large_s1234/pi05_dsrl_icon_chunk20_large/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44921954304
+    },
+    {
+      "path": "outputs/motus_noise20_object_context/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 44571320320
+    },
+    {
+      "path": "outputs/dsrl_sim_v2_large_filtered_s1234/pi05_dsrl_v2_large_filtered/checkpoints/global_step_400/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 17976745984
+    },
+    {
+      "path": "outputs/robometer_dsrl_dense8_single_stage_s1234/pi05_dsrl_dense8_single_stage/checkpoints/global_step_100/actor/sac_components/replay_buffer",
+      "category": "replay_dirs",
+      "allocated_bytes": 4494196736
+    },
+    {
+      "path": "outputs/ppo_sim_raster_s1234/pi05_ppo/checkpoints/global_step_100/actor/dcp_checkpoint",
+      "category": "training_only_optimizer_dirs",
+      "allocated_bytes": 16867328000
+    }
+  ],
+  "active_run_preserved": {
+    "path": "outputs/motus_noise20_adjust_bottle_lambda03",
+    "penalty_weight": 0.3,
+    "pinned_files_verified": 220
+  },
+  "notes": [
+    "Models, environments, data, complete run logs and checkpoints remain local and ignored by Git.",
+    "Removed completed-run replay buffers and duplicated distributed PPO training state; consolidated final inference weights and compact heads retained.",
+    "Full local cleanup receipt remains at outputs/cleanup_audit/cleanup_20261106.json."
+  ]
+}

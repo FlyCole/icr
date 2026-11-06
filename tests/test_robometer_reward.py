@@ -28,6 +28,9 @@ def reward_server():
         "error": None,
         "fail_on_request": None,
         "success_prob": 0.25,
+        "context_matching": False,
+        "context_requests": [],
+        "context_override": None,
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -48,6 +51,7 @@ def reward_server():
             }
             assert fields["use_frame_steps"] == b"false"
             samples = []
+            context_keys = []
             for index in range(
                 sum(key.startswith("sample_") and key.count("_") == 1 for key in fields)
             ):
@@ -61,8 +65,10 @@ def reward_server():
                 assert frames.shape[-1] == 3
                 assert trajectory["metadata"]["subsequence_length"] == len(frames)
                 samples.append((trajectory["task"], frames.copy()))
+                context_keys.append(trajectory["metadata"].get("context_object_key"))
             assert len({frames.shape for _, frames in samples}) == 1
             state["requests"].append(samples)
+            state["context_requests"].append(context_keys)
             failure = state["error"]
             if state["fail_on_request"] not in (None, len(state["requests"])):
                 failure = None
@@ -82,6 +88,17 @@ def reward_server():
                     ]
                 },
             }
+            if state["context_matching"]:
+                result["outputs_context"] = {
+                    "context_match_mode": "object",
+                    "selections": [
+                        {
+                            "context_object_key": state["context_override"] or key,
+                            "frames_sha256": ("a" if key.endswith("13") else "b") * 64,
+                        }
+                        for key in context_keys
+                    ],
+                }
             if failure == "nan":
                 result["outputs_progress"]["progress_pred"][0] = [float("nan")]
             if failure == "out_of_range":
@@ -396,13 +413,14 @@ def test_default_single_stage_scores_dense_global_prefix_once_per_chunk():
         )
         assert first.shape == (1, 50)
         assert torch.count_nonzero(first[:, :-1]) == 0
-        torch.testing.assert_close(first.sum(1), torch.tensor([-0.5]))
+        torch.testing.assert_close(first.sum(1), torch.tensor([-0.05]))
         assert len(state["requests"]) == 1  # No reset-only scoring request.
         assert frame_values(state["requests"][0]) == [[0, 7, 14, 21, 28, 35, 42, 50]]
         info = reward_model.get_video_info()
         assert torch.isnan(info["previous_progress"]).all()
         assert torch.isnan(info["delta"]).all()
-        assert info["base_reward"].tolist() == [-1.0]
+        torch.testing.assert_close(info["base_reward"], torch.tensor([-0.1]))
+        torch.testing.assert_close(info["progress_penalty_weight"], torch.tensor([0.1]))
         assert info["simulator_success"].tolist() == [False]
         assert info["frame_count"].tolist() == [8]
         assert info["history_frame_count"].tolist() == [51]
@@ -460,7 +478,7 @@ def test_environment_dense_metadata_context_and_single_stage_http_end_to_end():
                 **first_metadata,
             }
         )
-        assert first.sum().item() == pytest.approx(-0.5)
+        assert first.sum().item() == pytest.approx(-0.05)
         assert frame_values(state["requests"][0]) == [[0, 7, 14, 21, 28, 35, 42, 50]]
         context.advance(first_dones, auto_reset=False)
 
@@ -488,7 +506,7 @@ def test_environment_dense_metadata_context_and_single_stage_http_end_to_end():
                 **terminal_metadata,
             }
         )
-        assert terminal.sum().item() == pytest.approx(0.57)
+        assert terminal.sum().item() == pytest.approx(0.957)
         assert len(state["requests"]) == 2
         assert frame_values(state["requests"][-1]) == [[0, 8, 16, 24, 32, 40, 48, 57]]
         info = reward_model.get_video_info()
@@ -532,7 +550,13 @@ def test_single_stage_bonus_uses_simulator_success_only(
     with reward_server() as (url, state):
         state["success_prob"] = model_success
         reward_model = RobometerHTTPRewardModel(
-            OmegaConf.create({"server_url": url, "reward_scale": 2.0})
+            OmegaConf.create(
+                {
+                    "server_url": url,
+                    "reward_scale": 2.0,
+                    "progress_penalty_weight": 1.0,
+                }
+            )
         )
         reward = reward_model.compute_reward(
             payload(
@@ -568,6 +592,81 @@ def test_single_stage_bonus_uses_simulator_success_only(
             assert frame_values(state["requests"][-1]) == [[0, 10, 20, 30, 40]]
 
 
+@pytest.mark.parametrize("penalty_weight", [0.0, 0.1, 1.0])
+@pytest.mark.parametrize("sim_success", [False, True])
+@pytest.mark.parametrize("progress", [0, 30, 100])
+def test_single_stage_penalty_weights_progress_without_scaling_native_bonus(
+    penalty_weight, sim_success, progress
+):
+    with reward_server() as (url, state):
+        reward_model = RobometerHTTPRewardModel(
+            OmegaConf.create(
+                {
+                    "server_url": url,
+                    "progress_penalty_weight": penalty_weight,
+                    "reward_scale": 2.0,
+                }
+            )
+        )
+        reward = reward_model.compute_reward(
+            payload(
+                [progress],
+                [0],
+                [7],
+                [True],
+                dones=[True],
+                dense=[[progress]],
+                frame_mask=[[True]],
+                success=[sim_success],
+            )
+        )
+        expected = 2.0 * (int(sim_success) - penalty_weight * (1.0 - progress / 100))
+        assert reward.sum().item() == pytest.approx(expected)
+        assert torch.count_nonzero(reward[:, :-1]) == 0
+        info = reward_model.get_video_info()
+        assert info["base_reward"].item() == pytest.approx(
+            int(sim_success) - penalty_weight
+        )
+        assert info["progress_penalty_weight"].item() == pytest.approx(penalty_weight)
+        assert 7 not in reward_model._episodes
+
+        # A terminal chunk pays the native bonus once; padded chunks stay zero.
+        requests = len(state["requests"])
+        padding = reward_model.compute_reward(
+            payload(
+                [progress],
+                [0],
+                [7],
+                [False],
+                valid=[False],
+                dones=[True],
+                dense=[[progress]],
+                frame_mask=[[False]],
+                success=[sim_success],
+            )
+        )
+        assert torch.count_nonzero(padding) == 0
+        assert len(state["requests"]) == requests
+        assert torch.isnan(
+            reward_model.get_video_info()["progress_penalty_weight"]
+        ).all()
+
+
+@pytest.mark.parametrize(
+    "penalty_weight", [-0.1, float("inf"), float("nan"), True, None]
+)
+def test_progress_penalty_weight_requires_finite_nonnegative_number(penalty_weight):
+    with pytest.raises(ValueError, match="progress_penalty_weight"):
+        RobometerHTTPRewardModel(
+            OmegaConf.create(
+                {
+                    "server_url": "http://unused.invalid",
+                    "progress_penalty_weight": penalty_weight,
+                }
+            )
+        )
+
+
 def test_legacy_progress_delta_allows_negative_rewards():
     with reward_server() as (url, state):
         reward_model = model(url)
@@ -581,7 +680,9 @@ def test_legacy_progress_delta_allows_negative_rewards():
 
 def test_single_stage_dense_masks_reordered_envs_and_post_terminal_padding():
     with reward_server() as (url, state):
-        reward_model = RobometerHTTPRewardModel(OmegaConf.create({"server_url": url}))
+        reward_model = RobometerHTTPRewardModel(
+            OmegaConf.create({"server_url": url, "progress_penalty_weight": 1.0})
+        )
         first = reward_model.compute_reward(
             payload(
                 [20, 35],
@@ -656,7 +757,9 @@ def test_single_stage_dense_masks_reordered_envs_and_post_terminal_padding():
 @pytest.mark.parametrize("restart", [False, True])
 def test_single_stage_later_http_batch_failure_preserves_all_histories(restart):
     with reward_server() as (url, state):
-        reward_model = RobometerHTTPRewardModel(OmegaConf.create({"server_url": url}))
+        reward_model = RobometerHTTPRewardModel(
+            OmegaConf.create({"server_url": url, "progress_penalty_weight": 1.0})
+        )
         reward_model.compute_reward(
             payload(
                 [10, 30],
@@ -793,3 +896,102 @@ def test_offline_video_scores_only_causal_prefixes(tmp_path):
         assert result["curve"][0]["progress_delta"] is None
         assert result["curve"][-1]["progress_delta"] == pytest.approx(0.2)
         assert result["total_latency_s"] > 0
+
+
+def object_payload(*args, object_keys, **kwargs):
+    result = payload(*args, **kwargs)
+    result["context_object_key"] = list(object_keys)
+    result["reward_initial_observation"]["context_object_key"] = list(object_keys)
+    return result
+
+
+def test_object_context_client_preserves_identity_across_shape_grouping():
+    keys = ["001_bottle/base13", "001_bottle/base16", "001_bottle/base16"]
+    samples = [
+        ProgressSample(images([0, 10]), "bottle left", "a", keys[0]),
+        ProgressSample(images([0]), "bottle right", "b", keys[1]),
+        ProgressSample(images([0, 20]), "bottle left", "c", keys[2]),
+    ]
+    with reward_server() as (url, state):
+        state["context_matching"] = True
+        result = RobometerClient(url).predict(samples)
+        assert [prediction.context_object_key for prediction in result] == keys
+        assert [prediction.context_demo_sha256 for prediction in result] == [
+            "a" * 64,
+            "b" * 64,
+            "b" * 64,
+        ]
+        assert state["context_requests"] == [[keys[0], keys[2]], [keys[1]]]
+
+
+@pytest.mark.parametrize("bad_server", ["fixed", "wrong_object"])
+def test_object_context_client_rejects_unconfirmed_or_mismatched_demo(bad_server):
+    with reward_server() as (url, state):
+        if bad_server == "wrong_object":
+            state["context_matching"] = True
+            state["context_override"] = "001_bottle/base16"
+        with pytest.raises(RuntimeError, match="confirm the requested"):
+            RobometerClient(url).predict(
+                [ProgressSample(images([0]), "bottle", "test", "001_bottle/base13")]
+            )
+
+
+def test_reward_object_context_keeps_history_aligned_and_records_selected_demo():
+    keys = ["001_bottle/base13", "001_bottle/base16"]
+    with reward_server() as (url, state):
+        state["context_matching"] = True
+        reward_model = model(url, context_match_mode="object")
+        reward_model.compute_reward(
+            object_payload(
+                [10, 20],
+                [0, 5],
+                [100, 200],
+                [True, True],
+                object_keys=keys,
+            )
+        )
+        info = reward_model.get_video_info()
+        assert info["context_object_key"] == keys
+        assert info["context_demo_sha256"] == ["a" * 64, "b" * 64]
+        reward_model.compute_reward(
+            object_payload(
+                [30, 40],
+                [20, 10],
+                [200, 100],
+                [False, False],
+                object_keys=keys[::-1],
+            )
+        )
+        assert reward_model.get_video_info()["context_object_key"] == keys[::-1]
+        before = reward_model._episodes.copy()
+        with pytest.raises(ValueError, match="changed within"):
+            reward_model.compute_reward(
+                object_payload(
+                    [50, 60],
+                    [30, 40],
+                    [200, 100],
+                    [False, False],
+                    object_keys=keys,
+                )
+            )
+        assert reward_model._episodes == before
+
+
+def test_object_context_requires_matching_reset_metadata():
+    with reward_server() as (url, _):
+        reward_model = model(url, context_match_mode="object")
+        missing = payload([10], [0], [1], [True])
+        with pytest.raises(ValueError, match="missing"):
+            reward_model.compute_reward(missing)
+        mismatch = object_payload(
+            [10],
+            [0],
+            [1],
+            [True],
+            object_keys=["001_bottle/base13"],
+        )
+        mismatch["reward_initial_observation"]["context_object_key"] = [
+            "001_bottle/base16"
+        ]
+        with pytest.raises(ValueError, match="Reset and live"):
+            reward_model.compute_reward(mismatch)

@@ -1,0 +1,51 @@
+# Independent 20x32 SAC noise coordinates for the frozen Motus H32 decoder.
+# This is a fresh controller architecture; legacy repeated-noise configs remain separate.
+defaults:
+  - /_robotwin_motus_pi05_dsrl
+  - _self_
+
+runner:
+  max_epochs: 400
+  max_steps: 400
+  save_interval: 400
+  val_check_interval: -1
+  resume_dir: null
+  ckpt_path: null
+
+env:
+  train:
+    total_num_envs: 2
+    rollout_epoch: 4
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    use_custom_reward: true
+    use_rel_reward: true
+    reward_coef: 1.0
+    task_config:
+      task_name: adjust_bottle
+      step_lim: 200
+  eval:
+    max_episode_steps: 200
+    max_steps_per_rollout_epoch: 200
+    task_config:
+      task_name: adjust_bottle
+      step_lim: 200
+
+actor:
+  model:
+    openpi:
+      # One independent 32D noise row per executed action; the decoder copies
+      # the first 12 rows into the remaining H32 flow positions.
+      dsrl_noise_action_chunk_size: 20
+
+rollout:
+  model:
+    openpi:
+      dsrl_noise_action_chunk_size: 20
+
+algorithm:
+  entropy_tuning:
+    alpha_type: fixed_alpha
+    # SAC sums log-probability across 640 coordinates instead of 32.
+    # Dividing the old alpha=0.01 by 20 keeps total entropy weight comparable.
+    initial_alpha: 0.0005

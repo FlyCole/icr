@@ -2,7 +2,7 @@
   "modules": [
     {
       "base_commit": "8fc378bceb3e761442e9bd0936a682455b4d35b8",
-      "expected_tree": "1b91b7faaf9044bd33631d4b75a62bb6ac1340e9",
+      "expected_tree": "da1d1069d60e0ecbff4d955c6c37aefd028bea31",
       "files": [
         {
           "blob": "4e6ad7a886b5d104bcf086d0d96c05a6ad40375c",
@@ -10,6 +10,13 @@
           "path": ".gitignore",
           "sha256": "16e3ade3be157dac3d400d2ddd9c5929eef51c1640a7b55fcadc63d5b6b0a609",
           "size": 477
+        },
+        {
+          "blob": "e0f559e5b3192c1b104d73c44d2bf1758eacce45",
+          "mode": "100644",
+          "path": "examples/embodiment/config/env/robotwin_adjust_bottle.yaml",
+          "sha256": "ea21882bd38e13321729f0d4a43336db3b6c904eaec8927b06972850f9425bd1",
+          "size": 1801
         },
         {
           "blob": "03762a7449846aea117023e04e786cf52ac13546",
@@ -26,11 +33,18 @@
           "size": 57796
         },
         {
-          "blob": "caf734f0cf63ffdd57949fd82487d9a0a3bfe7c5",
+          "blob": "6d694494aa3e8dbb70887e2bebbad7ccf01c01bc",
+          "mode": "100644",
+          "path": "rlinf/envs/sim/robotwin/robotwin_env.py",
+          "sha256": "365e6c1efea9219d969de2024e849d270da405b3b4d07a3ce59c1c7fdafc6b8e",
+          "size": 21737
+        },
+        {
+          "blob": "2195cb7545273adf1a2049d0c4b1775b712d1c35",
           "mode": "100644",
           "path": "rlinf/envs/wrappers/record_video.py",
-          "sha256": "fd22414f2946f789fa0c2e91d10a4ed6a0b6992e44de1695c6a0b1e44f60504b",
-          "size": 30953
+          "sha256": "60fa3d3c8339f3269d1a9a8a88ba62a1c98fefa1a25f35964247e2ce26bc1633",
+          "size": 36137
         },
         {
           "blob": "220ba5637deaee0cc435aedcf03c420db87752d9",
@@ -40,18 +54,18 @@
           "size": 12178
         },
         {
-          "blob": "0d2cae07e8d9f17432b45ff39d13424e6d10175e",
+          "blob": "fa2ac0341b7f25b0ff5150e83fa1ac6f11e190cc",
           "mode": "100644",
           "path": "rlinf/models/embodiment/openpi/__init__.py",
-          "sha256": "4810eeea6229b2c8f5a20ed75d2a404aa1249d742768c53a19ce6a08b06d895d",
-          "size": 16185
+          "sha256": "8336c6fb60c539bcbced09da82d5145aec684445b7297f9ec6e9084e12e30f14",
+          "size": 16660
         },
         {
-          "blob": "b751deba3b90c7ee8d0208ad139c3108dd080cdb",
+          "blob": "5d6e188a7f4a30219afb4dd2a1e480ab333a7cec",
           "mode": "100644",
           "path": "rlinf/models/embodiment/openpi/tasks/dsrl.py",
-          "sha256": "f272a748508e36a313685aabb965f5d0187046fc9652b9687d4ba8531dbde1d7",
-          "size": 10494
+          "sha256": "0a95dd02c3ff4136b2c75fca200ff3276f525cb7633f7f9e19748ef9ff87585f",
+          "size": 13450
         },
         {
           "blob": "03f337a69709a1eab080abe1fb6bf3619c786806",
@@ -96,18 +110,18 @@
           "size": 32571
         },
         {
-          "blob": "eea091db8e26b5bdedf379acfb7625432175c875",
+          "blob": "8be1db9508b4b3df968c5183d1419770e486f1af",
           "mode": "100644",
           "path": "rlinf/workers/actor/fsdp_sac_policy_worker.py",
-          "sha256": "a1e90a2e2ef38431c80292432e37f24dca5b321f050ad361911f03bef18f4085",
-          "size": 46383
+          "sha256": "de11142638cc83455465310044c9088ef8da5c163f3fa23adbbbc9dcf4815042",
+          "size": 47378
         },
         {
-          "blob": "d18d9f061d4d67397f437df2cc4725a39e47d54c",
+          "blob": "6a296f5d723f44e96ecf2ef786f07a3e9a22482c",
           "mode": "100644",
           "path": "rlinf/workers/env/env_worker.py",
-          "sha256": "07e2b6740244b818512ab8f3a885a19fa174808251797abe8d30e5d2f00e3412",
-          "size": 59439
+          "sha256": "00e0062c302efb5171d5ae0201afe775b54905818ad0f2253741f108ac191a87",
+          "size": 63381
         },
         {
           "blob": "e043802bf1d9a8a366aa351a17d045b8a85cfa80",
@@ -154,7 +168,7 @@
       ],
       "name": "third_party/rlinf",
       "patch": "rlinf.patch",
-      "patch_sha256": "0b79fca232eb86c0895c3dafd8db9ca517dd32067475c328de0366a1109bf2d0",
+      "patch_sha256": "942651cf980ee8f0091cd19c9ab3f80797fe2b2bb4e3511efdb8c23a06960798",
       "path": "third_party/rlinf",
       "url": "https://github.com/RLinf/RLinf.git"
     },
@@ -192,7 +206,7 @@
     },
     {
       "base_commit": "b68c27ef7df11cdebdfef995c78644c3cb33cdf3",
-      "expected_tree": "e8d26c060d6891e0c76a37019154bf9c4c6bacb0",
+      "expected_tree": "b052f4c3b68a10b1680596dbdd646e7f27667488",
       "files": [
         {
           "blob": "a9754441d1bb46d2be81edb861476fa89c2ae868",
@@ -202,32 +216,32 @@
           "size": 508
         },
         {
-          "blob": "cd7e1a0b66d4f9318f3a9e829ad6e4cdfca8e0d6",
+          "blob": "ba3307e9a08a352182ddf77abd071ba28e6123a9",
           "mode": "100755",
           "path": "robometer/configs/eval_config_server.yaml",
-          "sha256": "22218b0697f25693a92b6c073c68ed9d0d7ceb130d07fc4aa3c4fb5e6a7ff82a",
-          "size": 919
+          "sha256": "be7c1e173bba0d96b4badfb5f0e8e194b78f0289cccee0734fa8138df193a92b",
+          "size": 1118
         },
         {
-          "blob": "3efbadf5ed3b3c0cd4b8724c417b62beae32e90a",
+          "blob": "e97ec4c8981b9e06ccec2e1ef247b7929397a62c",
           "mode": "100755",
           "path": "robometer/configs/eval_configs.py",
-          "sha256": "1bc387bb3215701ae08add736e22e910193211ca0857f426e99dd7932f591c1a",
-          "size": 11275
+          "sha256": "7dae6f0cafce4c0abcfe092fa889210ba5b5763b50d10c0c1da6087d0cafd89d",
+          "size": 11613
         },
         {
-          "blob": "0072bfddd6787a32ced93484c13790fa44c84ebb",
+          "blob": "ee742cb73d36cfac9b08743ada3a16069c46a749",
           "mode": "100644",
           "path": "robometer/evals/context_demo.py",
-          "sha256": "1957ba1654aaf73d00dd056e6c715e10bf926db0ce8558641566ca7afca1a4a8",
-          "size": 7824
+          "sha256": "cf3edc582210f1bb7eb2c21e6bad47196731c1ae5d3cabe6297ac4b8cbbcbe2e",
+          "size": 12690
         },
         {
-          "blob": "8d0aec0f03fa09e670c92f907c111d4cec9ba9a5",
+          "blob": "6b322c69ac5df705dadabb386b7591fee5ba725a",
           "mode": "100755",
           "path": "robometer/evals/eval_server.py",
-          "sha256": "a57764bbf2031b7da5be5dc746fa65f9bbedb487424b561bcff03a4b44165626",
-          "size": 36921
+          "sha256": "cb03547f760cfebdbbf4e16078e0b0171959db5b5f31f3d3b10d8171694e9e74",
+          "size": 38918
         },
         {
           "blob": "2f705131df4c1106f4b1a74102b5295817014e70",
@@ -260,13 +274,13 @@
       ],
       "name": "third_party/robometer_v2",
       "patch": "robometer_v2.patch",
-      "patch_sha256": "23903286c5d680ea88f4d2ac79c5111fe4fbfcb3f98e7807f75d3638321614b1",
+      "patch_sha256": "8a64e405f7a44794fc5dac4ed8b23af63ad33eb66d687af840affdb4b1ac72bf",
       "path": "third_party/robometer_v2",
       "url": "git@github.com:sNiper-Qian/robometer-v2.git"
     },
     {
       "base_commit": "dca9ec682688821c42944eacd7f5dd9bfb15396f",
-      "expected_tree": "7054c303e401f4f22024f970922236db18277853",
+      "expected_tree": "e8683e5258238d1fd9fb0587e50bf8ec7915ffa6",
       "files": [
         {
           "blob": "c4a7c37713f6cb3aa9eeff42421c1aba2a8ec3b1",
@@ -276,23 +290,30 @@
           "size": 515
         },
         {
-          "blob": "8722b925ccb9d556e7d44b2b68854e82006156de",
+          "blob": "63c6422e4ba373494b56f7d41693da07c647f273",
           "mode": "100644",
           "path": "envs/_base_task.py",
-          "sha256": "e6ce32cd890030c41110bd95ecf6bc7597e064cd3663fb8436f39aecfe579470",
-          "size": 106424
+          "sha256": "4171b2b511fe07330c428aca47e4ce0a6cef8bab803d94322231b89903e17695",
+          "size": 108559
         },
         {
-          "blob": "d15fbc61c9372635aa41a0a1e85804a9ab21f526",
+          "blob": "b74386bdeb568bfcbcb384ab4a1dedb71d383378",
+          "mode": "100644",
+          "path": "envs/camera/camera.py",
+          "sha256": "cac5fa41a73c58ef50423c11544c2f80caa8766ebc416c0c06e117b2b01fe469",
+          "size": 25747
+        },
+        {
+          "blob": "7224d6b3fd9e0f2f06c0299902b0c567961b3bb8",
           "mode": "100644",
           "path": "robotwin/envs/vector_env.py",
-          "sha256": "e891e14f138c066b9511d07f6de86f45c2d6dac0ff2c0c82da6b8b3d6476a098",
-          "size": 19897
+          "sha256": "160fdcccbdd078639fdffd9e51859b1f244c9a8effd2083acca81dc100d44c55",
+          "size": 20196
         }
       ],
       "name": "third_party/robotwin",
       "patch": "robotwin.patch",
-      "patch_sha256": "7ef3be8bd80d3c9f053016b1bb036545fcd169c360c022b652114bf763a9e7f7",
+      "patch_sha256": "c07741580c237b1c20213c93dada2e65332b1225c191378d56ddb720c53071d7",
       "path": "third_party/robotwin",
       "url": "https://github.com/RoboTwin-Platform/RoboTwin.git"
     }

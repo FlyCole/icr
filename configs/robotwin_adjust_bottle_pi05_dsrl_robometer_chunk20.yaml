@@ -58,5 +58,6 @@ reward:
     server_url: http://127.0.0.1:8000
     num_action_chunks: 20
     reward_mode: single_stage
+    progress_penalty_weight: 1.0  # Preserve this historical reward recipe.
     # One unnormalized p - 1 + native_success reward per executed chunk.
     reward_scale: 1.0

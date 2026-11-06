@@ -44,6 +44,7 @@ reward:
     num_action_chunks: 50
     max_frames: 8
     reward_mode: single_stage
+    progress_penalty_weight: 1.0  # Preserve this historical reward recipe.
     reward_scale: 1.0
     connect_timeout_s: 5.0
     read_timeout_s: 120.0

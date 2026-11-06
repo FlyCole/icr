@@ -1,6 +1,58 @@
 # RoboTwin + π0.5 + DSRL + Robometer / ICON
 
-This checkout trains RLinf's SAC controller to steer a frozen π0.5 policy on RoboTwin. Completed `adjust_bottle` experiments use a task-specific SFT decoder. The next comparison uses one released multi-task RoboTwin SFT decoder across three tasks, with separate DSRL controllers and Robometer/ICON rewards. PPO recipes are retained as historical experiments.
+This checkout trains RLinf's SAC controller to steer a frozen π0.5 policy on RoboTwin. Completed `adjust_bottle` experiments use a task-specific SFT decoder or the released multi-task Motus decoder. The current Motus experiment replaces repeated noise with a 20-row noise controller and compares ICON, Robometer and native simulator rewards. Earlier multi-task results are retained below. PPO recipes are historical experiments.
+
+## Cleanup and source backup — November 6, 2026
+
+Cleanup reclaimed **577.08GiB** by removing17 inactive completed-run replay buffers, nine disposable smoke checkpoint directories, canceled/staged run copies and duplicated PPO distributed training shards. Another56 inactive Ray, diagnostic and generated cache paths were removed. All18 distinct final inference checkpoints, pretrained models, context demos, completed evaluation metrics and the active lambda0.3 run were preserved; its220 source/model/context pins were verified unchanged. [Checkpoint retention receipt](docs/checkpoint_retention_20261106.json), [full local cleanup receipt](outputs/cleanup_audit/cleanup_20261106.json).
+
+The retained completed policies support evaluation. Their replay buffers were removed, so they no longer support exact training resume; each affected checkpoint has a removal marker with the former replay metadata. Negative results retain final inference weights as comparison evidence. [Versioned experiment results](docs/experiment_results.csv) record27 completed150-seed evaluations, including the latest lambda0.1 ICON/Robometer results. The lambda0.3 series is still running and has no final score in that table.
+
+Useful collectors, evaluators, launchers, diagnostics and regression tests are included in the source backup. Model/data/environment/run artifacts and generated caches remain local and ignored; `.env` files are also ignored. The four vendor patch backups match the live submodule source. Validation passed610 CPU tests with14 dependency-based skips.
+
+## Adjust-bottle lambda0.3 comparison — November 6, 2026
+
+The next series keeps the fixed Motus context, independent20×32 noise,200-action episode cap and matched SAC settings from the completed lambda0.1 trial. Only the single-stage progress penalty changes: `reward = native_success - 0.3 * (1 - estimated_progress)`. ICON trains400 collections (3,200 episode attempts) and evaluates its own final checkpoint on150 held-out seeds, followed by the same fresh training/evaluation for Robometer. Reward normalization remains disabled. Completed lambda0.1 outputs and checkpoints are retained.
+
+The [launcher](scripts/run_motus_click_bell_noise20_queue.py) accepts `--task adjust_bottle --penalty-weight 0.3`. It applies the weight through Hydra overrides to the existing lambda0.1 base configs and records the actual weight in saved resolved configs, command arguments, manifests and reward sidecars. Fresh outputs use NVMe-backed `outputs/motus_noise20_adjust_bottle_lambda03/`; follow [queue status](outputs/motus_noise20_adjust_bottle_lambda03/experiment_status.json). Final results are written to `adjust_bottle/{icon,robometer}_run/evaluation.json` and combined in `summary.json`.
+
+The detached lambda0.3 queue launched at13:30:58 Shanghai time on November6, supervisor PID1813135, after65 queue tests, independent recipe comparison and host preflight passed. [Launch receipt](outputs/motus_noise20_adjust_bottle_lambda03/launch.json). The queue status is authoritative for current progress and any failure.
+
+## Adjust-bottle lambda0.1 reward queue — November 5, 2026
+
+The user switched the lambda0.1 comparison to **`adjust_bottle` first**. The click-bell queue below was stopped during ICON training, before any final evaluation or Robometer training. The [queue launcher](scripts/run_motus_click_bell_noise20_queue.py) supports task selection and runs **ICON training/evaluation → Robometer training/evaluation** with `--task adjust_bottle`. Each method runs a disposable two-collection integration check before fresh training; it never resumes the stopped click-bell controller or replay.
+
+The lambda0.1 bottle queue completed on November6 at06:13:01 Shanghai time. ICON scored **72/150 (48.00%)** and Robometer **79/150 (52.67%)**, each from its own final step400 checkpoint after400 collections and3,200 episode attempts. [Completed results and checkpoint-load evidence](outputs/motus_noise20_adjust_bottle_lambda01/summary.json). Supervisor316397 cleaned up its owned workers and ICON service without errors. The preceding click-bell run stopped cleanly at collection8; its partial diagnostic outputs are retained.
+
+Both new bottle trials retain the Motus backbone, independent20×32 learned noise, decoder horizon32 with a repeated12-row tail,20-action execution, five flow steps, terminal-padding filtering and identical SAC settings. The native bottle episode cap is **200 actions**, matching the completed bottle comparisons. Each fresh run trains400 collections ×8 episode attempts (3,200 attempts), then evaluates its own step400 checkpoint on150 held-out seeds using native simulator success and no reward service or policy updates. The retained frozen-Motus baseline is [48/150 (32.00%)](outputs/motus_multitask/adjust_bottle/vanilla_evaluation.json).
+
+Reward is `s - 0.1 * (1 - p)`, with `reward.model.progress_penalty_weight: 0.1`, unscaled native success, `reward_scale: 1`, and no reward normalization. ICON uses the one fixed successful [Motus bottle context](data/context_demos/motus/adjust_bottle/demo_000/metadata.json), collected on training seed1; object-bank matching is disabled. Its cached service is owned on8002. Robometer uses the existing verified8000 service. The historical bottle configs below remain at lambda1.0.
+
+| Method | New training config | New final150-seed config |
+| --- | --- | --- |
+| ICON, fixed context, lambda0.1 | [ICON](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20_lambda01.yaml) | [ICON evaluation](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20_lambda01_eval.yaml) |
+| Robometer, lambda0.1 | [Robometer](configs/robotwin_adjust_bottle_motus_pi05_dsrl_robometer_noise20_lambda01.yaml) | [Robometer evaluation](configs/robotwin_adjust_bottle_motus_pi05_dsrl_robometer_noise20_lambda01_eval.yaml) |
+
+Fresh outputs and checkpoints use the NVMe-backed `outputs/motus_noise20_adjust_bottle_lambda01/`. Follow [queue status](outputs/motus_noise20_adjust_bottle_lambda01/experiment_status.json). Results are written to `adjust_bottle/{icon,robometer}_run/evaluation.json`, then collected in `summary.json` after both evaluations finish. Training retains at most eight MP4s per method; final evaluation recording is disabled. The launcher checks native task/caps, the fixed demo, lambda, noise architecture and exact checkpoint loading before advancing.
+
+## Click-bell lambda0.1 reward queue — November 5, 2026
+
+The [click-bell launcher](scripts/run_motus_click_bell_noise20_queue.py) now runs **ICON → Robometer**, completing each method's fresh training and final evaluation before starting the next. The earlier simulator → ICON → Robometer queue (supervisor209311) was canceled during simulator training at collection25. Its unfinished outputs and two owned Ray temporary directories were deleted, and its partial state is not resumed. The successful context demonstrations and retained completed comparisons remain separate. [Cleanup receipt](outputs/cleanup_audit/click_bell_canceled_20261105.json).
+
+The lambda0.1 click-bell queue launched at19:36:34 Shanghai time, supervisor PID278323, after129 CPU tests and host preflight passed. It was subsequently stopped during partial ICON training at the user's request to prioritize the bottle comparison above. [Launch receipt](outputs/motus_noise20_click_bell_lambda01/launch.json). It has no final policy evaluation or Robometer training result.
+
+The new single-stage chunk reward is `s - lambda * (1 - p)`: `s` is the native simulator success indicator (0 or1), `p` is the ICON or Robometer progress estimate, and `reward.model.progress_penalty_weight` sets `lambda`, explicitly0.1 in both new training configs. With this setting a nonsuccessful chunk receives a reward in[-0.1,0], while a successful chunk receives[0.9,1]. `reward_scale` remains1 and rewards are not normalized. Native success is added once by the reward adapter; the separately weighted simulator reward stays0 to avoid adding it again. Older reward recipes explicitly retain weight1.0, reproducing `progress - 1 + native_success`.
+
+ICON uses the single fixed successful [Motus context demonstration](data/context_demos/motus/click_bell/demo_000/metadata.json), collected on training seed100001, for every live bell variant and arm. Object-bank matching is disabled for this experiment; the separately collected object-bank references are retained. The queue owns its cached ICON service on8002 during ICON collection and training. Robometer uses the verified existing8000 service without context. All final evaluations measure native simulator success without reward-model calls or policy updates.
+
+Both methods use frozen Motus, a learned20×32 noise controller, decoder horizon32 with the first12 noise rows copied into the tail,20 executed actions, five flow steps, a400-action episode cap, terminal-padding filtering and identical SAC settings. Each trains for400 collections ×8 episode attempts (3,200 attempts), then evaluates its own step400 checkpoint on the same150 held-out seeds. Each method first runs a disposable two-collection integration check; its controller and replay are discarded before fresh training. The retained frozen-Motus baseline is [65/150 (43.33%)](outputs/motus_multitask/click_bell/vanilla_evaluation.json).
+
+| Method | Training config | Final150-seed config |
+| --- | --- | --- |
+| ICON, fixed context, lambda0.1 | [ICON](configs/robotwin_click_bell_motus_pi05_dsrl_icon_noise20.yaml) | [ICON evaluation](configs/robotwin_click_bell_motus_pi05_dsrl_icon_noise20_eval.yaml) |
+| Robometer, lambda0.1 | [Robometer](configs/robotwin_click_bell_motus_pi05_dsrl_robometer_noise20.yaml) | [Robometer evaluation](configs/robotwin_click_bell_motus_pi05_dsrl_robometer_noise20_eval.yaml) |
+
+Outputs and checkpoints use the fresh NVMe-backed `outputs/motus_noise20_click_bell_lambda01/`. Follow [queue status](outputs/motus_noise20_click_bell_lambda01/experiment_status.json) or `tail -f outputs/motus_noise20_click_bell_lambda01/supervisor.log`. Each result is written to `click_bell/{icon,robometer}_run/evaluation.json`; both results are collected in `summary.json` after completion. Training retains at most eight MP4s per method; these final evaluations have video recording disabled. The launcher requires a fresh destination and stops with recorded status if a stage fails.
 
 ## Source backup and restoration
 
@@ -23,23 +75,114 @@ The authorized cleanup completed at17:27 Shanghai time. **No checkpoint structur
 
 To free space without discarding valid results, the two completed stable ICON/Robometer checkpoint trees were copied to `/media/yifei/workspace_nvme/icr_retained/outputs/` with the same relative paths. All1,618 copied files were verified by full SHA256 before the root-filesystem originals were removed. Their existing `outputs/.../checkpoints` paths now resolve through symlinks, so evaluation commands remain valid. This reclaimed109.06GiB. A further32 obsolete failed-startup/incomplete-run/temp artifacts, including23 inactive `/tmp/ray` sessions, were deleted (484MiB); no healthy comparison was removed. Root free space increased from8.10GiB to117.63GiB, with approximately1.86TiB remaining on the external NVMe. [Completed cleanup receipt and exact paths](outputs/cleanup_audit/cleanup_2026-11-02.json).
 
-## Motus multi-task π0.5 comparison — cached ICON restart, November 2, 2026
+## Rollout capture and recording defaults — November 5, 2026
 
-The original queue was stopped at the user's request before introducing ICON's KV cache. Its incomplete `adjust_bottle/icon_train` directory was deleted; it had no checkpoint to resume. The diagnostic log and stopped manifest remain preserved. **All three completed frozen-Motus baselines are retained and revalidated:**
+RoboTwin defaults to `wrist_camera_capture: chunk_end`: head-camera observations remain dense, while both wrist cameras are captured at reset and at the last real action of each chunk, including early termination. The fresh three-view observation sent to Motus remains intact. Set `all_steps` to restore full wrist capture after every action. Depth, segmentation and point-cloud collection retain full-camera capture; online LeRobot collection requires `all_steps` so its per-action dataset remains complete.
 
-| Task | Native successes / 150 | Success rate |
+Training defaults to **at most8 MP4 files across all environment workers and pipeline stages**, spaced across the configured training budget. Set `max_videos: K` for another cap, `0` for no training MP4s, or `-1` for every recording. With the current two workers,400 collections and four rounds per collection, each worker records four of its1,600 episode slots. A recording can contain tiled environments when a worker owns more than one. Evaluation recording remains unlimited when enabled unless its own cap is explicitly set.
+
+Configure these fields in the [shared DSRL configuration](configs/_robotwin_adjust_bottle_pi05_dsrl_base.yaml), or override them in a public experiment YAML:
+
+```yaml
+env:
+  train:
+    task_config:
+      wrist_camera_capture: chunk_end  # all_steps restores the previous capture mode.
+    video_cfg:
+      save_video: true
+      max_videos: 8  # Run-wide MP4 budget; 0 disables MP4s, -1 records all.
+```
+
+Policy endpoint images, reward head-camera histories and action masks retain their existing contents. Reward-score JSON sidecars continue for every scored episode, including object/demo identity, exact causal progress, native outcome and logical frame indices. A sidecar's `video_recorded` identifies whether its MP4 was selected. Skipped slots bypass video pixel copies, overlays, footer drawing and encoding; they do not disable reward scoring. Keep `save_video: true` with `max_videos: 0` when JSON diagnostics are desired without MP4s.
+
+Real GPU checks on training scenes1 and7 confirmed bitwise equality of every head frame, reset and endpoint wrist images, states, commands, rewards and terminal masks between capture modes. Across20 actions, wrist captures/readbacks drop from40 to2. This native setup also captures a static front camera, so total camera captures drop from80 to42; front-camera behavior is retained. Single-chunk timings under shared load are recorded, but do not establish full-training throughput. [Seed1 proof](outputs/staged_rollout_defaults_20261105/capture_seed1.json), [seed7 proof](outputs/staged_rollout_defaults_20261105/capture_seed7.json).
+
+These changes were prepared separately while the preceding object-context experiment was running. Its source identity checks require that it finish training and final150-scene evaluation before installation. The deferred installer verifies completion and unchanged originals, retains backups and refreshes vendor patches. [Installation status](outputs/staged_rollout_defaults_20261105/apply_status.json). An interrupted or failed preceding run leaves the prepared changes unapplied.
+
+## Object-matched ICON context — November 4, 2026
+
+ICON can now select a successful demonstration by the live native object asset. For `adjust_bottle`, the task samples exactly `001_bottle/base13` and `001_bottle/base16`. Selection ignores the arm, object pose and scene seed. It raises an error for missing or unknown identities rather than silently using another object's demo. The previous single-reference mode remains the default (`context_match_mode: fixed`).
+
+**Completed November5:** the object-matched ICON trial scored **62/150 (41.33%)** using its own final step400 checkpoint, after400 collections and3,200 training episode attempts. Fixed-context noise20 ICON scored66/150 (44.00%), simulator-reward noise20 scored77/150 (51.33%), and frozen Motus scored48/150 (32.00%). Object matching produced four fewer successes than fixed context in these single-seed runs; this does not establish the cause or a reliable method difference. [Final result and checkpoint-load proof](outputs/motus_noise20_object_context/adjust_bottle/icon_run/evaluation.json). Evaluation finished at03:49:43 Shanghai time; the camera/video runtime changes were installed afterward at03:50:08 and did not affect this result. The [complete24-evaluation inventory](outputs/diagnostics/experiment_inventory_20261105.csv) includes exact metric/config/checkpoint paths and current checkpoint availability.
+
+The [context-bank settings](configs/icon_context_bank_adjust_bottle.yaml) list the required assets, collection policy and server settings. The completed [bank manifest](data/context_demos/motus/adjust_bottle/object_bank/manifest.json) contains one successful frozen-Motus reference per asset:
+
+| Native asset | Training scene seed | Arm / actions to first success | Preview |
+| --- | --- | --- | --- |
+| `001_bottle/base13` | 1 | Left / 119 | [Video](data/context_demos/motus/adjust_bottle/object_bank/base13/demo_000/preview.mp4) |
+| `001_bottle/base16` | 7 | Right / 137 | [Video](data/context_demos/motus/adjust_bottle/object_bank/base16/demo_000/preview.mp4) |
+
+Each demo stores all raw head-camera frames from reset through first success, without padding. ICON uses eight uniformly selected context frames, as before. These references cover the evaluation **asset catalog**; they were collected on training seeds, independently of held-out evaluation trajectories. No brand names are inferred from asset IDs.
+
+The option is explicit at the three interfaces: server `context_match_mode: object` plus `context_demo_bank_path` and `context_demo_path: null`; environment `env.train/eval.context_match_mode: object`; reward bridge `reward.model.context_match_mode: object`. The [matched training config](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20_object_context.yaml) and [evaluation config](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20_object_context_eval.yaml) set these fields. Existing fixed-context configs retain their prior behavior. The launcher checks that server, environment and reward modes agree.
+
+Live native identity travels with the terminal observation and reward query, never as an extra policy feature. The server selects each sample's reference before collation, including mixed-object batches; its response and the training video-score sidecar record the selected object and demo SHA256. The existing context KV cache keys include processed context pixels and instruction, so different references remain separate. Reward remains raw `progress - 1 + native_success`; SAC, noise shape and training budget match the previous noise20 recipe.
+
+Real bounded checks scored one training and one held-out episode per asset. All selected hashes matched the bank, including a left-arm live episode using the green bottle's right-arm reference. Reordered mixed-object requests produced bitwise-identical scores. Each split added20 cache hits, two misses and zero fallbacks. [Train-query report](outputs/diagnostics/icon_object_context_validation/train_queries/report.json), [held-out-query report](outputs/diagnostics/icon_object_context_validation/eval_queries/report.json). These are routing checks, not success-rate estimates.
+
+The combined CPU suite passed166 tests, plus15 tiny-Qwen3-VL cache tests. The real two-collection SAC smoke passed40 critic/20 actor updates and verified finite parameter changes in all six controller groups between saved steps1 and2, identical distributed replicas, and40 valid chunks with correct object/demo hashes (20 per asset). Cache counters were38 hits, two misses and zero fallbacks. [SAC smoke proof](outputs/motus_object_context_smoke/adjust_bottle/icon_run/smoke_validation.json). Its owned workers/service are stopped; the two redundant full-model smoke files were removed after validation, reclaiming25.03GiB, while compact heads, optimizer/replay evidence and logs remain. The smoke is not a resumable full inference checkpoint or a performance comparison.
+
+Normal final policy evaluation uses simulator success and does not call ICON. The separate [query checker](scripts/evaluate_icon_context_bank.py) verifies ICON selection on held-out observations. The new [launcher](scripts/run_motus_object_context_experiment.py) owns its port8002 service, runs a short integration check, then starts fresh400-collection training and evaluates its final checkpoint on150held-out seeds:
+
+```bash
+cd /home/yifei/icr
+rlinf/bin/python -u scripts/run_motus_object_context_experiment.py
+```
+
+The first full object-context experiment uses `outputs/motus_noise20_object_context`, linked to NVMe. Its [recorded status](outputs/motus_noise20_object_context/experiment_status.json) and [final evaluation](outputs/motus_noise20_object_context/adjust_bottle/icon_run/evaluation.json) identify that trial and its checkpoint. New trials require a fresh `--output-root`; use `--smoke-only` for just the bounded SAC check. The [collector](scripts/collect_icon_context_bank.py) supports `--check-only` and partial-bank `--resume`; completed references are immutable and need not be recollected.
+
+## Motus 20 × 32 noise controller — November 3, 2026
+
+The previous cached multi-task queue was stopped at the user's request at14:38 Shanghai time on November3. Its completed results remain unchanged; do not restart that supervisor after the controller source change.
+
+**November4 completion:** the fixed-context noise20 ICON policy scored **66/150 (44.00%)**, and the simulator-reward policy scored **77/150 (51.33%)**, versus the retained frozen-Motus baseline **48/150 (32.00%)**. Both400-collection runs and final evaluations completed. The separate object-context trial above completed on November5 with62/150 (41.33%). [Reward/checkpoint audit](outputs/diagnostics/noise20_reward_comparison_20261104.json).
+
+**Robometer noise20 completed November5 at18:49:40 Shanghai time:** its own final step400 checkpoint scored **62/150 (41.33%)**. Fresh training completed400 collections and3,200 episode attempts using endpoint-only wrist capture and the run-wide eight-MP4 default. The verified original Robometer service on8000 supplied reward without ICON context. [Final result and checkpoint-load proof](outputs/motus_noise20/adjust_bottle/robometer_run/evaluation.json), [run status](outputs/motus_noise20/adjust_bottle/robometer_run/experiment_status.json), [training log](outputs/motus_noise20/adjust_bottle/robometer_train.log).
+
+The launch passed48 CPU checks and its actual two-collection SAC smoke:40 critic/20 actor updates, finite losses and nonzero gradients,640-dimensional noise, and identical controller replicas. The disposable13.4GB full-model smoke copy was removed after validation. Fresh training starts independently from Motus and new controller/replay state. [Smoke proof](outputs/motus_noise20/adjust_bottle/robometer_run/smoke_validation.json).
+
+The new `adjust_bottle` experiment samples20 distinct32-dimensional noise rows with a flat Gaussian MLP head, rather than repeating one32-dimensional vector. It appends the first12 rows to fill Motus's32-position decoder horizon, then executes20 physical actions. SAC replay, all ten critics and joint log probability use the original20×32 values; the copied tail is excluded. This implements temporal noise control inspired by [Robometer Appendix E-2](https://arxiv.org/html/2603.02115v1#A5.SS2), while retaining this checkout's MLP controller and image/state encoders. Legacy configs preserve the earlier head shapes and interpretation. New controllers start fresh; old repeated-noise checkpoints cannot initialize these640-dimensional heads.
+
+The [shared training config](configs/_robotwin_motus_pi05_dsrl_noise20.yaml) retains400 collections, eight episode attempts per collection, a200-action episode cap,20-action execution, five flow steps, global batch128, per-rank microbatch64, actor/critic learning rates5e-5/1e-4,20critic/10actor updates per eligible collection, and terminal-padding filtering. Warmup remains24 collections before the first updates at collection25, followed by7,520critic and3,760actor updates. Fixed entropy coefficient is0.0005, divided by20 from the previous0.01 because joint log probability now sums640 coordinates. Rewards are not normalized. Training logs also include `train/actor/noise_event_dim`, `noise_temporal_std`, and `entropy_per_noise_dim`.
+
+| Reward | Training config | Final150-seed config |
 | --- | --- | --- |
-| [`adjust_bottle`](outputs/motus_multitask/adjust_bottle/vanilla_evaluation.json) | 48/150 | 32.00% |
-| [`move_can_pot`](outputs/motus_multitask/move_can_pot/vanilla_evaluation.json) | 21/150 | 14.00% |
-| [`click_bell`](outputs/motus_multitask/click_bell/vanilla_evaluation.json) | 65/150 | 43.33% |
+| ICON, raw `progress - 1 + native_success`, fixed Motus demonstration and context KV cache | [ICON](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20.yaml) | [ICON evaluation](configs/robotwin_adjust_bottle_motus_pi05_dsrl_icon_noise20_eval.yaml) |
+| Robometer, same raw reward and query history | [Robometer](configs/robotwin_adjust_bottle_motus_pi05_dsrl_robometer_noise20.yaml) | [Robometer evaluation](configs/robotwin_adjust_bottle_motus_pi05_dsrl_robometer_noise20_eval.yaml) |
+| Native simulator success: +1 once at first success, zero otherwise | [Simulator sparse](configs/robotwin_adjust_bottle_motus_pi05_dsrl_simulator_noise20.yaml) | [Simulator evaluation](configs/robotwin_adjust_bottle_motus_pi05_dsrl_simulator_noise20_eval.yaml) |
 
-**The validated continuation launched at19:20:23 Shanghai time on November2, supervisor PID1605823**, under **`outputs/motus_multitask_kv_cache`**, with fresh ICON and Robometer controllers, optimizer state and replay on each task. It reuses the completed vanilla evaluations because policy evaluation does not invoke the reward estimator. The sequence is task-by-task ICON smoke → ICON400 training → ICON150 evaluation → Robometer smoke → Robometer400 training → Robometer150 evaluation. The real cached ICON/SAC smoke passed, and fresh `adjust_bottle` ICON400 training has started (trainerPID1615084). Both rollout ranks loaded Motus H32/execute20, and its first full collection completed: step1/400, eight attempts,63.5seconds. This is the configured replay warmup; SAC updates begin after readiness25. The cache smoke already verified actual actor/critic updates. Host preflight verified180 source/model/context/proof pins and approximately2.05TB of available NVMe space. The old supervisor PID1281557 is stopped; do not restart it.
+The [launcher](scripts/run_motus_noise20_experiment.py) performs an actual two-collection smoke with optimizer updates and checkpoint/replay verification, discards its training state, runs fresh400-collection training, and evaluates its own final checkpoint on150held-out seeds. ICON starts its own cached reward server on8002 and stops it before evaluation. Robometer uses the existing validated server on8000; simulator reward requires no reward service. Every evaluation uses native simulator success with no policy updates. A lock permits one experiment at a time on the two shared GPUs.
 
-Follow the new [live status](outputs/motus_multitask_kv_cache/experiment_status.json) and [supervisor log](outputs/motus_multitask_kv_cache/supervisor.log). Final consolidated results will appear in `outputs/motus_multitask_kv_cache/summary.json`; `baseline_reuse.json` records the retained baseline evidence.
+```bash
+cd /home/yifei/icr
+# Historical launch commands; ICON and simulator runs are already complete.
+# The launcher requires a fresh output destination for any new experiment.
+rlinf/bin/python -u scripts/run_motus_noise20_experiment.py --method robometer
+```
+
+Outputs are under `outputs/motus_noise20/adjust_bottle/`, linked to the spacious NVMe drive. Check [recorded status](outputs/motus_noise20/experiment_status.json), [ICON console log](outputs/motus_noise20/adjust_bottle/icon_train.log) and `icon_train/tensorboard/`. Final ICON results are in `icon_run/evaluation.json`; simulator uses the corresponding method prefix. The supervisor owns its child sessions and leaves existing8000/8001services alone.
+
+## Earlier Motus multi-task π0.5 comparison — November 3 snapshot
+
+**Status updated November5.** Both `adjust_bottle` DSRL runs reached step400 and completed their final150-seed evaluations. The earlier queue was stopped on November3: `move_can_pot` ICON reached158/400 collections without a final evaluation, and the remaining learned-policy stages did not run. Each score below uses native simulator success on150 held-out episodes, with matched task settings and action execution:
+
+| Task | Frozen Motus SFT | Motus + ICON / DSRL, step 400 | Motus + Robometer / DSRL, step 400 |
+| --- | --- | --- | --- |
+| `adjust_bottle` | [48/150, 32.00%](outputs/motus_multitask/adjust_bottle/vanilla_evaluation.json) | [4/150, 2.67%](outputs/motus_multitask_kv_cache/adjust_bottle/icon_evaluation.json) | [6/150, 4.00%](outputs/motus_multitask_kv_cache/adjust_bottle/robometer_evaluation.json) |
+| `move_can_pot` | [21/150, 14.00%](outputs/motus_multitask/move_can_pot/vanilla_evaluation.json) | Stopped at158/400; no final evaluation | Not run |
+| `click_bell` | [65/150, 43.33%](outputs/motus_multitask/click_bell/vanilla_evaluation.json) | Not run | Not run |
+
+**Both completed Motus bottle controllers substantially degraded performance relative to frozen SFT.** These results do not show an improvement from either learned reward. The [ICON checkpoint audit](outputs/motus_multitask_kv_cache/adjust_bottle/icon_checkpoint_validation.json) and [Robometer checkpoint audit](outputs/motus_multitask_kv_cache/adjust_bottle/robometer_checkpoint_validation.json) confirm 7,520 critic and 3,760 actor updates per run, identical controller replicas, and saved full inference weights plus replay. Each evaluation record above identifies its own `global_step_400` checkpoint loaded on both rollout ranks with H32/execute20. This verifies the recorded training/evaluation path; the cause of the degradation has not been established. The single training seed and aggregate success counts cannot isolate an effect of context or KV caching.
+
+At this snapshot, `move_can_pot` ICON has run for 2:52:55, averaging 67.8 seconds per collection. Its latest 100-episode moving training success rate is 9%; this is a training statistic, and no final held-out score is available yet. The last recorded collection took 66.0 seconds, while SAC updates took 1.54 seconds. [Training metrics](outputs/motus_multitask_kv_cache/move_can_pot/icon_train/metrics.log), [console log](outputs/motus_multitask_kv_cache/move_can_pot/icon_train.log).
+
+The original queue was stopped at the user's request before introducing ICON's KV cache. Its incomplete `adjust_bottle/icon_train` directory was deleted; it had no checkpoint to resume. The diagnostic log and stopped manifest remain preserved, along with all three completed frozen-Motus baselines above. **The validated continuation launched at19:20:23 Shanghai time on November2, supervisor PID1605823**, under **`outputs/motus_multitask_kv_cache`**, with fresh controllers, optimizer state and replay for every task/reward pair. It reuses the completed vanilla evaluations because policy evaluation does not invoke the reward estimator. The sequence is task-by-task ICON smoke → ICON400 training → ICON150 evaluation → Robometer smoke → Robometer400 training → Robometer150 evaluation. The cached ICON/SAC smoke verified actual actor/critic updates before full training. Host preflight verified180 source/model/context/proof pins. At the November3 snapshot the active trainer is PID3684829, with its task-specific cached ICON service on port8002. The old supervisor PID1281557 is stopped; do not restart it.
+
+Follow the [live stage status](outputs/motus_multitask_kv_cache/experiment_status.json) and [supervisor log](outputs/motus_multitask_kv_cache/supervisor.log). Stage status changes when a child starts or finishes; use the active task's training log or TensorBoard for optimizer progress. Final consolidated results will appear in `outputs/motus_multitask_kv_cache/summary.json` after the whole queue; that file is not present at this snapshot. `baseline_reuse.json` records the retained baseline evidence.
 
 ```bash
 python -m json.tool /home/yifei/icr/outputs/motus_multitask_kv_cache/experiment_status.json
-tail -F /home/yifei/icr/outputs/motus_multitask_kv_cache/adjust_bottle/icon_train.log
+tail -F /home/yifei/icr/outputs/motus_multitask_kv_cache/move_can_pot/icon_train.log
 ```
 
 ### Fixed-context KV cache
@@ -52,17 +195,19 @@ Validation passed **15 real tiny-Qwen3-VL CPU tests** and two full-checkpoint, t
 
 Production retains BF16 for speed. Warm cached model forward was **1.40–1.92× faster** (median1.79×); including separately measured unchanged collation gives an estimated **1.32–1.64×** (median1.57×). This measures reward inference, not total simulator/training speed. One prefix occupies approximately120MiB. [Benchmark code](scripts/benchmark_icon_context_kv_cache.py), [CPU tests](tests/test_icon_context_kv_cache.py).
 
+### Frozen Motus policy and comparison protocol
+
 The selected decoder is [motus-robotics/pi0.5_robotwin2](https://huggingface.co/motus-robotics/pi0.5_robotwin2), revision `effc6e1a99bd4d0edf9447e8ba313def67649cfe`: the released π0.5 SFT baseline, distinct from the larger Motus world/action model. Its model card reports joint training on 50 RoboTwin tasks with 2,500 clean and 25,000 randomized demonstrations. Downloaded metadata confirms a **32-action prediction horizon**, 32 internal action dimensions, 14-dimensional Aloha state/actions, three cameras, discrete state input, Aloha adaptation and delta arm-joint actions with absolute grippers. The new experiments execute **20 actions** before observing and replanning. **Five flow steps are our runtime choice**, not a verified inference setting from the release. This is an adaptation of the released weights, rather than a claim to reproduce the authors' benchmark scores; their exact inference recipe remains [undocumented in the open issue](https://github.com/thu-ml/Motus/issues/45).
 
-| Task | Episode / rollout / native action limit | Maximum real chunks per episode |
+| Task | Configured episode / rollout / simulator action limit | Maximum real chunks per episode |
 | --- | --- | --- |
 | `adjust_bottle` | 200 / 200 / 200 | 10 |
 | `move_can_pot` | 200 / 200 / 200 | 10 |
 | `click_bell` | 400 / 400 / 400 | 20 |
 
-All three use the same frozen Motus π0.5 weights and their own task instructions, clean scenes and Aloha-AgileX embodiment. The prepared configs override `move_can_pot`'s upstream Piper default. They retain the raster renderer, disabled denoiser and single-thread rendering used in the completed comparisons. Each task now has its own completed150-seed Motus baseline above; the older task-specific bottle SFT score118/150 is not this baseline.
+All three use the same frozen Motus π0.5 weights and their own task instructions, clean scenes and Aloha-AgileX embodiment. The prepared configs override `move_can_pot`'s upstream Piper default. They retain the raster renderer, disabled denoiser and single-thread rendering used in the completed comparisons. The table records the comparison's configured caps; the separate failure collector uses the official per-task horizon table, including400 actions for `adjust_bottle` and `move_can_pot`. Each task has its own completed150-seed Motus baseline above; the older task-specific bottle SFT score118/150 belongs to a different decoder.
 
-The remaining full stages are, for each task, fresh ICON400 training → final150 evaluation → fresh Robometer400 training → final150 evaluation; the three completed frozen-Motus baselines are reused. Every task/method starts with new controller heads and replay; the integration check is not resumed. This gives six independent DSRL runs over the shared frozen decoder, rather than one jointly trained multi-task controller. ICON uses its task's fixed eight-frame reference; original Robometer has no demonstration. Query history remains up to eight dense prefix frames, and reward remains unnormalized `progress - 1 + native_success` once per valid20-action chunk with terminal-padding filtering. Final policy evaluation uses native simulator success without reward-model inference or policy updates.
+Of the six planned independent DSRL runs, both bottle runs and their evaluations completed. The queue then stopped with `move_can_pot` ICON at158/400; no further stages ran. The newer bottle noise20 experiments above were separate fresh runs. Each task/method starts with new controller heads and replay; smoke updates are discarded. The shared Motus decoder stays frozen throughout. ICON uses its task's fixed eight-frame reference; original Robometer has no demonstration. Query history remains up to eight dense prefix frames, and reward remains unnormalized `progress - 1 + native_success` once per valid20-action chunk with terminal-padding filtering. Final policy evaluation uses native simulator success without reward-model inference or policy updates.
 
 | Passed preparation | Four-episode simulator smoke | Successful training reference: actual seed / actions |
 | --- | --- | --- |
@@ -72,7 +217,33 @@ The remaining full stages are, for each task, fresh ICON400 training → final15
 
 These four-episode counts are integration checks, **not performance estimates**. Both rollout ranks loaded the intended H32/execute20 checkpoint for each task. Every reference reached native success using frozen Motus on a training seed with zero optimizer steps. [Per-task load/context evidence](outputs/motus_prepare/launch_preconditions.json). The separate bottle ICON/SAC smoke completed two iterations and four episode attempts; actor/critic losses and gradient norms were finite, with both gradient norms nonzero. It saved no checkpoint, and its owned simulator/Ray/ICON processes were cleaned up. [SAC validation](outputs/motus_prepare/sac_adapter_smoke_validation.json), [cleanup/status](outputs/motus_prepare/sac_adapter_smoke_status.json). This validates the update path, not learning improvement.
 
-Each full run retains the stable recipe:400 collections × eight attempts =3,200 training attempts,25 replay-batch readiness,20 critic/10 actor updates per eligible collection,global128/micro64,actor/critic LR5e-5/1e-4,fixed alpha.01,gamma.999 and FP32 controller heads. Full final checkpoint, optimizer and replay saving are preserved. Allow a provisional **2–3 days** for the six runs and evaluations. This revises the earlier35–50-hour estimate using the initial Motus bottle throughput (roughly70seconds/collection before caching) and the doubled `click_bell` horizon; the cache accelerates only reward inference. Actual fresh-run throughput must confirm the estimate, especially when the new policy times out.
+### Training recipe and measured runtime
+
+The shared training recipe is recorded in the [resolved active config](outputs/motus_multitask_kv_cache/move_can_pot/icon_train/tensorboard/config.yaml):
+
+| Setting | Motus comparison value |
+| --- | --- |
+| Trainable parameters | DSRL noise actor and critics; frozen Motus π0.5 decoder; FP32 controller heads |
+| Collection budget | 400 iterations × 2 environments × 4 rounds = 3,200 episode attempts per run |
+| Decoder / execution | Predict 32 actions, execute 20, five flow steps; 14-dimensional state/actions and 32-dimensional noise |
+| Batch | Global 128 / micro 64 per actor rank; two synchronized ranks |
+| Replay | Cache/window 512 per rank; filter post-terminal padding; readiness 25 received batches per rank |
+| Optimizer rounds | 20 critic / 10 actor updates per eligible iteration; 376 eligible iterations give 7,520 / 3,760 updates |
+| Learning rates | Actor `5e-5`; critic `1e-4` |
+| Critics | Ten Q heads, all used; three 128-unit hidden layers |
+| Discount / target update | Per-action gamma `0.999` (`0.999**20 ≈ 0.98019` per full chunk); target tau `0.005` after every critic update |
+| Entropy | Fixed alpha `0.01`; automatic entropy tuning disabled |
+| Learned reward | `single_stage`, scale 1, unnormalized `progress - 1 + native_success`; at most eight query frames per growing prefix |
+| Saving / evaluation | Final step 400 checkpoint with inference weights, optimizer and replay; 150 held-out episodes after training |
+
+| Completed Motus training loop | Measured time | Mean time per collection |
+| --- | --- | --- |
+| `adjust_bottle` ICON400 | 8:17:26 | 74.6 seconds |
+| `adjust_bottle` Robometer400 | 7:16:36 | 65.5 seconds |
+
+These loop times exclude separate final evaluations and reflect the shared workstation workload. [ICON training metrics](outputs/motus_multitask_kv_cache/adjust_bottle/icon_train/metrics.log), [Robometer training metrics](outputs/motus_multitask_kv_cache/adjust_bottle/robometer_train/metrics.log). The provisional 2–3-day estimate covers the whole six-run queue, rather than the remaining time at this snapshot. `click_bell` has twice the action budget of the other tasks. The KV-cache benchmark measures reward inference; total collection time also depends on simulation, policy outcomes and concurrent jobs.
+
+### Configurations, checkpoints and adapter evidence
 
 | Prepared configs (`<task>` is one of the three names above) | Purpose |
 | --- | --- |

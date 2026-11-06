@@ -1,0 +1,17 @@
+# Fresh Motus DSRL training with the fixed-context ICON reward service.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20/adjust_bottle/icon_train
+    experiment_name: pi05_motus_adjust_bottle_dsrl_icon_noise20
+
+reward:
+  model:
+    server_url: http://127.0.0.1:8002

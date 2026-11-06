@@ -30,22 +30,24 @@ index e2d6578cd25f50a776374cc01cf2e4be74069990..a9754441d1bb46d2be81edb861476fa8
 +*.safetensors
 +*.onnx
 diff --git a/robometer/configs/eval_config_server.yaml b/robometer/configs/eval_config_server.yaml
-index a5ee37f0b077670403a86e50e1cc30c1266b4d95..cd7e1a0b66d4f9318f3a9e829ad6e4cdfca8e0d6 100755
+index a5ee37f0b077670403a86e50e1cc30c1266b4d95..ba3307e9a08a352182ddf77abd071ba28e6123a9 100755
 --- a/robometer/configs/eval_config_server.yaml
 +++ b/robometer/configs/eval_config_server.yaml
-@@ -3,6 +3,10 @@
+@@ -3,6 +3,12 @@
  
  # Model path to load training config from
  model_path: "robometer/Robometer-4B"  # or your RBM/ReWiND checkpoint
 +context_demo_path: null  # ICON: fixed successful train demo with frames.npy + metadata.json
-+context_kv_cache: true  # Active only with a fixed ICON context; false restores full-sequence inference.
++context_match_mode: fixed  # object selects each request's trajectory.metadata.context_object_key.
++context_demo_bank_path: null  # object mode requires a bank manifest and context_demo_path=null.
++context_kv_cache: true  # Active with fixed or object-matched ICON contexts; false disables prefix caching.
 +context_kv_cache_max_entries: 8  # Separate cached prefixes for different task instructions.
 +context_kv_cache_max_mib: 1024  # Per-GPU LRU memory cap; query history is never retained.
  
  # GPU Pool settings
  num_gpus: 1  # Number of GPUs to use (null for all available)
 diff --git a/robometer/configs/eval_configs.py b/robometer/configs/eval_configs.py
-index 515d133c569fae3131bb05b4f140b2116e3d546d..3efbadf5ed3b3c0cd4b8724c417b62beae32e90a 100755
+index 515d133c569fae3131bb05b4f140b2116e3d546d..e97ec4c8981b9e06ccec2e1ef247b7929397a62c 100755
 --- a/robometer/configs/eval_configs.py
 +++ b/robometer/configs/eval_configs.py
 @@ -23,6 +23,16 @@ class EvalServerConfig:
@@ -58,20 +60,35 @@ index 515d133c569fae3131bb05b4f140b2116e3d546d..3efbadf5ed3b3c0cd4b8724c417b62be
 +    )
 +    context_kv_cache: bool = field(
 +        default=True,
-+        metadata={"help": "Reuse causal Qwen3-VL context prefixes when a fixed ICON demonstration is supplied"},
++        metadata={"help": "Reuse causal Qwen3-VL prefixes for fixed or object-matched ICON demonstrations"},
 +    )
 +    context_kv_cache_max_entries: int = field(default=8)
 +    context_kv_cache_max_mib: int = field(default=1024)
  
      # GPU Pool settings
      num_gpus: int = field(default=1, metadata={"help": "Number of GPUs to use (None for all available)"})
+@@ -34,6 +44,14 @@ class EvalServerConfig:
+     batch_size: int = field(default=4, metadata={"help": "Batch size for evaluation"})
+     server_url: str = field(default="0.0.0.0", metadata={"help": "Evaluation server URL"})
+     server_port: int = field(default=8000, metadata={"help": "Evaluation server port"})
++    context_match_mode: str = field(
++        default="fixed",
++        metadata={"help": "ICON context selection: fixed or native object asset matching"},
++    )
++    context_demo_bank_path: Optional[str] = field(
++        default=None,
++        metadata={"help": "Object-mode manifest mapping native asset keys to successful train demos"},
++    )
+ 
+ 
+ @dataclass
 diff --git a/robometer/evals/context_demo.py b/robometer/evals/context_demo.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa44c84ebb
+index 0000000000000000000000000000000000000000..ee742cb73d36cfac9b08743ada3a16069c46a749
 --- /dev/null
 +++ b/robometer/evals/context_demo.py
-@@ -0,0 +1,159 @@
-+"""A validated, fixed successful RoboTwin reference for ICON requests.
+@@ -0,0 +1,265 @@
++"""Validated successful RoboTwin references for ICON requests.
 +
 +This module deliberately avoids the model stack so the artifact and checkpoint
 +contract can be checked on CPU before loading model weights.
@@ -81,15 +98,18 @@ index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa
 +
 +import hashlib
 +import json
-+from dataclasses import dataclass
++import re
++from collections.abc import Mapping, Sequence
++from dataclasses import dataclass, replace
 +from pathlib import Path
++from types import MappingProxyType
 +from typing import Any
 +
 +import numpy as np
 +
 +
 +def _field(section: Any, name: str, default: Any = None) -> Any:
-+    return section.get(name, default) if isinstance(section, dict) else getattr(section, name, default)
++    return section.get(name, default) if isinstance(section, Mapping) else getattr(section, name, default)
 +
 +
 +def conditioning_info(config: Any) -> dict[str, Any]:
@@ -143,10 +163,10 @@ index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa
 +@dataclass(frozen=True)
 +class FixedContextDemo:
 +    frames: np.ndarray
-+    metadata: dict[str, Any]
++    metadata: Mapping[str, Any]
 +    path: str
 +    metadata_sha256: str
-+    selected_indices: list[int]
++    selected_indices: Sequence[int]
 +
 +    @classmethod
 +    def load(cls, context_demo_path: str, config: Any) -> FixedContextDemo:
@@ -156,7 +176,11 @@ index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa
 +        metadata_path = frames_path.with_name("metadata.json")
 +        metadata_bytes = metadata_path.read_bytes()
 +        metadata = json.loads(metadata_bytes)
-+        if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
++        if (
++            not isinstance(metadata, dict)
++            or type(metadata.get("schema_version")) is not int
++            or metadata["schema_version"] != 1
++        ):
 +            raise ValueError("ICON demo metadata requires schema_version=1")
 +        for key, expected in (
 +            ("simulator_success", True),
@@ -228,17 +252,116 @@ index 0000000000000000000000000000000000000000..0072bfddd6787a32ced93484c13790fa
 +            "simulator_success": self.metadata["simulator_success"],
 +            "source_frame_count": self.metadata["frame_count"],
 +            "frame_count": len(self.frames),
-+            "selected_indices": self.selected_indices,
++            "selected_indices": list(self.selected_indices),
++        }
++
++
++def _immutable_json(value: Any) -> Any:
++    if isinstance(value, dict):
++        return MappingProxyType({key: _immutable_json(item) for key, item in value.items()})
++    if isinstance(value, list):
++        return tuple(_immutable_json(item) for item in value)
++    return value
++
++
++@dataclass(frozen=True)
++class ContextDemoBank:
++    """Immutable successful demonstrations selected only by the native asset key."""
++
++    demos: Mapping[str, FixedContextDemo]
++    task_name: str
++    manifest_path: str
++    manifest_sha256: str
++
++    @classmethod
++    def load(cls, bank_path: str, config: Any) -> ContextDemoBank:
++        validate_icon_conditioning(config)
++        path = Path(bank_path).expanduser().resolve()
++        encoded = path.read_bytes()
++        manifest = json.loads(encoded)
++        if (
++            not isinstance(manifest, dict)
++            or type(manifest.get("schema_version")) is not int
++            or manifest["schema_version"] != 1
++            or manifest.get("match_mode") != "object"
++        ):
++            raise ValueError("ICON context bank requires schema_version=1 and match_mode='object'")
++        task_name = manifest.get("task_name")
++        if not isinstance(task_name, str) or not task_name.strip():
++            raise ValueError("ICON context bank requires a nonempty task_name")
++        entries = manifest.get("demos")
++        if not isinstance(entries, dict) or not entries:
++            raise ValueError("ICON context bank requires a nonempty demos mapping")
++        demos = {}
++        for key, entry in entries.items():
++            if not isinstance(key, str) or re.fullmatch(r"[A-Za-z0-9_]+/base[0-9]+", key) is None:
++                raise ValueError(f"Context object key must be a canonical asset identifier, got {key!r}")
++            requested_path = entry.get("demo_path") if isinstance(entry, dict) else None
++            if not isinstance(requested_path, str) or not requested_path.strip():
++                raise ValueError(f"Context bank entry {key!r} requires demo_path")
++            demo_path = Path(requested_path).expanduser()
++            if not demo_path.is_absolute():
++                demo_path = path.parent / demo_path
++            demo = FixedContextDemo.load(str(demo_path), config)
++            if demo.metadata.get("task_name") != task_name:
++                raise ValueError(f"Context bank demo {key!r} belongs to another task")
++            if demo.metadata.get("context_object_key") != key:
++                raise ValueError(f"Context bank demo metadata.context_object_key must equal {key!r}")
++            demos[key] = replace(
++                demo,
++                metadata=_immutable_json(dict(demo.metadata)),
++                selected_indices=tuple(demo.selected_indices),
++            )
++        return cls(MappingProxyType(demos), task_name, str(path), hashlib.sha256(encoded).hexdigest())
++
++    def select(self, sample: Any) -> tuple[str, FixedContextDemo]:
++        trajectory = _field(sample, "trajectory")
++        metadata = _field(trajectory, "metadata")
++        key = _field(metadata, "context_object_key")
++        if not isinstance(key, str) or key not in self.demos:
++            raise ValueError(
++                "Object-matched ICON requests require trajectory.metadata.context_object_key "
++                f"present in the context bank; got {key!r}, available={sorted(self.demos)}"
++            )
++        return key, self.demos[key]
++
++    def attach_with_selections(self, samples: list[Any]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
++        """Select every sample independently, preserving original request order."""
++        attached, selections = [], []
++        for sample in samples:
++            key, demo = self.select(sample)
++            item = demo.attach([sample])[0]
++            item["context_trajectory"]["metadata"]["context_object_key"] = key
++            attached.append(item)
++            selections.append({
++                "context_object_key": key,
++                "frames_sha256": demo.metadata["frames_sha256"],
++                "metadata_sha256": demo.metadata_sha256,
++            })
++        return attached, selections
++
++    def attach(self, samples: list[Any]) -> list[dict[str, Any]]:
++        return self.attach_with_selections(samples)[0]
++
++    def info(self) -> dict[str, Any]:
++        return {
++            "schema_version": 1,
++            "match_mode": "object",
++            "task_name": self.task_name,
++            "manifest_path": self.manifest_path,
++            "manifest_sha256": self.manifest_sha256,
++            "object_keys": sorted(self.demos),
++            "demos": {key: {**demo.info(), "context_object_key": key} for key, demo in sorted(self.demos.items())},
 +        }
 diff --git a/robometer/evals/eval_server.py b/robometer/evals/eval_server.py
-index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4cec9ba9a5 100755
+index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..6b322c69ac5df705dadabb386b7591fee5ba725a 100755
 --- a/robometer/evals/eval_server.py
 +++ b/robometer/evals/eval_server.py
 @@ -47,6 +47,7 @@ from robometer.evals.eval_utils import (
      parse_npy_form_data,
      reconstruct_payload_from_npy,
  )
-+from robometer.evals.context_demo import FixedContextDemo, conditioning_info
++from robometer.evals.context_demo import ContextDemoBank, FixedContextDemo, conditioning_info
  from robometer.utils.save import load_model_from_hf
  from robometer.configs.eval_configs import EvalServerConfig
  from robometer.configs.experiment_configs import ExperimentConfig
@@ -254,7 +377,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
                      expanded_samples.append(sub_sample)
  
                  sample_frame_counts.append(num_frames)
-@@ -361,6 +359,10 @@ class MultiGPUEvalServer:
+@@ -361,8 +359,22 @@ class MultiGPUEvalServer:
          model_path: str,
          num_gpus: int | None = None,
          max_workers: int | None = None,
@@ -262,10 +385,22 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
 +        context_kv_cache: bool = True,
 +        context_kv_cache_max_entries: int = 8,
 +        context_kv_cache_max_mib: int = 1024,
++        context_match_mode: str = "fixed",
++        context_demo_bank_path: str | None = None,
      ):
++        if context_match_mode not in {"fixed", "object"}:
++            raise ValueError("context_match_mode must be 'fixed' or 'object'")
++        if context_match_mode == "object":
++            if not context_demo_bank_path or context_demo_path is not None:
++                raise ValueError("Object context mode requires context_demo_bank_path and context_demo_path=None")
++        elif context_demo_bank_path is not None:
++            raise ValueError("context_demo_bank_path requires context_match_mode='object'")
          self.model_path = model_path
++        self.context_match_mode = context_match_mode
          self.num_gpus = num_gpus or torch.cuda.device_count()
-@@ -377,6 +379,19 @@ class MultiGPUEvalServer:
+         self.max_workers = max_workers or self.num_gpus
+         self._active_jobs = 0
+@@ -377,6 +389,26 @@ class MultiGPUEvalServer:
          )
  
          self.exp_config: ExperimentConfig = exp_config
@@ -274,7 +409,14 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
 +            if context_demo_path is not None
 +            else None
 +        )
-+        self.context_kv_cache_enabled = bool(context_kv_cache and self.context_demo is not None)
++        self.context_demo_bank = (
++            ContextDemoBank.load(context_demo_bank_path, self.exp_config)
++            if context_match_mode == "object"
++            else None
++        )
++        self.context_kv_cache_enabled = bool(
++            context_kv_cache and (self.context_demo is not None or self.context_demo_bank is not None)
++        )
 +        self.context_kv_cache_max_entries = int(context_kv_cache_max_entries)
 +        self.context_kv_cache_max_bytes = int(context_kv_cache_max_mib) * 1024**2
 +        if self.context_kv_cache_max_entries < 1 or self.context_kv_cache_max_bytes < 1:
@@ -285,7 +427,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
          self.base_tokenizer = tokenizer
          self.base_processor = processor
          self.base_model = reward_model
-@@ -414,6 +429,14 @@ class MultiGPUEvalServer:
+@@ -414,6 +446,14 @@ class MultiGPUEvalServer:
  
              model = model.to(device)
              model.eval()
@@ -300,27 +442,50 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
  
              # Initialize GPU stats
              self.gpu_stats[gpu_id] = {
-@@ -483,6 +506,9 @@ class MultiGPUEvalServer:
+@@ -483,6 +523,13 @@ class MultiGPUEvalServer:
                  if len(actual_batch_data) == 1 and isinstance(actual_batch_data[0], list):
                      actual_batch_data = actual_batch_data[0]
  
-+            if self.context_demo is not None:
++            context_selections = None
++            context_bank = getattr(self, "context_demo_bank", None)
++            if context_bank is not None:
++                actual_batch_data, context_selections = context_bank.attach_with_selections(actual_batch_data)
++            elif self.context_demo is not None:
 +                actual_batch_data = self.context_demo.attach(actual_batch_data)
 +
              # Process batch in thread pool
              result = await loop.run_in_executor(
                  self.executor,
-@@ -536,6 +562,25 @@ class MultiGPUEvalServer:
+@@ -498,6 +545,11 @@ class MultiGPUEvalServer:
+                 num_bins,
+                 use_frame_steps,
+             )
++            if context_selections is not None:
++                result["outputs_context"] = {
++                    "context_match_mode": "object",
++                    "selections": context_selections,
++                }
+ 
+             # Update stats
+             processing_time = time.time() - start_time
+@@ -536,6 +588,32 @@ class MultiGPUEvalServer:
              "pool_size": self.gpu_pool.maxsize,
          }
  
 +    def get_service_info(self) -> Dict[str, Any]:
 +        """Expose the exact context contract used for otherwise unchanged queries."""
++        bank = getattr(self, "context_demo_bank", None)
 +        return {
 +            "model_path": self.model_path,
-+            "service_protocol": "icon-fixed-context-v1" if self.context_demo is not None else "robometer-query-v1",
++            "service_protocol": (
++                "icon-object-context-v1" if bank is not None
++                else "icon-fixed-context-v1" if self.context_demo is not None
++                else "robometer-query-v1"
++            ),
++            "context_match_mode": getattr(self, "context_match_mode", "fixed"),
 +            "conditioning": conditioning_info(self.exp_config),
 +            "context_demo": self.context_demo.info() if self.context_demo is not None else None,
++            "context_demo_bank": bank.info() if bank is not None else None,
 +            "context_kv_cache": {
 +                "enabled": getattr(self, "context_kv_cache_enabled", False),
 +                "implementation": "qwen3-vl-fixed-context-kv-v1",
@@ -336,7 +501,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
      def shutdown(self):
          """Shutdown the GPU pool and executor."""
          logger.info("Shutting down GPU pool...")
-@@ -637,7 +682,12 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+@@ -637,7 +715,14 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
      num_gpus = getattr(cfg, "num_gpus", None)
      max_workers = getattr(cfg, "max_workers", None)
  
@@ -346,11 +511,13 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
 +        context_kv_cache=getattr(cfg, "context_kv_cache", True),
 +        context_kv_cache_max_entries=getattr(cfg, "context_kv_cache_max_entries", 8),
 +        context_kv_cache_max_mib=getattr(cfg, "context_kv_cache_max_mib", 1024),
++        context_match_mode=getattr(cfg, "context_match_mode", "fixed"),
++        context_demo_bank_path=getattr(cfg, "context_demo_bank_path", None),
 +    )
      logger.info(f"Multi-GPU eval server initialized with {multi_gpu_server.num_gpus} GPUs")
  
      @app.post("/evaluate_batch")
-@@ -678,6 +728,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+@@ -678,6 +763,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
                  "traj_sim_trajectory",
                  "traj_diff_trajectory",
                  "trajectory",
@@ -358,7 +525,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
              ],
              convert_embeddings_to_torch=True,
          )
-@@ -704,7 +755,12 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+@@ -704,7 +790,12 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
      def health_check() -> Dict[str, Any]:
          """Health check endpoint."""
          status = multi_gpu_server.get_pool_status()
@@ -372,7 +539,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
  
      @app.get("/model_info")
      def get_model_info() -> Dict[str, Any]:
-@@ -779,6 +835,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
+@@ -779,6 +870,7 @@ def create_app(cfg: EvalServerConfig, multi_gpu_server: MultiGPUEvalServer | Non
              model_arch_info = {"error": str(e)}
  
          return {
@@ -380,7 +547,7 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
              "model_path": multi_gpu_server.model_path,
              "num_gpus": multi_gpu_server.num_gpus,
              "experiment_config": exp_config_dict,
-@@ -810,6 +867,10 @@ def main(cfg: DictConfig):
+@@ -810,6 +902,12 @@ def main(cfg: DictConfig):
          model_path=eval_cfg.model_path,
          num_gpus=eval_cfg.num_gpus,
          max_workers=eval_cfg.max_workers,
@@ -388,6 +555,8 @@ index e8003d911f6fbebb56c5afaa9ee1cc71cb0cc1ae..8d0aec0f03fa09e670c92f907c111d4c
 +        context_kv_cache=eval_cfg.context_kv_cache,
 +        context_kv_cache_max_entries=eval_cfg.context_kv_cache_max_entries,
 +        context_kv_cache_max_mib=eval_cfg.context_kv_cache_max_mib,
++        context_match_mode=eval_cfg.context_match_mode,
++        context_demo_bank_path=eval_cfg.context_demo_bank_path,
      )
      display_config(multi_gpu_server.exp_config)
  

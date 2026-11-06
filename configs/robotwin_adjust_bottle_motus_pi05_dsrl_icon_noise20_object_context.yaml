@@ -1,0 +1,25 @@
+# Same noise20 ICON recipe; select the fixed demo by native object asset only.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20_object_context/adjust_bottle/icon_train
+    experiment_name: pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context
+
+env:
+  train:
+    context_match_mode: object
+  eval:
+    context_match_mode: object
+
+reward:
+  model:
+    context_match_mode: object
+    context_demo_bank_path: /home/yifei/icr/data/context_demos/motus/adjust_bottle/object_bank/manifest.json
+    server_url: http://127.0.0.1:8002

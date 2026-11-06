@@ -30,19 +30,22 @@ index 23e22b6d9f1a16b3aa0e329a6c8ea29fd2e1ccad..c4a7c37713f6cb3aa9eeff42421c1aba
 +*.safetensors
 +*.onnx
 diff --git a/envs/_base_task.py b/envs/_base_task.py
-index 3485e7ca7039a23218c06bc9308e8758dc03a4b5..8722b925ccb9d556e7d44b2b68854e82006156de 100644
+index 3485e7ca7039a23218c06bc9308e8758dc03a4b5..63c6422e4ba373494b56f7d41693da07c647f273 100644
 --- a/envs/_base_task.py
 +++ b/envs/_base_task.py
-@@ -66,6 +66,8 @@ class Base_Task(gym.Env):
+@@ -66,6 +66,11 @@ class Base_Task(gym.Env):
          self.save_dir = kwags.get("save_path", "data")
          self.ep_num = kwags.get("now_ep_num", 0)
          self.render_freq = kwags.get("render_freq", 10)
 +        self.render_shader = kwags.get("render_shader", "rt")
 +        self.render_denoiser = kwags.get("render_denoiser", "oidn")
++        self.wrist_camera_capture = kwags.get("wrist_camera_capture", "chunk_end")
++        if self.wrist_camera_capture not in ("chunk_end", "all_steps"):
++            raise ValueError("wrist_camera_capture must be 'chunk_end' or 'all_steps'")
          self.data_type = kwags.get("data_type", None)
          self.save_data = kwags.get("save_data", False)
          self.dual_arm = kwags.get("dual_arm", True)
-@@ -204,6 +206,14 @@ class Base_Task(gym.Env):
+@@ -204,6 +209,14 @@ class Base_Task(gym.Env):
          Set the scene
              - Set up the basic scene: light source, viewer.
          """
@@ -57,7 +60,7 @@ index 3485e7ca7039a23218c06bc9308e8758dc03a4b5..8722b925ccb9d556e7d44b2b68854e82
          self.engine = sapien.Engine()
          # declare sapien renderer
          from sapien.render import set_global_config
-@@ -213,10 +223,15 @@ class Base_Task(gym.Env):
+@@ -213,10 +226,15 @@ class Base_Task(gym.Env):
          # give renderer to sapien sim
          self.engine.set_renderer(self.renderer)
  
@@ -77,24 +80,207 @@ index 3485e7ca7039a23218c06bc9308e8758dc03a4b5..8722b925ccb9d556e7d44b2b68854e82
  
          # declare sapien scene
          scene_config = sapien.SceneConfig()
+@@ -459,9 +477,15 @@ class Base_Task(gym.Env):
+         indices = np.unique(indices)
+         return positions[indices], velocities[indices]
+ 
+-    def get_obs(self):
++    def get_obs(self, *, include_wrist=True):
++        # Auxiliary RGBD/segmentation collectors retain their full-camera path.
++        # Only ordinary RGB rollout histories may omit intermediate wrist views.
++        if any(self.data_type.get(key, False) for key in (
++            "mesh_segmentation", "actor_segmentation", "depth", "pointcloud"
++        )):
++            include_wrist = True
+         self._update_render()
+-        self.cameras.update_picture()
++        self.cameras.update_picture(include_wrist=include_wrist)
+         pkl_dic = {
+             "observation": {},
+             "pointcloud": [],
+@@ -469,10 +493,10 @@ class Base_Task(gym.Env):
+             "endpose": {},
+         }
+ 
+-        pkl_dic["observation"] = self.cameras.get_config()
++        pkl_dic["observation"] = self.cameras.get_config(include_wrist=include_wrist)
+         # rgb
+         if self.data_type.get("rgb", True):
+-            rgb = self.cameras.get_rgb()
++            rgb = self.cameras.get_rgb(include_wrist=include_wrist)
+             for camera_name in rgb.keys():
+                 pkl_dic["observation"][camera_name].update(rgb[camera_name])
+ 
+@@ -524,6 +548,28 @@ class Base_Task(gym.Env):
+         self.now_obs = deepcopy(pkl_dic)
+         return pkl_dic
+ 
++    def _complete_wrist_observation(self, observation):
++        """Attach terminal wrist views without recapturing its existing head frame.
++
++        The scene and wrist poses were synchronized by the immediately preceding
++        get_obs. Do not call _update_render again: randomized lighting and the
++        reward estimator's head-image history must remain identical.
++        """
++        camera_obs = observation["observation"]
++        if not self.cameras.collect_wrist_camera or all(
++            key in camera_obs for key in ("left_camera", "right_camera")
++        ):
++            return observation
++        self.cameras.update_picture(include_wrist=True, include_static=False)
++        wrist_obs = self.cameras.get_config(include_static=False)
++        if self.data_type.get("rgb", True):
++            rgb = self.cameras.get_rgb(include_static=False)
++            for camera_name, camera_data in rgb.items():
++                wrist_obs[camera_name].update(camera_data)
++        camera_obs.update(wrist_obs)
++        self.now_obs = deepcopy(observation)
++        return observation
++
+     def save_camera_rgb(self, save_path, camera_name='head_camera'):
+         self._update_render()
+         self.cameras.update_picture()
+@@ -1972,12 +2018,19 @@ class Base_Task(gym.Env):
+                     right_reached = now_right_id >= right_action_end_steps[action_idx]
+                     if not (left_reached and right_reached):
+                         break
+-                    collected_obs.append(self.get_obs())
++                    include_wrist = (
++                        getattr(self, "wrist_camera_capture", "chunk_end") == "all_steps"
++                        or action_idx == action_len - 1
++                    )
++                    collected_obs.append(self.get_obs(include_wrist=include_wrist))
+                 completed_action_this_step = len(collected_obs) > completed_before
+ 
+             if self.check_success():
+                 self.eval_success = True
+ 
++                if collect_obs and completed_action_this_step:
++                    self._complete_wrist_observation(collected_obs[-1])
++
+                 infos["success"] = True
+                 reward = np.array([1], dtype=np.float32)
+                 termination = np.array([1], dtype=np.int32)
+diff --git a/envs/camera/camera.py b/envs/camera/camera.py
+index 25529c5d2e8c30aa5119e4d123dc9f5735f0dcb6..b74386bdeb568bfcbcb384ab4a1dedb71d383378 100644
+--- a/envs/camera/camera.py
++++ b/envs/camera/camera.py
+@@ -270,14 +270,15 @@ class Camera:
+         world_cam_mat44[:3, 3] = world_cam_pos
+         self.world_camera2.entity.set_pose(sapien.Pose(world_cam_mat44))
+ 
+-    def update_picture(self):
++    def update_picture(self, *, include_wrist=True, include_static=True):
+         # camera
+-        if self.collect_wrist_camera:
++        if self.collect_wrist_camera and include_wrist:
+             self.left_camera.take_picture()
+             self.right_camera.take_picture()
+ 
+-        for camera in self.static_camera_list:
+-            camera.take_picture()
++        if include_static:
++            for camera in self.static_camera_list:
++                camera.take_picture()
+ 
+         # ================================= sensor camera =================================
+         # self.head_sensor.take_picture()
+@@ -292,7 +293,7 @@ class Camera:
+             self.left_camera.entity.set_pose(left_pose)
+             self.right_camera.entity.set_pose(right_pose)
+ 
+-    def get_config(self) -> dict:
++    def get_config(self, *, include_wrist=True, include_static=True) -> dict:
+         res = {}
+ 
+         def _get_config(camera):
+@@ -305,11 +306,15 @@ class Camera:
+                 "cam2world_gl": camera_model_matrix,
+             }
+ 
+-        if self.collect_wrist_camera:
++        if self.collect_wrist_camera and include_wrist:
+             res["left_camera"] = _get_config(self.left_camera)
+             res["right_camera"] = _get_config(self.right_camera)
+ 
+-        for camera, camera_name in zip(self.static_camera_list, self.static_camera_name):
++        static_cameras = (
++            zip(self.static_camera_list, self.static_camera_name)
++            if include_static else ()
++        )
++        for camera, camera_name in static_cameras:
+             if camera_name == "head_camera":
+                 if self.collect_head_camera:
+                     res[camera_name] = _get_config(camera)
+@@ -320,8 +325,8 @@ class Camera:
+         # print(res)
+         return res
+ 
+-    def get_rgb(self) -> dict:
+-        rgba = self.get_rgba()
++    def get_rgb(self, *, include_wrist=True, include_static=True) -> dict:
++        rgba = self.get_rgba(include_wrist=include_wrist, include_static=include_static)
+         rgb = {}
+         for camera_name, camera_data in rgba.items():
+             rgb[camera_name] = {}
+@@ -329,7 +334,7 @@ class Camera:
+         return rgb
+     
+     # Get Camera RGBA
+-    def get_rgba(self) -> dict:
++    def get_rgba(self, *, include_wrist=True, include_static=True) -> dict:
+ 
+         def _get_rgba(camera):
+             camera_rgba = camera.get_picture("Color")
+@@ -344,13 +349,17 @@ class Camera:
+ 
+         res = {}
+ 
+-        if self.collect_wrist_camera:
++        if self.collect_wrist_camera and include_wrist:
+             res["left_camera"] = {}
+             res["right_camera"] = {}
+             res["left_camera"]["rgba"] = _get_rgba(self.left_camera)
+             res["right_camera"]["rgba"] = _get_rgba(self.right_camera)
+ 
+-        for camera, camera_name in zip(self.static_camera_list, self.static_camera_name):
++        static_cameras = (
++            zip(self.static_camera_list, self.static_camera_name)
++            if include_static else ()
++        )
++        for camera, camera_name in static_cameras:
+             if camera_name == "head_camera":
+                 if self.collect_head_camera:
+                     res[camera_name] = {}
 diff --git a/robotwin/envs/vector_env.py b/robotwin/envs/vector_env.py
-index 52766aad0c6df3992c52e317f8c8636601da7463..d15fbc61c9372635aa41a0a1e85804a9ab21f526 100644
+index 52766aad0c6df3992c52e317f8c8636601da7463..7224d6b3fd9e0f2f06c0299902b0c567961b3bb8 100644
 --- a/robotwin/envs/vector_env.py
 +++ b/robotwin/envs/vector_env.py
-@@ -259,6 +259,12 @@ class VectorEnv(gym.Env):
+@@ -259,6 +259,15 @@ class VectorEnv(gym.Env):
          env_seeds=None,
          instruction_type="seen",
      ):
 +        render_shader = task_config.get("render_shader", "rt")
 +        if render_shader not in ("rt", "default"):
 +            raise ValueError("render_shader must be 'rt' or 'default'")
++        wrist_camera_capture = task_config.get("wrist_camera_capture", "chunk_end")
++        if wrist_camera_capture not in ("chunk_end", "all_steps"):
++            raise ValueError("wrist_camera_capture must be 'chunk_end' or 'all_steps'")
 +        # Seed probes clear SAPIEN caches before the first task scene is built.
 +        if render_shader == "default":
 +            os.environ["SAPIEN_DISABLE_RAY_TRACING"] = "1"
          self.env_seeds = env_seeds
          if self.env_seeds is not None:
              assert len(self.env_seeds) == n_envs
-@@ -340,6 +346,10 @@ class VectorEnv(gym.Env):
+@@ -268,6 +277,7 @@ class VectorEnv(gym.Env):
+         head_camera_type = "D435"
+         rdt_step = 10
+         args = task_config
++        args["wrist_camera_capture"] = wrist_camera_capture
+ 
+         args["planner_backend"] = args.get("planner_backend", "curobo") # Choices: [curobo, mplib]
+         args["clear_cache_freq"] = max(1, int(args.get("clear_cache_freq", 8)))
+@@ -340,6 +350,10 @@ class VectorEnv(gym.Env):
  
          self.args = args
          self.n_envs = n_envs
@@ -105,7 +291,7 @@ index 52766aad0c6df3992c52e317f8c8636601da7463..d15fbc61c9372635aa41a0a1e85804a9
  
          self.envs = []
          self.instruction_type = instruction_type
-@@ -350,8 +360,20 @@ class VectorEnv(gym.Env):
+@@ -350,8 +364,20 @@ class VectorEnv(gym.Env):
  
          self._init_envs()
  
@@ -127,7 +313,7 @@ index 52766aad0c6df3992c52e317f8c8636601da7463..d15fbc61c9372635aa41a0a1e85804a9
              sub_env = SubEnv(
                  env_id=i,
                  task_name=self.task_name,
-@@ -361,6 +383,13 @@ class VectorEnv(gym.Env):
+@@ -361,6 +387,13 @@ class VectorEnv(gym.Env):
                  global_lock=self.global_lock,
              )
              sub_env.setup_task()
@@ -141,7 +327,7 @@ index 52766aad0c6df3992c52e317f8c8636601da7463..d15fbc61c9372635aa41a0a1e85804a9
              self.envs.append(sub_env)
  
      def transform(self, results):
-@@ -477,11 +506,19 @@ class VectorEnv(gym.Env):
+@@ -477,11 +510,19 @@ class VectorEnv(gym.Env):
      def get_obs(self):
          obs_venv = []
          for env in self.envs:

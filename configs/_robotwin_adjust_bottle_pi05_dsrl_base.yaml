@@ -90,7 +90,10 @@ env:
     skip_intermediate_renders: true
     video_cfg:
       save_video: false
+      # Run-wide MP4 cap; -1 records every episode, 0 retains score JSON only.
+      max_videos: 8
     task_config:
+      wrist_camera_capture: chunk_end
       render_denoiser: none
       render_shader: default
       single_thread_render: true

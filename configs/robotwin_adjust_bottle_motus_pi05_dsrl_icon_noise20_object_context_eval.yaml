@@ -1,0 +1,21 @@
+# Native held-out policy evaluation; reward-model evaluation is a separate check.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20_eval
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20_object_context/adjust_bottle/icon_eval
+    experiment_name: pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context_eval
+
+env:
+  eval:
+    context_match_mode: object
+
+rollout:
+  model:
+    model_path: /home/yifei/icr/outputs/motus_noise20_object_context/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_400

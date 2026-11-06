@@ -26,6 +26,26 @@ index 83919e863e368f3819faf650859682637acb4c65..4e6ad7a886b5d104bcf086d0d96c05a6
 +*.ckpt
 +*.safetensors
 +*.onnx
+diff --git a/examples/embodiment/config/env/robotwin_adjust_bottle.yaml b/examples/embodiment/config/env/robotwin_adjust_bottle.yaml
+index bc1f1394c3c50d7c3044b4e83cd7745a8b7a081d..e0f559e5b3192c1b104d73c44d2bf1758eacce45 100644
+--- a/examples/embodiment/config/env/robotwin_adjust_bottle.yaml
++++ b/examples/embodiment/config/env/robotwin_adjust_bottle.yaml
+@@ -29,6 +29,8 @@ enable_offload: False
+ 
+ task_config:
+   task_name: adjust_bottle
++  # Keep head history dense; capture wrists at policy chunk endpoints.
++  wrist_camera_capture: chunk_end # all_steps restores per-action wrist capture.
+   step_lim: 200
+   planner_backend: mplib # # Choices: ["curobo", "mplib"], defalut is "curobo"
+   # if you want to modify the config, please check the following tutorial first:
+@@ -67,4 +69,4 @@ task_config:
+   save_path: ./data
+   clear_cache_freq: 1
+   collect_data: true
+-  eval_video_log: true
+\ No newline at end of file
++  eval_video_log: true
 diff --git a/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml b/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml
 index 20cf1d1366c47a039f3011107a7ecba2fd656879..03762a7449846aea117023e04e786cf52ac13546 100644
 --- a/examples/embodiment/config/robotwin_adjust_bottle_ppo_openpi_pi05.yaml
@@ -347,8 +367,94 @@ index 7240c2a9bfe0fbb583c3d0c379aee33043b45710..d9fbd04790b778ae5326663f33f96d79
          if self._flat_trajectory_cache is not None:
              self._flat_trajectory_cache.clear()
              if self._trajectory_id_list:
+diff --git a/rlinf/envs/sim/robotwin/robotwin_env.py b/rlinf/envs/sim/robotwin/robotwin_env.py
+index 66d88810c87d71ba5e9d2911980f1c54d3e3d904..6d694494aa3e8dbb70887e2bebbad7ccf01c01bc 100644
+--- a/rlinf/envs/sim/robotwin/robotwin_env.py
++++ b/rlinf/envs/sim/robotwin/robotwin_env.py
+@@ -15,6 +15,7 @@
+ import ctypes
+ import json
+ import os
++import re
+ from typing import Optional, Union
+ 
+ import gymnasium as gym
+@@ -63,6 +64,12 @@ class RoboTwinEnv(gym.Env):
+         self.video_cfg = cfg.video_cfg
+ 
+         self.cfg = cfg
++        self.context_match_mode = str(cfg.get("context_match_mode", "fixed"))
++        if self.context_match_mode not in {"fixed", "object"}:
++            raise ValueError(
++                "RoboTwin context_match_mode must be 'fixed' or 'object'; "
++                f"found {self.context_match_mode!r}"
++            )
+         self.record_metrics = record_metrics
+         self.skip_intermediate_renders = bool(
+             cfg.get("skip_intermediate_renders", True)
+@@ -174,18 +181,29 @@ class RoboTwinEnv(gym.Env):
+         batch_wrist_images = []
+         batch_states = []
+         batch_instructions = []
++        wrist_keys = ("left_wrist_image", "right_wrist_image")
++        wrist_layouts = [
++            tuple(key for key in wrist_keys if obs.get(key) is not None)
++            for obs in raw_obs
++        ]
++        # Intermediate head-only frames can share a batch with an early
++        # terminal full observation. Keep batch dimensions intact; policy
++        # endpoints always contain the same fresh camera views for every row.
++        include_wrists = bool(wrist_layouts and wrist_layouts[0]) and all(
++            layout == wrist_layouts[0] for layout in wrist_layouts
++        )
+         for obs in raw_obs:
+             batch_images.append(
+                 self.center_and_crop(obs["full_image"], center_crop=self.center_crop)
+             )
+             wrist_images = []
+-            if "left_wrist_image" in obs and obs["left_wrist_image"] is not None:
++            if include_wrists and obs.get("left_wrist_image") is not None:
+                 wrist_images.append(
+                     self.center_and_crop(
+                         obs["left_wrist_image"], center_crop=self.center_crop
+                     )
+                 )
+-            if "right_wrist_image" in obs and obs["right_wrist_image"] is not None:
++            if include_wrists and obs.get("right_wrist_image") is not None:
+                 wrist_images.append(
+                     self.center_and_crop(
+                         obs["right_wrist_image"], center_crop=self.center_crop
+@@ -211,6 +229,28 @@ class RoboTwinEnv(gym.Env):
+             "states": batch_states,
+             "task_descriptions": batch_instructions,
+         }
++        if self.context_match_mode == "object":
++            if len(raw_obs) != self.num_envs or len(self.venv.envs) != self.num_envs:
++                raise ValueError(
++                    "Object context matching requires one live task per observation"
++                )
++            object_keys = []
++            for sub_env in self.venv.envs:
++                get_info = getattr(sub_env.task, "get_info", None)
++                task_info = get_info() if callable(get_info) else None
++                object_key = (
++                    task_info.get("{A}") if isinstance(task_info, dict) else None
++                )
++                if (
++                    not isinstance(object_key, str)
++                    or re.fullmatch(r"[A-Za-z0-9_-]+/base[0-9]+", object_key) is None
++                ):
++                    raise ValueError(
++                        "Object context matching requires native get_info()['{A}'] "
++                        f"in '<asset>/base<id>' form; found {object_key!r}"
++                    )
++                object_keys.append(object_key)
++            extracted_obs["context_object_key"] = object_keys
+ 
+         return extracted_obs
+ 
 diff --git a/rlinf/envs/wrappers/record_video.py b/rlinf/envs/wrappers/record_video.py
-index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0a3bfe7c5 100644
+index c79b2e977f85cac7f51e65f076cdfad15513f25f..2195cb7545273adf1a2049d0c4b1775b712d1c35 100644
 --- a/rlinf/envs/wrappers/record_video.py
 +++ b/rlinf/envs/wrappers/record_video.py
 @@ -12,6 +12,7 @@
@@ -359,7 +465,68 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
  import numbers
  import os
  import warnings
-@@ -78,6 +79,14 @@ class RecordVideo(gym.Wrapper):
+@@ -56,13 +57,26 @@ class RecordVideo(gym.Wrapper):
+         video_cfg: Video configuration object/dict. Common fields:
+             ``video_base_dir`` (output directory root),
+             ``fps`` (optional FPS override),
++            ``max_videos`` (-1 unlimited, 0 trace-only, or a positive MP4 budget),
+             ``info_on_video`` (whether to render overlay text),
+             ``extra_info_on_video`` (list of ``info`` keys to render).
+         fps: Explicit FPS override. If ``None``, FPS is resolved from
+             ``video_cfg.fps``, environment config/metadata, then fallback ``30``.
++        recording_slots: Total expected flushes, used to spread a finite budget
++            across the run. If omitted, the first budgeted flushes are recorded.
++        max_videos: Optional local quota overriding the configuration without
++            changing its run-wide budget.
+     """
+ 
+-    def __init__(self, env: gym.Env, video_cfg, fps: Optional[int] = None):
++    def __init__(
++        self,
++        env: gym.Env,
++        video_cfg,
++        fps: Optional[int] = None,
++        *,
++        recording_slots: int | None = None,
++        max_videos: int | None = None,
++    ):
+         """Initialize the wrapper and set FPS/config."""
+         if isinstance(env, gym.Env):
+             super().__init__(env)
+@@ -75,15 +89,114 @@ class RecordVideo(gym.Wrapper):
+         self.video_cfg = video_cfg
+         self.render_images: list[np.ndarray] = []
+         self.video_cnt = 0
++        self.max_videos = (
++            video_cfg.get("max_videos", -1) if max_videos is None else max_videos
++        )
++        if (
++            isinstance(self.max_videos, bool)
++            or not isinstance(self.max_videos, numbers.Integral)
++            or self.max_videos < -1
++        ):
++            raise ValueError("video_cfg.max_videos must be -1 or a nonnegative integer")
++        if recording_slots is not None and (
++            isinstance(recording_slots, bool)
++            or not isinstance(recording_slots, numbers.Integral)
++            or recording_slots < 0
++        ):
++            raise ValueError("recording_slots must be a nonnegative integer or None")
++        self.recording_slots = recording_slots
++        self._recording_indices = None
++        if self.max_videos >= 0 and recording_slots is not None:
++            count = min(self.max_videos, recording_slots)
++            self._recording_indices = frozenset(
++                (
++                    (index * (recording_slots - 1) + (count - 1) // 2) // (count - 1)
++                    if count > 1
++                    else 0
++                )
++                for index in range(count)
++            )
++        self._frame_count = 0
++        self._image_height: int | None = None
++        self._image_width: int | None = None
          self._num_envs = getattr(env, "num_envs", 1)
          self._executor = ThreadPoolExecutor(max_workers=1)
          self._save_futures: list[Future] = []
@@ -374,28 +541,111 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
  
          if fps is not None:
              self._fps = fps
-@@ -330,6 +339,7 @@ class RecordVideo(gym.Wrapper):
+         else:
+             self._fps = self._get_fps_from_env(env)
+ 
++    @property
++    def recording_enabled(self) -> bool:
++        """Whether the current flush slot records pixels as well as score traces."""
++        if self.recording_slots == 0:
++            return False
++        if self.max_videos == -1:
++            return True
++        if self._recording_indices is not None:
++            return self.video_cnt in self._recording_indices
++        return self.video_cnt < self.max_videos
++
++    def _logical_image_layout(
++        self, image_src: Any
++    ) -> tuple[int, int | None, int | None]:
++        """Read frame count and tiled geometry from shapes without accessing pixels."""
++        shape = getattr(image_src, "shape", ())
++        if len(shape) not in (3, 4, 5):
++            return 0, None, None
++        channel_index = len(shape) - 3
++        if shape[channel_index] in (1, 3, 4) and shape[-1] not in (1, 3, 4):
++            height, width = shape[-2:]
++        else:
++            height, width = shape[-3:-1]
++        batch_size = shape[0] if len(shape) > 3 else 1
++        nrows = max(1, int(np.sqrt(batch_size)))
++        ncols = (batch_size + nrows - 1) // nrows
++        return (
++            (shape[1] if len(shape) == 5 else 1),
++            int(height * nrows),
++            int(width * ncols),
++        )
++
++    def _logical_frame_layout(self, obs: Any) -> tuple[int, int | None, int | None]:
++        """Count observation frames without capture, conversion, overlays, or copies."""
++        if isinstance(obs, dict):
++            for key in ("main_images", "images", "rgb", "full_image", "main_image"):
++                if obs.get(key) is not None:
++                    return self._logical_image_layout(obs[key])
++            # Capture-only environments still own one logical observation here.
++            return (1 if hasattr(self.env, "capture_image") else 0), None, None
++        if isinstance(obs, (list, tuple)):
++            if not obs:
++                return 0, None, None
++            if isinstance(obs[0], dict):
++                layouts = [
++                    self._logical_frame_layout(item) for item in obs if item is not None
++                ]
++                available = [item for item in layouts if item[0]]
++                return (
++                    (len(available), *available[0][1:])
++                    if available
++                    else (0, None, None)
++                )
++            count, height, width = self._logical_image_layout(obs[0])
++            if not count:
++                return 0, None, None
++            nrows = max(1, int(np.sqrt(len(obs))))
++            ncols = (len(obs) + nrows - 1) // nrows
++            return 1, height * nrows, width * ncols
++        return self._logical_image_layout(obs)
++
+     @property
+     def is_start(self):
+         return getattr(self.env, "is_start")
+@@ -330,6 +443,10 @@ class RecordVideo(gym.Wrapper):
              self.render_images.append(full_image)
          else:
              self.render_images.append(images[0])
++        if self._frame_count == 0:
++            self._image_height, self._image_width = self.render_images[-1].shape[:2]
++        self._frame_count += 1
 +        self._frame_reward_info.append({})
  
      def add_new_frames(
          self,
-@@ -359,7 +369,12 @@ class RecordVideo(gym.Wrapper):
+@@ -339,6 +456,12 @@ class RecordVideo(gym.Wrapper):
+         terminations: Optional[Any] = None,
+     ):
+         """Extract frames from obs and append to the buffer."""
++        if not self.recording_enabled:
++            count, height, width = self._logical_frame_layout(obs)
++            if self._frame_count == 0:
++                self._image_height, self._image_width = height, width
++            self._frame_count += count
++            return
+         frames = self._extract_frame_batches(obs)
+         if not frames:
+             warnings.warn(
+@@ -359,7 +482,12 @@ class RecordVideo(gym.Wrapper):
      def reset(self, *args, **kwargs):
          """Reset env and record the initial frame."""
          obs, info = self.env.reset(*args, **kwargs)
-+        frame_index = len(self.render_images)
++        frame_index = self._frame_count
          self.add_new_frames(obs, info)
-+        if len(self.render_images) > frame_index:
++        if self._frame_count > frame_index:
 +            self._reset_frame_indices = dict.fromkeys(
 +                range(self._num_envs), frame_index
 +            )
          return obs, info
  
      def step(self, action):
-@@ -375,13 +390,22 @@ class RecordVideo(gym.Wrapper):
+@@ -375,13 +503,22 @@ class RecordVideo(gym.Wrapper):
  
      def record_video_in_result(self, result) -> None:
          """Record video frames from a chunk_step / async_chunk_step result tuple."""
@@ -419,7 +669,7 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
                  if len(valid_indices) == 0:
                      return
                  if len(valid_indices) != len(obs_list):
-@@ -405,12 +429,39 @@ class RecordVideo(gym.Wrapper):
+@@ -405,12 +542,39 @@ class RecordVideo(gym.Wrapper):
              last_info = None
              if isinstance(infos_list, (list, tuple)) and len(infos_list) > 0:
                  last_info = infos_list[-1]
@@ -461,18 +711,16 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +                        outcome[target] = cast(self._value_for_env(value, env_id))
 +                self._last_chunk_outcomes[env_id] = outcome
 +
-+            frame_start = len(self.render_images)
++            frame_start = self._frame_count
              if (
                  final_obs is not None
                  and isinstance(obs_list, (list, tuple))
-@@ -425,9 +476,157 @@ class RecordVideo(gym.Wrapper):
+@@ -425,9 +589,161 @@ class RecordVideo(gym.Wrapper):
                      else infos_list
                  )
                  self.add_new_frames(obs_main, infos_main, rewards, terminations)
-+                self._last_chunk_frames = list(
-+                    range(frame_start, len(self.render_images))
-+                )
-+                reset_frame = len(self.render_images)
++                self._last_chunk_frames = list(range(frame_start, self._frame_count))
++                reset_frame = self._frame_count
                  self.add_new_frames(reset_obs, None)
 +                for env_id in range(self._num_envs):
 +                    terminated = self._value_for_env(terminations, env_id)
@@ -481,9 +729,7 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +                        self._reset_frame_indices[env_id] = reset_frame
              else:
                  self.add_new_frames(obs_list, infos_list, rewards, terminations)
-+                self._last_chunk_frames = list(
-+                    range(frame_start, len(self.render_images))
-+                )
++                self._last_chunk_frames = list(range(frame_start, self._frame_count))
 +            frame_count = len(self._last_chunk_frames)
 +            action_mask = self._lookup_info_value(last_info, "valid_action_mask")
 +            if action_mask is None:
@@ -525,7 +771,12 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +                values[key] = scalar
 +            valid = bool(values["valid"])
 +            reset_frame = self._last_chunk_reset_frames.get(env_index)
-+            if valid and values["episode_start"] and reset_frame is not None:
++            if (
++                self.recording_enabled
++                and valid
++                and values["episode_start"]
++                and reset_frame is not None
++            ):
 +                self._frame_reward_info[reset_frame][env_index] = {
 +                    "env_id": values["env_id"],
 +                    "progress": values["previous_progress"],
@@ -546,7 +797,9 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +                if self._last_chunk_frame_mask[env_index, offset]
 +            ]
 +            endpoint = valid_frames[-1] if valid and valid_frames else None
-+            for offset, frame_index in enumerate(self._last_chunk_frames):
++            for offset, frame_index in enumerate(
++                self._last_chunk_frames if self.recording_enabled else []
++            ):
 +                is_padding = (
 +                    not valid or not self._last_chunk_frame_mask[env_index, offset]
 +                )
@@ -567,10 +820,11 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +                    "kind": kind,
 +                }
 +            if endpoint is not None:
-+                self._frame_reward_info[endpoint][env_index] = {
-+                    **values,
-+                    "kind": "scored chunk endpoint",
-+                }
++                if self.recording_enabled:
++                    self._frame_reward_info[endpoint][env_index] = {
++                        **values,
++                        "kind": "scored chunk endpoint",
++                    }
 +                self._last_scored_progress[env_index] = values["progress"]
 +            self._reward_trace.append(
 +                {
@@ -623,18 +877,33 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
  
      def chunk_step(self, *args, **kwargs):
          """Step a chunk and record all frames from the chunk."""
-@@ -458,12 +657,43 @@ class RecordVideo(gym.Wrapper):
+@@ -446,7 +762,7 @@ class RecordVideo(gym.Wrapper):
+         handler is run under Ray actor shutdown either). Without this wait,
+         eval videos end at ``mdat`` and no player can open them.
+         """
+-        if not self.render_images:
++        if not self._frame_count:
+             return
+ 
+         output_dir = os.path.join(
+@@ -457,13 +773,49 @@ class RecordVideo(gym.Wrapper):
+ 
          os.makedirs(output_dir, exist_ok=True)
          mp4_path = os.path.join(output_dir, f"{self.video_cnt}.mp4")
-         frames = list(self.render_images)
-+        image_height, image_width = frames[0].shape[:2]
+-        frames = list(self.render_images)
++        frames = list(self.render_images) if self.recording_enabled else []
++        frame_count = self._frame_count
++        image_height, image_width = self._image_height, self._image_width
 +        reward_trace = list(self._reward_trace)
-+        if reward_trace:
++        if reward_trace and frames:
 +            frames = [
 +                self._render_reward_footer(frame, info)
 +                for frame, info in zip(frames, self._frame_reward_info, strict=True)
 +            ]
          self.render_images = []
++        self._frame_count = 0
++        self._image_height = None
++        self._image_width = None
 +        self._frame_reward_info = []
 +        self._reward_trace = []
 +        self._last_chunk_frames = []
@@ -644,18 +913,23 @@ index c79b2e977f85cac7f51e65f076cdfad15513f25f..caf734f0cf63ffdd57949fd82487d9a0
 +        self._reset_frame_indices = {}
 +        self._last_scored_progress = {}
          self.video_cnt += 1
-         future = self._submit_save(frames, mp4_path)
-         # Block until the encode + writer.close() returns so the MP4 is valid
-         # on disk before the rollout loop continues (or the process exits).
-         future.result()
+-        future = self._submit_save(frames, mp4_path)
+-        # Block until the encode + writer.close() returns so the MP4 is valid
+-        # on disk before the rollout loop continues (or the process exits).
+-        future.result()
++        if frames:
++            future = self._submit_save(frames, mp4_path)
++            # The writer must finalize the MP4 before the worker can exit.
++            future.result()
 +        if reward_trace:
 +            with open(os.path.splitext(mp4_path)[0] + ".json", "w") as handle:
 +                json.dump(
 +                    {
 +                        "fps": self._fps,
-+                        "frame_count": len(frames),
++                        "frame_count": frame_count,
 +                        "image_height": image_height,
 +                        "image_width": image_width,
++                        "video_recorded": bool(frames),
 +                        "progress_sampling": "causal chunk endpoints; no interpolation",
 +                        "scores": reward_trace,
 +                    },
@@ -710,10 +984,20 @@ index 28ce50a367a60c3d41d8e53210fbac7b3ee3765c..220ba5637deaee0cc435aedcf03c420d
          h = self.shared_net(features)
  
 diff --git a/rlinf/models/embodiment/openpi/__init__.py b/rlinf/models/embodiment/openpi/__init__.py
-index 57325eb01a1d778f6b912b5c1f61be14bb809830..0d2cae07e8d9f17432b45ff39d13424e6d10175e 100644
+index 57325eb01a1d778f6b912b5c1f61be14bb809830..fa2ac0341b7f25b0ff5150e83fa1ac6f11e190cc 100644
 --- a/rlinf/models/embodiment/openpi/__init__.py
 +++ b/rlinf/models/embodiment/openpi/__init__.py
-@@ -238,6 +238,12 @@ def get_model(cfg: Any, torch_dtype: Any = None) -> Any:
+@@ -228,6 +228,9 @@ def get_model(cfg: Any, torch_dtype: Any = None) -> Any:
+             action_noise_dim=int(
+                 OmegaConf.select(model_cfg, "dsrl_action_noise_dim", default=32)
+             ),
++            noise_action_chunk_size=OmegaConf.select(
++                model_cfg, "dsrl_noise_action_chunk_size", default=None
++            ),
+             num_q_heads=int(
+                 OmegaConf.select(model_cfg, "dsrl_num_q_heads", default=10)
+             ),
+@@ -238,6 +241,12 @@ def get_model(cfg: Any, torch_dtype: Any = None) -> Any:
                  OmegaConf.select(model_cfg, "dsrl_state_latent_dim", default=64)
              ),
              hidden_dims=tuple(int(x) for x in hidden),
@@ -726,18 +1010,42 @@ index 57325eb01a1d778f6b912b5c1f61be14bb809830..0d2cae07e8d9f17432b45ff39d13424e
          )
          model = Pi0DSRL(
              pi0_config,
+@@ -247,6 +256,15 @@ def get_model(cfg: Any, torch_dtype: Any = None) -> Any:
+             dsrl_cfg=dsrl_cfg,
+         )
+         _install_transforms(model, cfg, config_name)
++        logger.info(
++            "openpi[dsrl]: noise_action_shape=(%s, %s) noise_event_dim=%s "
++            "decoder_horizon=%s execution_chunk=%s",
++            model.noise_action_length,
++            dsrl_cfg.action_noise_dim,
++            model.noise_action_event_dim,
++            action_horizon,
++            action_chunk,
++        )
+     else:
+         raise ValueError(
+             f"actor.model.openpi.task={task!r} is not supported; "
 diff --git a/rlinf/models/embodiment/openpi/tasks/dsrl.py b/rlinf/models/embodiment/openpi/tasks/dsrl.py
-index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108dd080cdb 100644
+index 7556e1e670183d66cea81c46459b10b2ce019fc7..5d6e188a7f4a30219afb4dd2a1e480ab333a7cec 100644
 --- a/rlinf/models/embodiment/openpi/tasks/dsrl.py
 +++ b/rlinf/models/embodiment/openpi/tasks/dsrl.py
-@@ -40,6 +40,20 @@ class Pi0DSRLConfig:
+@@ -40,6 +40,28 @@ class Pi0DSRLConfig:
      image_latent_dim: int = 64
      state_latent_dim: int = 64
      hidden_dims: tuple[int, ...] = (128, 128, 128)
 +    head_precision: Literal["bf16", "fp32"] = "bf16"
 +    eval_noise_mode: Literal["policy", "zero", "sample"] = "policy"
++    noise_action_chunk_size: int | None = None
 +
 +    def __post_init__(self) -> None:
++        if self.noise_action_chunk_size is not None and (
++            type(self.noise_action_chunk_size) is not int
++            or self.noise_action_chunk_size < 1
++        ):
++            raise ValueError(
++                "DSRL noise_action_chunk_size must be a positive integer or None"
++            )
 +        if self.head_precision not in ("bf16", "fp32"):
 +            raise ValueError(
 +                "DSRL head_precision must be 'bf16' or 'fp32', "
@@ -751,18 +1059,65 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
  
  
  class Pi0DSRL(EnvIO, Pi0):
-@@ -66,7 +80,9 @@ class Pi0DSRL(EnvIO, Pi0):
+@@ -56,6 +78,23 @@ class Pi0DSRL(EnvIO, Pi0):
+         state_indices: Sequence[int] | None = None,
+         dsrl_cfg: Pi0DSRLConfig | None = None,
+     ):
++        cfg = dsrl_cfg or Pi0DSRLConfig()
++        noise_chunk = cfg.noise_action_chunk_size
++        if noise_chunk is not None:
++            if noise_chunk != action_chunk:
++                raise ValueError(
++                    "DSRL noise action chunk must match the executed action chunk: "
++                    f"got noise_action_chunk_size={noise_chunk}, action_chunk={action_chunk}"
++                )
++            if noise_chunk > config.action_horizon:
++                raise ValueError(
++                    "DSRL noise action chunk cannot exceed the decoder horizon"
++                )
++            if cfg.action_noise_dim != config.action_dim:
++                raise ValueError(
++                    "DSRL chunk noise dimension must match the decoder action dimension: "
++                    f"got {cfg.action_noise_dim}, expected {config.action_dim}"
++                )
+         super().__init__(
+             config,
+             num_steps=num_steps,
+@@ -64,17 +103,20 @@ class Pi0DSRL(EnvIO, Pi0):
+             config_name=config_name,
+             state_indices=state_indices,
          )
-         cfg = dsrl_cfg or Pi0DSRLConfig()
+-        cfg = dsrl_cfg or Pi0DSRLConfig()
          self.dsrl_cfg = cfg
 -        dsrl_dtype = torch.bfloat16
++        self.noise_action_length = noise_chunk or self.action_horizon
++        self.noise_action_event_dim = cfg.action_noise_dim * (noise_chunk or 1)
 +        # Head storage also determines the dtype of standard Adam's moments.
 +        dsrl_dtype = torch.float32 if cfg.head_precision == "fp32" else torch.bfloat16
 +        self.dsrl_dtype = dsrl_dtype
          input_dim = cfg.state_latent_dim + cfg.image_latent_dim
          self.dsrl_action_noise_net = GaussianPolicy(
              input_dim=input_dim,
-@@ -135,15 +151,15 @@ class Pi0DSRL(EnvIO, Pi0):
+-            output_dim=cfg.action_noise_dim,
++            output_dim=self.noise_action_event_dim,
+             hidden_dims=cfg.hidden_dims,
+             low=None,
+             high=None,
+-            action_horizon=self.action_horizon,
++            action_horizon=1 if noise_chunk is not None else self.action_horizon,
+         ).to(dtype=dsrl_dtype)
+         self.actor_image_encoder = LightweightImageEncoder64(
+             num_images=1, latent_dim=cfg.image_latent_dim, image_size=64
+@@ -91,7 +133,7 @@ class Pi0DSRL(EnvIO, Pi0):
+         self.q_head = CompactMultiQHead(
+             state_dim=cfg.state_latent_dim,
+             image_dim=cfg.image_latent_dim,
+-            action_dim=cfg.action_noise_dim,
++            action_dim=self.noise_action_event_dim,
+             hidden_dims=cfg.hidden_dims,
+             num_q_heads=cfg.num_q_heads,
+             output_dim=1,
+@@ -135,15 +177,15 @@ class Pi0DSRL(EnvIO, Pi0):
      def _preprocess_states(self, states):
          if states.dim() > 2:
              states = states.reshape(states.shape[0], -1)
@@ -781,7 +1136,7 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
          image_features = self.actor_image_encoder(images)
          state_features = self.actor_state_encoder(states)
          return torch.cat([state_features, image_features], dim=-1)
-@@ -155,11 +171,26 @@ class Pi0DSRL(EnvIO, Pi0):
+@@ -155,13 +197,28 @@ class Pi0DSRL(EnvIO, Pi0):
          mode: Literal["train", "eval"] = "eval",
          **kwargs,
      ) -> tuple[torch.Tensor, dict[str, Any]]:
@@ -795,7 +1150,7 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
 +        if mode == "eval" and eval_noise_mode == "zero":
 +            noise_actions = torch.zeros(
 +                env_obs["states"].shape[0],
-+                self.action_horizon,
++                self.noise_action_length,
 +                self.dsrl_cfg.action_noise_dim,
 +                device=next(self.actor_image_encoder.parameters()).device,
 +                dtype=torch.float32,
@@ -810,15 +1165,45 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
 +                obs=dsrl_obs, train=False, mode=policy_mode
 +            )
          observation = self.env_obs_to_observation(env_obs)
-         noise = noise_actions.to(dtype=torch.float32)
+-        noise = noise_actions.to(dtype=torch.float32)
++        noise = self.decoder_noise(noise_actions).to(dtype=torch.float32)
          if noise.shape[-1] != self.action_dim:
-@@ -191,14 +222,12 @@ class Pi0DSRL(EnvIO, Pi0):
+             pad = self.action_dim - noise.shape[-1]
+             if pad < 0:
+@@ -170,11 +227,24 @@ class Pi0DSRL(EnvIO, Pi0):
+                 noise = F.pad(noise, (0, pad))
+         actions, result = self._predict_eval(observation, noise=noise)
+         result["prev_logprobs"] = noise_logprob
+-        # SAC trains on noise, not the decoded env action. Keep the unflattened
+-        # [B, H, noise_dim] tensor so ``sac_q_forward`` can take ``actions[:, 0]``.
++        # Decoder-only expansion is excluded from replay and the action density.
+         result["forward_inputs"]["action"] = noise_actions
+         return actions, result
+ 
++    def decoder_noise(self, noise_actions: torch.Tensor) -> torch.Tensor:
++        """Fill the decoder horizon by cycling the controlled noise sequence."""
++        if self.dsrl_cfg.noise_action_chunk_size is None:
++            return noise_actions
++        expected = (self.noise_action_length, self.dsrl_cfg.action_noise_dim)
++        if noise_actions.ndim != 3 or tuple(noise_actions.shape[1:]) != expected:
++            raise ValueError(
++                f"Expected DSRL noise actions [B,{expected[0]},{expected[1]}]"
++            )
++        repeats = (
++            self.action_horizon + self.noise_action_length - 1
++        ) // self.noise_action_length
++        return noise_actions.repeat(1, repeats, 1)[:, : self.action_horizon, :]
++
+     def forward(self, forward_type: ForwardType = ForwardType.SAC, **kwargs):
+         if forward_type == ForwardType.SAC:
+             return self.sac_forward(**kwargs)
+@@ -191,14 +261,22 @@ class Pi0DSRL(EnvIO, Pi0):
              obs = data.get("obs", data) if data is not None else kwargs.get("obs", {})
          features = self._actor_features(obs, train=train)
          deterministic = kwargs.get("mode", "train") == "eval"
 -        action_noise, logprobs = self.dsrl_action_noise_net.sample(
 -            features, deterministic=deterministic
-+        return self.dsrl_action_noise_net(
++        actions, log_prob, dist_params = self.dsrl_action_noise_net(
 +            features,
 +            sample=True,
 +            deterministic=deterministic,
@@ -829,10 +1214,20 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
 -            dist = self.dsrl_action_noise_net.forward(features)
 -            dist_params = (dist.mean, dist.stddev)
 -        return action_noise, logprobs, dist_params
++        if self.dsrl_cfg.noise_action_chunk_size is not None:
++            shape = (
++                features.shape[0],
++                self.noise_action_length,
++                self.dsrl_cfg.action_noise_dim,
++            )
++            actions = actions.reshape(shape)
++            if dist_params is not None:
++                dist_params = tuple(value.reshape(shape) for value in dist_params)
++        return actions, log_prob, dist_params
  
      def sac_q_forward(
          self,
-@@ -217,9 +246,9 @@ class Pi0DSRL(EnvIO, Pi0):
+@@ -217,14 +295,21 @@ class Pi0DSRL(EnvIO, Pi0):
          images = self._preprocess_dsrl_images(obs["images"], train=train)
          states = self._preprocess_states(obs["states"])
          device = next(self.critic_image_encoder.parameters()).device
@@ -845,6 +1240,19 @@ index 7556e1e670183d66cea81c46459b10b2ce019fc7..b751deba3b90c7ee8d0208ad139c3108
          image_features = self.critic_image_encoder(images)
          state_features = self.critic_state_encoder(states)
          if detach_encoder:
+             image_features = image_features.detach()
+             state_features = state_features.detach()
+-        if actions.dim() == 3:
++        if self.dsrl_cfg.noise_action_chunk_size is not None:
++            expected = (self.noise_action_length, self.dsrl_cfg.action_noise_dim)
++            if actions.ndim != 3 or tuple(actions.shape[1:]) != expected:
++                raise ValueError(
++                    f"Expected complete DSRL noise action [B,{expected[0]},{expected[1]}]"
++                )
++            actions = actions.reshape(actions.shape[0], self.noise_action_event_dim)
++        elif actions.dim() == 3:
+             actions = actions[:, 0, :]
+         return self.q_head(state_features, image_features, actions)
 diff --git a/rlinf/models/embodiment/openpi/tasks/rl.py b/rlinf/models/embodiment/openpi/tasks/rl.py
 index 9dafb7f1ced52ce3bd18b2f432ec710e61e5e5c4..03f337a69709a1eab080abe1fb6bf3619c786806 100644
 --- a/rlinf/models/embodiment/openpi/tasks/rl.py
@@ -1266,7 +1674,7 @@ index b84cf99576899877a71fb5478dbd07b336120adc..8309f9fa1bc609fc85ea901d235ae3e1
      # Count trajectories from each process
      trajectory_counts = []
 diff --git a/rlinf/workers/actor/fsdp_sac_policy_worker.py b/rlinf/workers/actor/fsdp_sac_policy_worker.py
-index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb7625432175c875 100644
+index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770e486f1af 100644
 --- a/rlinf/workers/actor/fsdp_sac_policy_worker.py
 +++ b/rlinf/workers/actor/fsdp_sac_policy_worker.py
 @@ -20,6 +20,10 @@ import numpy as np
@@ -1294,10 +1702,21 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  from rlinf.workers.actor.embodied_fsdp_actor_worker import EmbodiedFSDPActor
  
  
-@@ -55,6 +64,27 @@ def _openpi_is_dsrl(cfg: DictConfig) -> bool:
+@@ -55,6 +64,38 @@ def _openpi_is_dsrl(cfg: DictConfig) -> bool:
      return str(openpi_cfg.get("task", "")).lower() == "dsrl"
  
  
++def sac_action_event_size(cfg: DictConfig) -> int:
++    """Number of scalar policy decisions contributing to one SAC log density."""
++    if _openpi_is_dsrl(cfg):
++        openpi_cfg = cfg.actor.model.openpi
++        chunk_size = openpi_cfg.get("dsrl_noise_action_chunk_size")
++        return int(openpi_cfg.get("dsrl_action_noise_dim", 32)) * (
++            int(chunk_size) if chunk_size is not None else 1
++        )
++    return int(cfg.actor.model.action_dim)
++
++
 +def aggregate_dsrl_rewards(
 +    rewards: torch.Tensor, aggregation: str = "first"
 +) -> torch.Tensor:
@@ -1322,7 +1741,24 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
      def __init__(self, cfg: DictConfig):
          super().__init__(cfg)
-@@ -178,6 +208,27 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -119,6 +160,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+ 
+         self.use_dsrl = _openpi_is_dsrl(self.cfg)
+         use_dsrl = self.use_dsrl
++        self.sac_action_event_size = sac_action_event_size(self.cfg)
+         if use_dsrl:
+             # DSRL: separate actor/critic encoders into different optimizer groups
+             param_filters = {
+@@ -150,7 +192,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         if alpha_type != "fixed_alpha":
+             self.target_entropy = self.cfg.algorithm.entropy_tuning.get(
+                 "target_entropy",
+-                -self.cfg.actor.model.action_dim,
++                -self.sac_action_event_size,
+             )
+ 
+             self.alpha_optimizer = torch.optim.Adam(
+@@ -178,6 +220,27 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
  
      def setup_sac_components(self):
          """Initialize SAC-specific components"""
@@ -1350,7 +1786,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
          # Initialize replay buffer
          seed = self.cfg.actor.get("seed", 1234)
          auto_save_path = self.cfg.algorithm.replay_buffer.get("auto_save_path", None)
-@@ -197,6 +248,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -197,6 +260,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
              trajectory_format=self.cfg.algorithm.replay_buffer.get(
                  "trajectory_format", "pt"
              ),
@@ -1359,7 +1795,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
          )
  
          min_demo_buffer_size = 0
-@@ -258,7 +311,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -258,7 +323,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          )
  
      def _init_target_shadow(self):
@@ -1368,7 +1804,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  
          bfloat16 has only 7 mantissa bits (ULP ~0.002 at magnitude 0.3).
          With tau=0.005, per-step EMA delta can be smaller than ULP/2, so
-@@ -266,9 +319,13 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -266,9 +331,13 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          keeps the accumulated EMA state in float32 (ULP ~3.6e-8) across
          steps, preventing precision loss.
          """
@@ -1383,7 +1819,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  
      def soft_update_target_model(self, tau: Optional[float] = None):
          """Soft update target model parameters.
-@@ -307,6 +364,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -307,6 +376,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                      self.target_model.named_parameters(),
                  ):
                      assert name1 == name2
@@ -1392,7 +1828,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
                      if "q_head" not in name1 and self.target_update_type != "all":
                          shadow = self._target_shadow_f32[name1]
                          shadow.copy_(online_param.data.float())
-@@ -360,7 +419,10 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -360,7 +431,10 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          if use_dsrl:
              num_action_chunks = self.cfg.actor.model.get("num_action_chunks", 1)
              discount = self.cfg.algorithm.gamma**num_action_chunks
@@ -1404,7 +1840,25 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
          else:
              discount = self.cfg.algorithm.gamma
              rewards_for_bootstrap = (
-@@ -578,6 +640,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -532,6 +606,17 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         actor_loss = ((self.entropy_temp.alpha * log_pi) - qf_pi).mean()
+ 
+         entropy = -log_pi.mean()
++        if self.use_dsrl:
++            noise = pi.detach().float()
++            metrics.update(
++                {
++                    "noise_event_dim": self.sac_action_event_size,
++                    "entropy_per_noise_dim": entropy.item()
++                    / self.sac_action_event_size,
++                    "noise_abs_mean": noise.abs().mean().item(),
++                    "noise_temporal_std": noise.std(dim=1, correction=0).mean().item(),
++                }
++            )
+         return actor_loss, entropy, metrics
+ 
+     @Worker.timer("forward_alpha")
+@@ -578,6 +663,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  drq.apply_drq(batch["next_obs"], pad=4)
              train_micro_batch_list[i] = batch
  
@@ -1414,7 +1868,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
          self.qf_optimizer.zero_grad()
          gbs_critic_loss = []
          all_critic_metrics = {}
-@@ -606,6 +671,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -606,6 +694,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
  
          if self.update_step % self.critic_actor_ratio == 0 and train_actor:
              self.optimizer.zero_grad()
@@ -1423,7 +1877,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
              gbs_actor_loss = []
              gbs_entropy = []
              all_actor_metrics = {}
-@@ -620,6 +687,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -620,6 +710,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  f"actor/{key}": np.mean(value)
                  for key, value in all_actor_metrics.items()
              }
@@ -1433,7 +1887,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
              actor_grad_norm = self.model.clip_grad_norm_(
                  max_norm=self.cfg.actor.optim.clip_grad
              )
-@@ -770,16 +840,35 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -770,16 +863,35 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
              self.load_optimizer(self.device)
              self.is_optimizer_offloaded = False
  
@@ -1478,7 +1932,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  
          # Save sac components
          # save alpha
-@@ -793,36 +882,203 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -793,36 +905,203 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  save_full_model_weights=False,
              )
  
@@ -1702,7 +2156,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
  
          # load alpha
          if self.alpha_optimizer is not None:
-@@ -834,22 +1090,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -834,22 +1113,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  load_path=alpha_load_path,
              )
  
@@ -1727,7 +2181,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..eea091db8e26b5bdedf379acfb762543
          self.replay_buffer.load_checkpoint(buffer_load_path)
 +        self._load_sac_training_state(load_base_path)
 diff --git a/rlinf/workers/env/env_worker.py b/rlinf/workers/env/env_worker.py
-index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a39e47d54c 100644
+index 2723eeddd085895c6ee0231e4c307fd958457f03..6a296f5d723f44e96ecf2ef786f07a3e9a22482c 100644
 --- a/rlinf/workers/env/env_worker.py
 +++ b/rlinf/workers/env/env_worker.py
 @@ -34,6 +34,14 @@ from rlinf.envs.utils import get_env_attr
@@ -1745,7 +2199,55 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
  from rlinf.utils.nested_dict_process import (
      clone_nested_to_cpu,
      copy_dict_tensor,
-@@ -52,6 +60,7 @@ class EnvWorker(Worker):
+@@ -43,6 +51,47 @@ from rlinf.utils.obs_compression import compress_obs, is_compression_enabled
+ from rlinf.utils.placement import HybridComponentPlacement
+ 
+ 
++def training_video_options(
++    video_cfg: DictConfig,
++    runner_cfg: DictConfig,
++    *,
++    rank: int,
++    world_size: int,
++    stage_id: int,
++    stage_num: int,
++    rollout_epoch: int,
++    default_max_videos: int = -1,
++) -> dict[str, int | None]:
++    """Divide a run-wide MP4 budget across environment recorders.
++
++    The user configuration keeps the global budget. Each wrapper receives a
++    local quota and the planned number of flushes for evenly spaced recording.
++    """
++    maximum = video_cfg.get("max_videos", default_max_videos)
++    if type(maximum) is not int or maximum < -1:
++        raise ValueError("video_cfg.max_videos must be an integer >= -1")
++    if (
++        world_size < 1
++        or stage_num < 1
++        or not 0 <= rank < world_size
++        or not 0 <= stage_id < stage_num
++        or rollout_epoch < 1
++    ):
++        raise ValueError("Expected valid environment ranks, stages and rollout_epoch")
++    count = world_size * stage_num
++    index = rank * stage_num + stage_id
++    local_maximum = (
++        -1 if maximum == -1 else maximum // count + int(index < maximum % count)
++    )
++    budgets = [
++        int(value)
++        for value in (runner_cfg.get("max_epochs", -1), runner_cfg.get("max_steps", -1))
++        if value is not None and int(value) >= 0
++    ]
++    slots = min(budgets) * rollout_epoch if budgets else None
++    return {"max_videos": local_maximum, "recording_slots": slots}
++
++
+ class EnvWorker(Worker):
+     # Class-level default so the observation send path is safe even when the
+     # instance is built without running ``__init__`` (e.g. ``object.__new__`` in
+@@ -52,6 +101,7 @@ class EnvWorker(Worker):
      _obs_split_fn = None
      _policy_input_split_fn = None
      collect_final_values = True
@@ -1753,7 +2255,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
  
      def __init__(self, cfg: DictConfig):
          Worker.__init__(self)
-@@ -107,6 +116,9 @@ class EnvWorker(Worker):
+@@ -107,6 +157,9 @@ class EnvWorker(Worker):
          self.use_external_reward_model = (
              self.use_reward_model and not self.use_realworld_reward
          )
@@ -1763,7 +2265,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
          self.env_infos_reward_keys = ("success", "episode", "final_info")
          if self.use_external_reward_model:
              self.reward_weight = self.cfg.reward.get("reward_weight", 1.0)
-@@ -241,6 +253,15 @@ class EnvWorker(Worker):
+@@ -241,6 +294,15 @@ class EnvWorker(Worker):
                  ), "eval envs must have an offload method to enable offload!"
  
          if self.enable_train:
@@ -1779,7 +2281,52 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
              if self.reward_mode == "history_buffer":
                  self.train_history_managers = [
                      HistoryManager(self.cfg.reward, self.train_num_envs_per_stage)
-@@ -434,10 +455,11 @@ class EnvWorker(Worker):
+@@ -329,6 +391,18 @@ class EnvWorker(Worker):
+         env_list = []
+ 
+         for stage_id in range(self.stage_num):
++            if (
++                getattr(self, "enable_online_lerobot", False)
++                and env_cfg is self.cfg.env.get("train")
++                and SupportedEnvType(env_cfg.env_type) is SupportedEnvType.ROBOTWIN
++                and env_cfg.task_config.get("wrist_camera_capture", "chunk_end")
++                != "all_steps"
++            ):
++                raise ValueError(
++                    "Online LeRobot collection requires "
++                    "env.train.task_config.wrist_camera_capture=all_steps "
++                    "for complete per-action camera observations"
++                )
+             env = env_cls(
+                 cfg=env_cfg,
+                 num_envs=num_envs_per_stage,
+@@ -342,7 +416,24 @@ class EnvWorker(Worker):
+             ):
+                 env = InsertDelay(env, self.cfg.env.delay_sampler)
+             if env_cfg.video_cfg.save_video:
+-                env = RecordVideo(env, env_cfg.video_cfg)
++                options = {}
++                if env_cfg is self.cfg.env.get("train"):
++                    options = training_video_options(
++                        env_cfg.video_cfg,
++                        self.cfg.runner,
++                        rank=self._rank,
++                        world_size=self._world_size,
++                        stage_id=stage_id,
++                        stage_num=self.stage_num,
++                        rollout_epoch=env_cfg.rollout_epoch,
++                        default_max_videos=(
++                            8
++                            if SupportedEnvType(env_cfg.env_type)
++                            is SupportedEnvType.ROBOTWIN
++                            else -1
++                        ),
++                    )
++                env = RecordVideo(env, env_cfg.video_cfg, **options)
+             if env_cfg.get("data_collection", None) and getattr(
+                 env_cfg.data_collection, "enabled", False
+             ):
+@@ -434,10 +525,11 @@ class EnvWorker(Worker):
              infos = infos_list[-1] if infos_list else None
          infos = infos or {}
          valid_action_mask = None
@@ -1795,7 +2342,40 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
          chunk_dones = torch.logical_or(chunk_terminations, chunk_truncations)
          final_obs = (
              self._build_chunk_final_obs(obs_list, infos_list)
-@@ -666,6 +688,7 @@ class EnvWorker(Worker):
+@@ -614,10 +706,31 @@ class EnvWorker(Worker):
+ 
+             for key, value in merged_final_obs.items():
+                 if key not in final_obs:
++                    if key in {"context_object_key", "task_descriptions"}:
++                        raise ValueError(f"Terminal observations must retain {key}")
+                     continue
+ 
+                 final_value = final_obs[key]
+-                if isinstance(value, torch.Tensor) and isinstance(
++                if key in {"context_object_key", "task_descriptions"}:
++                    if (
++                        not isinstance(value, list)
++                        or not isinstance(final_value, list)
++                        or len(value) != len(done_mask)
++                        or len(final_value) != len(done_mask)
++                        or any(
++                            not isinstance(item, str) for item in value + final_value
++                        )
++                    ):
++                        raise ValueError(
++                            f"{key} must contain one string per environment"
++                        )
++                    # Keep terminal images paired with their instruction and
++                    # object, even when reset samples another scene or prompt.
++                    merged_final_obs[key] = [
++                        final_value[index] if done else value[index]
++                        for index, done in enumerate(done_mask)
++                    ]
++                elif isinstance(value, torch.Tensor) and isinstance(
+                     final_value, torch.Tensor
+                 ):
+                     dst_mask = torch.as_tensor(done_mask, device=value.device)
+@@ -666,6 +779,7 @@ class EnvWorker(Worker):
          recv_channel: Channel,
          stage_id: int | None = None,
          last_run: bool = False,
@@ -1803,7 +2383,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
      ):
          if self.reward_mode in {"per_step", "history_buffer"}:
              observations = (
-@@ -678,6 +701,8 @@ class EnvWorker(Worker):
+@@ -678,6 +792,8 @@ class EnvWorker(Worker):
          else:
              return None
          reward_input = dict(observations)
@@ -1812,7 +2392,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
          if env_output.env_infos is not None:
              reward_input["env_infos"] = self._select_reward_env_infos(
                  env_output.env_infos
-@@ -685,7 +710,7 @@ class EnvWorker(Worker):
+@@ -685,7 +801,7 @@ class EnvWorker(Worker):
  
          dones = env_output.dones
          if dones is not None and getattr(dones, "ndim", 0) > 1:
@@ -1821,7 +2401,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
              reward_input.update({"dones": dones})
  
          if self.reward_mode == "history_buffer":
-@@ -722,6 +747,15 @@ class EnvWorker(Worker):
+@@ -722,6 +838,15 @@ class EnvWorker(Worker):
              batch_size=self.train_batch_size,
              decoupled_mode=self.env_decoupled_mode,
          )
@@ -1837,7 +2417,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
          if self.reward_mode != "terminal" or reward_output is None:
              return reward_output
          return self._scatter_terminal_reward_output(
-@@ -769,6 +803,8 @@ class EnvWorker(Worker):
+@@ -769,6 +894,8 @@ class EnvWorker(Worker):
              for stage_id in range(self.stage_num):
                  self.env_list[stage_id].is_start = True
                  extracted_obs, infos = self.env_list[stage_id].reset()
@@ -1846,7 +2426,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
                  dones = get_zero_dones()
                  terminations = dones.clone()
                  truncations = dones.clone()
-@@ -1108,9 +1144,13 @@ class EnvWorker(Worker):
+@@ -1108,9 +1235,13 @@ class EnvWorker(Worker):
          cooperative_yield: bool,
      ) -> dict[str, torch.Tensor]:
          env_metrics = defaultdict(list)
@@ -1860,7 +2440,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
              if epoch == 0 and self._prefetched_train_bootstrap is not None:
                  env_outputs = self._prefetched_train_bootstrap
                  self._prefetched_train_bootstrap = None
-@@ -1138,10 +1178,36 @@ class EnvWorker(Worker):
+@@ -1138,10 +1269,36 @@ class EnvWorker(Worker):
                      actions = self._recv_actions(input_channel, stage_id)
                      self.smooth_intervene.remember_actions(stage_id, actions)
  
@@ -1897,7 +2477,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
  
                      # LeRobot stores the observation from before each action.
                      # The env returns the frame after each action, so prepend the
-@@ -1168,16 +1234,30 @@ class EnvWorker(Worker):
+@@ -1168,16 +1325,30 @@ class EnvWorker(Worker):
                              send_channel=reward_channel,
                              recv_channel=input_channel,
                              stage_id=stage_id,
@@ -1929,7 +2509,7 @@ index 2723eeddd085895c6ee0231e4c307fd958457f03..d18d9f061d4d67397f437df2cc4725a3
                      env_part = self._publish_step(
                          rollout_channel,
                          env_output,
-@@ -1219,6 +1299,7 @@ class EnvWorker(Worker):
+@@ -1219,6 +1390,7 @@ class EnvWorker(Worker):
  
          for key, value in env_metrics.items():
              env_metrics[key] = torch.cat(value, dim=0).contiguous().cpu()

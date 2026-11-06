@@ -18,6 +18,7 @@ class _Episode:
     frames: list[np.ndarray]
     progress: float | None
     chunk_index: int = 0
+    context_object_key: str | None = None
 
 
 def _numpy(value: Any) -> np.ndarray:
@@ -33,8 +34,9 @@ class RobometerHTTPRewardModel(BaseRewardModel):
     ``reward_valid``, and ``reward_initial_observation``. The environment worker
     owns reset detection and supplies the true pre-reset terminal observation.
     Histories are keyed by stable environment IDs rather than batch positions.
-    ``single_stage`` returns scale * (progress - 1 + simulator_success) and
-    requires real post-action frames and explicit simulator success metadata.
+    ``single_stage`` returns scale * (simulator_success - lambda * (1 - progress)),
+    where ``progress_penalty_weight`` controls lambda (default 0.1). It requires
+    real post-action frames and explicit simulator success metadata.
     Histories are uniformly subsampled to at most ``max_frames`` per request.
     ``progress_delta`` computes scale * (p(current prefix) - p(previous prefix));
     the initial baseline is scored from the reset frame alone. ``progress``
@@ -49,6 +51,22 @@ class RobometerHTTPRewardModel(BaseRewardModel):
         self.max_frames = int(cfg.get("max_frames", 8))
         self.reward_mode = str(cfg.get("reward_mode", "single_stage"))
         self.reward_scale = float(cfg.get("reward_scale", 1.0))
+        penalty_weight = cfg.get("progress_penalty_weight", 0.1)
+        try:
+            self.progress_penalty_weight = float(penalty_weight)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "progress_penalty_weight must be finite and nonnegative"
+            ) from exc
+        if (
+            isinstance(penalty_weight, (bool, np.bool_))
+            or not np.isfinite(self.progress_penalty_weight)
+            or self.progress_penalty_weight < 0
+        ):
+            raise ValueError("progress_penalty_weight must be finite and nonnegative")
+        self.context_match_mode = str(cfg.get("context_match_mode", "fixed"))
+        if self.context_match_mode not in {"fixed", "object"}:
+            raise ValueError("context_match_mode must be 'fixed' or 'object'")
         if self.num_action_chunks < 1 or self.max_frames < 2:
             raise ValueError(
                 "num_action_chunks must be positive and max_frames at least 2"
@@ -63,9 +81,9 @@ class RobometerHTTPRewardModel(BaseRewardModel):
             float(cfg.get("read_timeout_s", 120.0)),
         )
         self._episodes: dict[int, _Episode] = {}
-        self._video_info: dict[str, torch.Tensor] = {}
+        self._video_info: dict[str, Any] = {}
 
-    def get_video_info(self) -> dict[str, torch.Tensor]:
+    def get_video_info(self) -> dict[str, Any]:
         """Return scores from the latest successful call for video annotation."""
         return self._video_info
 
@@ -93,6 +111,8 @@ class RobometerHTTPRewardModel(BaseRewardModel):
                 "reward_frame_mask",
                 "reward_simulator_success",
             )
+        if self.context_match_mode == "object":
+            required += ("context_object_key",)
         missing = [key for key in required if key not in observations]
         if missing:
             raise ValueError(f"Robometer reward payload is missing {missing}")
@@ -107,6 +127,13 @@ class RobometerHTTPRewardModel(BaseRewardModel):
         tasks = observations["task_descriptions"]
         if len(tasks) != count:
             raise ValueError(f"Expected {count} task instructions, got {len(tasks)}")
+        object_keys = [None] * count
+        if self.context_match_mode == "object":
+            object_keys = list(observations["context_object_key"])
+            if len(object_keys) != count or any(
+                not isinstance(key, str) or not key.strip() for key in object_keys
+            ):
+                raise ValueError("Expected one nonempty context_object_key per env")
         metadata = {}
         for key in ("reward_env_id", "reward_episode_start", "reward_valid", "dones"):
             values = _numpy(observations[key]).reshape(-1)
@@ -172,6 +199,7 @@ class RobometerHTTPRewardModel(BaseRewardModel):
                 "delta",
                 "reward",
                 "base_reward",
+                "progress_penalty_weight",
             )
         }
         video_info.update(
@@ -186,6 +214,11 @@ class RobometerHTTPRewardModel(BaseRewardModel):
             frame_count=torch.zeros(count, dtype=torch.int64),
             history_frame_count=torch.zeros(count, dtype=torch.int64),
         )
+        if self.context_match_mode == "object":
+            video_info.update(
+                context_object_key=object_keys.copy(),
+                context_demo_sha256=[None] * count,
+            )
         for index, env_id_value in enumerate(ids):
             if not metadata["reward_valid"][index]:
                 continue
@@ -193,12 +226,25 @@ class RobometerHTTPRewardModel(BaseRewardModel):
             task = str(tasks[index])
             baseline_index = None
             if metadata["reward_episode_start"][index]:
-                episode = _Episode(task, [initial_images[index].copy()], None)
+                initial_keys = initial.get("context_object_key")
+                if self.context_match_mode == "object" and (
+                    initial_keys is None or initial_keys[index] != object_keys[index]
+                ):
+                    raise ValueError("Reset and live context object identities differ")
+                episode = _Episode(
+                    task,
+                    [initial_images[index].copy()],
+                    None,
+                    context_object_key=object_keys[index],
+                )
                 if self.reward_mode == "progress_delta":
                     baseline_index = len(samples)
                     samples.append(
                         ProgressSample(
-                            np.stack(episode.frames), task, f"{env_id}:reset"
+                            np.stack(episode.frames),
+                            task,
+                            f"{env_id}:reset",
+                            episode.context_object_key,
                         )
                     )
             else:
@@ -211,8 +257,14 @@ class RobometerHTTPRewardModel(BaseRewardModel):
                     raise ValueError(
                         f"Environment {env_id} task changed without an episode reset"
                     )
+                if episode.context_object_key != object_keys[index]:
+                    raise ValueError("Context object changed within an episode")
                 episode = _Episode(
-                    task, list(episode.frames), episode.progress, episode.chunk_index
+                    task,
+                    list(episode.frames),
+                    episode.progress,
+                    episode.chunk_index,
+                    episode.context_object_key,
                 )
             if dense_frames is None:
                 real_frames = images[index : index + 1]
@@ -231,7 +283,12 @@ class RobometerHTTPRewardModel(BaseRewardModel):
             endpoint_index = len(samples)
             prefix = sample_prefix(np.stack(episode.frames), self.max_frames)
             samples.append(
-                ProgressSample(prefix, task, f"{env_id}:chunk:{episode.chunk_index}")
+                ProgressSample(
+                    prefix,
+                    task,
+                    f"{env_id}:chunk:{episode.chunk_index}",
+                    episode.context_object_key,
+                )
             )
             pending.append((index, env_id, episode, baseline_index, endpoint_index))
 
@@ -245,10 +302,21 @@ class RobometerHTTPRewardModel(BaseRewardModel):
                     float("nan") if episode.progress is None else episode.progress
                 )
             endpoint = predictions[endpoint_index].endpoint
+            if self.context_match_mode == "object":
+                prediction = predictions[endpoint_index]
+                if prediction.context_object_key != episode.context_object_key:
+                    raise ValueError("ICON returned a different context object")
+                video_info["context_demo_sha256"][index] = (
+                    prediction.context_demo_sha256
+                )
             base_reward = 0.0
             if self.reward_mode == "single_stage":
-                base_reward = 0.0 if simulator_success[index] else -1.0
-                value = endpoint + base_reward
+                success = float(simulator_success[index])
+                base_reward = success - self.progress_penalty_weight
+                value = success - self.progress_penalty_weight * (1.0 - endpoint)
+                video_info["progress_penalty_weight"][index] = (
+                    self.progress_penalty_weight
+                )
             elif self.reward_mode == "progress_delta":
                 value = endpoint - baseline
             else:

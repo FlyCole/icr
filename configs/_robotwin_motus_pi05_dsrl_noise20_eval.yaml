@@ -1,0 +1,9 @@
+# Load the 20x32 steering actor and full-noise critic, not the legacy 32D head.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_eval
+  - _self_
+
+rollout:
+  model:
+    openpi:
+      dsrl_noise_action_chunk_size: 20

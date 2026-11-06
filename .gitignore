@@ -33,5 +33,7 @@ __pycache__/
 htmlcov/
 
 # Local credentials and agent state
+.env
+.env.*
 /.aws/
 /.codex/

@@ -1,0 +1,31 @@
+# Build two fresh, train-only successful references with frozen Motus.
+schema_version: 1
+task_name: adjust_bottle
+checkpoint: /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2
+norm_stats: /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json
+action_horizon: 32
+action_chunk: 20
+max_actions: 200
+flow_steps: 5
+policy_seed: 1234
+max_attempts: 64
+seed_start_index: 0
+train_seeds_path: /home/yifei/icr/third_party/rlinf/rlinf/envs/sim/robotwin/seeds/train_seeds.json
+eval_seeds_path: /home/yifei/icr/third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json
+object_keys:
+  - 001_bottle/base13
+  - 001_bottle/base16
+output: /home/yifei/icr/data/context_demos/motus/adjust_bottle/object_bank
+
+# Consumed by the separate server launcher after the bank is complete.
+server:
+  context_match_mode: object
+  context_demo_bank_path: /home/yifei/icr/data/context_demos/motus/adjust_bottle/object_bank/manifest.json
+  server_url: 127.0.0.1
+  server_port: 8002
+  model_path: /home/yifei/icr/checkpoints/ICON-4B-inference
+  num_gpus: 1
+  max_workers: 1
+  context_kv_cache: true
+  context_kv_cache_max_entries: 8
+  context_kv_cache_max_mib: 1024

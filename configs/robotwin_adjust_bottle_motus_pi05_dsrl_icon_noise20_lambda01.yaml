@@ -1,0 +1,33 @@
+# Fresh fixed-context Motus trial with native_success - 0.1 * (1 - progress).
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_train
+    experiment_name: pi05_motus_adjust_bottle_dsrl_icon_noise20
+
+env:
+  train:
+    context_match_mode: fixed
+    video_cfg:
+      save_video: true
+      max_videos: 8
+    task_config:
+      wrist_camera_capture: chunk_end
+  eval:
+    context_match_mode: fixed
+    task_config:
+      wrist_camera_capture: chunk_end
+
+reward:
+  model:
+    server_url: http://127.0.0.1:8002
+    progress_penalty_weight: 0.1
+    context_match_mode: fixed
+    context_demo_bank_path: null

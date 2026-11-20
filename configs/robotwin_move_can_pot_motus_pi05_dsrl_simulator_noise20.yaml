@@ -1,0 +1,39 @@
+# Matched control with native simulator success only; no reward estimator.
+defaults:
+  - /_robotwin_motus_pi05_dsrl_noise20
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config
+
+runner:
+  logger:
+    log_path: /home/yifei/icr/outputs/motus_noise20_move_can_pot_lambda01/move_can_pot/simulator_train
+    experiment_name: pi05_motus_move_can_pot_dsrl_simulator_noise20
+
+env:
+  train:
+    context_match_mode: fixed
+    max_episode_steps: 400
+    max_steps_per_rollout_epoch: 400
+    video_cfg:
+      save_video: true
+      max_videos: 8
+    task_config:
+      task_name: move_can_pot
+      step_lim: 400
+      wrist_camera_capture: chunk_end
+  eval:
+    context_match_mode: fixed
+    max_episode_steps: 400
+    max_steps_per_rollout_epoch: 400
+    task_config:
+      task_name: move_can_pot
+      step_lim: 400
+      wrist_camera_capture: chunk_end
+
+reward:
+  use_reward_model: false
+  env_reward_weight: 1.0
+  reward_weight: 0.0

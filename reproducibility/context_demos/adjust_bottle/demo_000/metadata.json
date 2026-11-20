@@ -1,0 +1,198 @@
+{
+  "created_at_utc": "2026-10-30T09:50:49.149971+00:00",
+  "policy_checkpoint": "/home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+  "policy_task": "eval",
+  "policy_seed": 1235,
+  "policy_sampling": "SFT Gaussian initial noise; deterministic Euler flow; no DSRL",
+  "optimization_steps": 0,
+  "flow_steps": 5,
+  "action_chunk_size": 50,
+  "episode_action_limit": 200,
+  "render_shader": "default",
+  "render_denoiser": "none",
+  "center_crop": false,
+  "camera_type": "D435",
+  "attempts": [
+    {
+      "requested_scene_seed": 0,
+      "actual_scene_seed": 0,
+      "task_instruction": "Raise the handheld green bottle from the table using the correct arm, the left arm.",
+      "action_count": 200,
+      "simulator_success": false,
+      "reason": "timeout"
+    },
+    {
+      "requested_scene_seed": 1,
+      "actual_scene_seed": 1,
+      "task_instruction": "Grab the bottle with white neck and red top from the table and hold it head-up.",
+      "action_count": 127,
+      "simulator_success": true,
+      "reason": "native_success"
+    }
+  ],
+  "git": {
+    "icr": {
+      "revision": "198f97f0ae9ceba7485729f64ce3273ba6bc1e02",
+      "dirty": true
+    },
+    "rlinf": {
+      "revision": "8fc378bceb3e761442e9bd0936a682455b4d35b8",
+      "dirty": true
+    },
+    "robotwin": {
+      "revision": "dca9ec682688821c42944eacd7f5dd9bfb15396f",
+      "dirty": true
+    }
+  },
+  "source_sha256": {
+    "collector": "1a7f23e03c1913689f1a83023a54e2ee916ce945dcea155a8285f7732702b3e5",
+    "native_task": "e6ce32cd890030c41110bd95ecf6bc7597e064cd3663fb8436f39aecfe579470",
+    "vector_env": "e891e14f138c066b9511d07f6de86f45c2d6dac0ff2c0c82da6b8b3d6476a098",
+    "rlinf_env": "9d468358e2286b55d807f8fe9569419f1ef4e343488b2f0bfd4eabd521fad210"
+  },
+  "checkpoint_index_sha256": "f8525c64ed662e1e186cd89343ff60d63f1c972347dd460cee27c32188bbf4b5",
+  "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52",
+  "collection_config": {
+    "env": {
+      "env_type": "robotwin",
+      "total_num_envs": 1,
+      "auto_reset": false,
+      "ignore_terminations": false,
+      "reward_coef": 1.0,
+      "use_custom_reward": true,
+      "use_rel_reward": true,
+      "center_crop": false,
+      "seed": 1234,
+      "group_size": 1,
+      "use_fixed_reset_state_ids": true,
+      "max_steps_per_rollout_epoch": 200,
+      "max_episode_steps": 200,
+      "is_eval": false,
+      "assets_path": "/home/yifei/icr/third_party/robotwin",
+      "seeds_path": "/tmp/icr-icon-context-0yk8wuqz/training_seed.json",
+      "video_cfg": {
+        "save_video": false,
+        "info_on_video": true,
+        "video_base_dir": null
+      },
+      "enable_offload": false,
+      "task_config": {
+        "task_name": "adjust_bottle",
+        "step_lim": 200,
+        "planner_backend": "mplib",
+        "render_freq": 0,
+        "episode_num": 100,
+        "use_seed": false,
+        "save_freq": 15,
+        "embodiment": [
+          "aloha-agilex"
+        ],
+        "language_num": 100,
+        "domain_randomization": {
+          "random_background": false,
+          "cluttered_table": false,
+          "clean_background_rate": 1,
+          "random_head_camera_dis": 0,
+          "random_table_height": 0,
+          "random_light": false,
+          "crazy_random_light_rate": 0
+        },
+        "camera": {
+          "head_camera_type": "D435",
+          "wrist_camera_type": "D435",
+          "collect_head_camera": true,
+          "collect_wrist_camera": true
+        },
+        "data_type": {
+          "rgb": true,
+          "third_view": false,
+          "depth": false,
+          "pointcloud": false,
+          "observer": false,
+          "endpose": false,
+          "qpos": true,
+          "mesh_segmentation": false,
+          "actor_segmentation": false
+        },
+        "pcd_down_sample_num": 1024,
+        "pcd_crop": true,
+        "save_path": "./data",
+        "clear_cache_freq": 1,
+        "collect_data": false,
+        "eval_video_log": false,
+        "render_shader": "default",
+        "render_denoiser": "none",
+        "single_thread_render": true,
+        "save_data": false
+      },
+      "skip_intermediate_renders": false
+    },
+    "policy": {
+      "model_type": "openpi",
+      "precision": "bf16",
+      "pi05": true,
+      "is_lora": false,
+      "lora_rank": 32,
+      "num_action_chunks": 50,
+      "action_dim": 14,
+      "use_proprio": true,
+      "num_steps": 5,
+      "add_value_head": false,
+      "openpi": {
+        "task": "eval",
+        "config_name": "pi05_aloha_robotwin",
+        "num_images_in_input": 3,
+        "noise_level": 0.5,
+        "action_chunk": 50,
+        "num_steps": 5,
+        "train_expert_only": true,
+        "action_env_dim": 14,
+        "noise_method": "flow_ode",
+        "add_value_head": false,
+        "value_after_vlm": false,
+        "value_vlm_mode": "mean_token",
+        "detach_critic_input": false,
+        "model_action_dim": 32,
+        "paligemma_variant": "gemma_2b",
+        "action_expert_variant": "gemma_300m",
+        "max_token_len": 200,
+        "torch_compile": false
+      },
+      "model_path": "/home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+      "openpi_data": {
+        "norm_stats_path": "/home/yifei/icr/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json"
+      }
+    }
+  },
+  "schema_version": 1,
+  "task_name": "adjust_bottle",
+  "task_instruction": "Grab the bottle with white neck and red top from the table and hold it head-up.",
+  "simulator_success": true,
+  "split": "train",
+  "seed": 1,
+  "actual_scene_seed": 1,
+  "requested_scene_seed": 1,
+  "camera": "head",
+  "raw_rgb": true,
+  "frame_count": 128,
+  "action_count": 127,
+  "frame_shape": [
+    240,
+    320,
+    3
+  ],
+  "frames_dtype": "uint8",
+  "first_success_frame_index": 127,
+  "context_frames": 8,
+  "context_frame_indices": [
+    0,
+    18,
+    36,
+    54,
+    73,
+    91,
+    109,
+    127
+  ],
+  "frames_sha256": "69e02edeeec98efdbc424adf03449a74f38ecf9f98c157c0ce8fec862ae3e9ff"
+}

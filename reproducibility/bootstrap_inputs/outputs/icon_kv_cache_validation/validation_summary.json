@@ -1,0 +1,75 @@
+{
+  "created_at_utc": "2026-11-02T11:18:45.651582+00:00",
+  "deployment_approved": true,
+  "native_bounds_verified": true,
+  "fp32_report": {
+    "path": "/home/yifei/icr/outputs/icon_kv_cache_validation/checkpoint_fp32_validated.json",
+    "passed": true
+  },
+  "native_report_path": "/home/yifei/icr/outputs/icon_kv_cache_validation/checkpoint_native_validated.json",
+  "tested_source_sha256": {
+    "third_party/robometer_v2/robometer/models/context_kv_cache.py": "b057e307e8fe03c36c27c3ea236767d20ac2548a3f3737c5b887d83af19f71f5",
+    "third_party/robometer_v2/robometer/models/rbm.py": "37c369db1f0337f18d67d974ffee7cc0a166f263f2f6fc4d770cdc80cafea21a",
+    "third_party/robometer_v2/robometer/evals/eval_server.py": "a57764bbf2031b7da5be5dc746fa65f9bbedb487424b561bcff03a4b44165626",
+    "third_party/robometer_v2/robometer/configs/eval_configs.py": "1bc387bb3215701ae08add736e22e910193211ca0857f426e99dd7932f591c1a",
+    "third_party/robometer_v2/robometer/configs/eval_config_server.yaml": "22218b0697f25693a92b6c073c68ed9d0d7ceb130d07fc4aa3c4fb5e6a7ff82a",
+    "scripts/benchmark_icon_context_kv_cache.py": "6aea1953350679c5f515e099a1906747c2a73d1ffca40eb264634bcdbd20a840",
+    "tests/test_icon_context_kv_cache.py": "d28d258d0e247a409a1a8e8491186917a9cb2247fae8491ae7b256adff5b0549",
+    "scripts/continue_motus_with_icon_kv_cache.py": "2387cda34a6e565386a4dd168978de000a06252c1e391c16635d1346b84ab6fe",
+    "tests/test_motus_kv_continuation.py": "66d6dc06198a3ff17711581f1b8f0581aa06153db2af11e1ef5b1dde9d5e7194"
+  },
+  "production_precision": "unchanged native mixed precision and server autocast; no cache quantization",
+  "bitwise_equal_to_uncached": false,
+  "numerical_equivalence_note": "FP32 validation establishes computation parity within tolerance. Changing GPU operation shapes causes measured BF16 rounding differences; native outputs are approximately equivalent, not bitwise identical.",
+  "cached_repeat_note": "Every final benchmark case requires bitwise equality between its first cached output and repeated cached outputs.",
+  "native_acceptance_bounds": {
+    "progress_absolute": 0.005,
+    "success_probability_absolute": 0.01,
+    "raw_logit_absolute": 0.2,
+    "raw_logit_relative": 0.01
+  },
+  "fp32_acceptance_bounds": {
+    "progress_absolute": 1e-05,
+    "success_probability_absolute": 5e-05,
+    "raw_logit_absolute": 0.0001,
+    "raw_logit_relative": 1e-05
+  },
+  "fp32_tolerance_reason": "Sigmoid is 1/4-Lipschitz; probability tolerance accounts for the permitted raw-logit floating-point error.",
+  "initial_stricter_failed_reports_preserved": [
+    "/home/yifei/icr/outputs/icon_kv_cache_validation/checkpoint_parity_benchmark.json",
+    "/home/yifei/icr/outputs/icon_kv_cache_validation/checkpoint_fp32_parity_benchmark.json"
+  ],
+  "cpu_tests": {
+    "real_qwen3_cache_unit_tests": 15,
+    "existing_server_and_original_supervisor_regressions": 57,
+    "continuation_guards": 30
+  },
+  "training_reward_definition_unchanged": true,
+  "success_terminal": "native simulator success only",
+  "native_measurements": {
+    "case_count": 15,
+    "maximum_absolute_differences": {
+      "progress_logits/A": 0.16796875,
+      "success_logits/A": 0.15625,
+      "progress_pred": 0.0035910606384277344,
+      "success_probs": 0.009765625
+    },
+    "forward_speedup_min": 1.4037619853719645,
+    "forward_speedup_median": 1.7881936415414013,
+    "forward_speedup_max": 1.9213943260273436,
+    "estimated_collation_plus_forward_speedup_median": 1.568293706603706
+  },
+  "fp32_measurements": {
+    "case_count": 15,
+    "maximum_absolute_differences": {
+      "progress_logits/A": 7.271766662597656e-05,
+      "success_logits/A": 0.00010138750076293945,
+      "progress_pred": 3.7550926208496094e-06,
+      "success_probs": 2.250075340270996e-05
+    },
+    "forward_speedup_min": 1.9097018862211468,
+    "forward_speedup_median": 2.271007610335105,
+    "forward_speedup_max": 4.113849535157187,
+    "estimated_collation_plus_forward_speedup_median": 2.177839640139827
+  }
+}

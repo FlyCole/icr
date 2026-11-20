@@ -1,0 +1,9 @@
+{
+  "captured_on": "2026-11-20",
+  "resolved_configurations_checked": 54,
+  "formal_150_episode_results_checked_against_tensorboard": 31,
+  "original_config_sha256_checked": 54,
+  "comparison": "Restoring the original project/run/evaluation-checkpoint path variables makes every exported configuration exactly equal to its original saved resolved configuration, including all non-path values.",
+  "source_files": "Per-config original and exported SHA256 values are in ../experiments.json.",
+  "checks_do_not_establish": "Cross-machine numeric determinism or recovery of deleted historical code/checkpoint bytes."
+}

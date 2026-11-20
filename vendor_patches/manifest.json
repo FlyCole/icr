@@ -2,7 +2,7 @@
   "modules": [
     {
       "base_commit": "8fc378bceb3e761442e9bd0936a682455b4d35b8",
-      "expected_tree": "da1d1069d60e0ecbff4d955c6c37aefd028bea31",
+      "expected_tree": "b2fd684ca909d095ea222fe658783559132dd94f",
       "files": [
         {
           "blob": "4e6ad7a886b5d104bcf086d0d96c05a6ad40375c",
@@ -110,11 +110,11 @@
           "size": 32571
         },
         {
-          "blob": "8be1db9508b4b3df968c5183d1419770e486f1af",
+          "blob": "49cdad11cb812ce7ff94c1132ece5a0f2d26aa5b",
           "mode": "100644",
           "path": "rlinf/workers/actor/fsdp_sac_policy_worker.py",
-          "sha256": "de11142638cc83455465310044c9088ef8da5c163f3fa23adbbbc9dcf4815042",
-          "size": 47378
+          "sha256": "4d80e6b6d209903605dae41472f0a5ff13e2cbd210dd0e88eb0f1cfdcf01f5ba",
+          "size": 51474
         },
         {
           "blob": "6a296f5d723f44e96ecf2ef786f07a3e9a22482c",
@@ -168,7 +168,7 @@
       ],
       "name": "third_party/rlinf",
       "patch": "rlinf.patch",
-      "patch_sha256": "942651cf980ee8f0091cd19c9ab3f80797fe2b2bb4e3511efdb8c23a06960798",
+      "patch_sha256": "95ad310709fc320ff3190204ce6cb90c8bb9dce322f1cf0b778bd2bd6429900c",
       "path": "third_party/rlinf",
       "url": "https://github.com/RLinf/RLinf.git"
     },

@@ -381,7 +381,9 @@ def http_json(url: str, *, timeout: float = 10) -> dict:
         return json.load(response)
 
 
-def verify_robometer(*, root: Path = ROOT) -> dict:
+def verify_robometer(
+    *, root: Path = ROOT, fingerprint_path: Path | None = None
+) -> dict:
     health = http_json("http://127.0.0.1:8000/health")
     info = http_json("http://127.0.0.1:8000/model_info", timeout=30)
     if (
@@ -392,7 +394,8 @@ def verify_robometer(*, root: Path = ROOT) -> dict:
         or health.get("service_protocol") == "icon-fixed-context-v1"
     ):
         raise RuntimeError("Port8000 is not the expected original Robometer service")
-    fingerprint_path = root / "outputs/robometer_chunk20/server_source_fingerprint.json"
+    if fingerprint_path is None:
+        fingerprint_path = root / "outputs/robometer_chunk20/server_source_fingerprint.json"
     fingerprint = json.loads(fingerprint_path.read_text())
     source = root / "third_party/robometer/robometer/models/utils.py"
     if (

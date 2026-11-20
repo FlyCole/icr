@@ -1,0 +1,31 @@
+{
+  "model": "motus-robotics/pi0.5_robotwin2",
+  "revision": "effc6e1a99bd4d0edf9447e8ba313def67649cfe",
+  "started_at_utc": "2026-11-02T08:35:46.448381+00:00",
+  "destination": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+  "physical_destination": "/media/yifei/workspace_nvme/icr_motus/checkpoints/Motus-Pi05-RoboTwin2",
+  "files": {
+    "README.md": {
+      "size": 3236,
+      "sha256": "9b190ee56b9ab62f8a76edee1c698b5bbefd0b75a12ffa6ae214abfdfec51a0f",
+      "expected_lfs_sha256": null
+    },
+    "assets/pi0.5_clean_randomize_joint_training/norm_stats.json": {
+      "size": 3470,
+      "sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb",
+      "expected_lfs_sha256": null
+    },
+    "metadata.pt": {
+      "size": 3891,
+      "sha256": "ef52d518167a652b74cc1c4d3a49fc18f758c286fc0ee8485d33a3caf3bd99ee",
+      "expected_lfs_sha256": "ef52d518167a652b74cc1c4d3a49fc18f758c286fc0ee8485d33a3caf3bd99ee"
+    },
+    "model.safetensors": {
+      "size": 7473091464,
+      "sha256": "de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb",
+      "expected_lfs_sha256": "de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb"
+    }
+  },
+  "complete": true,
+  "completed_at_utc": "2026-11-02T08:44:42.294359+00:00"
+}

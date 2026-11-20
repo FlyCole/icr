@@ -1674,7 +1674,7 @@ index b84cf99576899877a71fb5478dbd07b336120adc..8309f9fa1bc609fc85ea901d235ae3e1
      # Count trajectories from each process
      trajectory_counts = []
 diff --git a/rlinf/workers/actor/fsdp_sac_policy_worker.py b/rlinf/workers/actor/fsdp_sac_policy_worker.py
-index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770e486f1af 100644
+index 0440933ee92a04d664f6e70a98963cc4f6d82319..49cdad11cb812ce7ff94c1132ece5a0f2d26aa5b 100644
 --- a/rlinf/workers/actor/fsdp_sac_policy_worker.py
 +++ b/rlinf/workers/actor/fsdp_sac_policy_worker.py
 @@ -20,6 +20,10 @@ import numpy as np
@@ -1741,7 +1741,15 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
  class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
      def __init__(self, cfg: DictConfig):
          super().__init__(cfg)
-@@ -119,6 +160,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -66,6 +107,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         self.demo_buffer = None
+         self.alpha_optimizer = None
+         self.update_step = 0
++        self.is_target_weight_offloaded = False
+         self.enable_drq = bool(getattr(self.cfg.actor, "enable_drq", False))
+ 
+     def init_worker(self):
+@@ -119,6 +161,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
  
          self.use_dsrl = _openpi_is_dsrl(self.cfg)
          use_dsrl = self.use_dsrl
@@ -1749,7 +1757,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          if use_dsrl:
              # DSRL: separate actor/critic encoders into different optimizer groups
              param_filters = {
-@@ -150,7 +192,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -150,7 +193,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          if alpha_type != "fixed_alpha":
              self.target_entropy = self.cfg.algorithm.entropy_tuning.get(
                  "target_entropy",
@@ -1758,8 +1766,65 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
              )
  
              self.alpha_optimizer = torch.optim.Adam(
-@@ -178,6 +220,27 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -176,8 +219,84 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+                 self.alpha_optimizer, self.cfg.algorithm.entropy_tuning.optim
+             )
  
++    def offload_param_and_grad(self, offload_grad: bool = False) -> None:
++        """Release both SAC models while the rollout policy uses the GPU.
++
++        The inherited actor helper owns only the online model. SAC also owns a
++        complete target model and FP32 EMA tensors, which must follow the same
++        residency boundary without changing their values or precision.
++        """
++        target = getattr(self, "target_model", None)
++        if target is not None and not getattr(
++            self, "is_target_weight_offloaded", False
++        ):
++            self._strategy.offload_param_and_grad(target, False)
++            self.is_target_weight_offloaded = True
++        if hasattr(self, "_target_shadow_f32"):
++            self._target_shadow_f32 = {
++                name: value.to("cpu", non_blocking=True)
++                for name, value in self._target_shadow_f32.items()
++            }
++        super().offload_param_and_grad(offload_grad)
++
++    def load_param_and_grad(self, device_id: int, load_grad: bool = False) -> None:
++        """Restore online/target weights and exact EMA state before SAC work."""
++        super().load_param_and_grad(device_id, load_grad)
++        target = getattr(self, "target_model", None)
++        if target is not None and getattr(
++            self, "is_target_weight_offloaded", False
++        ):
++            self._strategy.onload_param_and_grad(target, device_id, False)
++            self.is_target_weight_offloaded = False
++        if hasattr(self, "_target_shadow_f32"):
++            self._target_shadow_f32 = {
++                name: value.to(device_id, non_blocking=True)
++                for name, value in self._target_shadow_f32.items()
++            }
++
++    def offload_optimizer(self) -> None:
++        """Include critic and optional entropy moments in the actor offload."""
++        for optimizer in (
++            getattr(self, "qf_optimizer", None),
++            getattr(self, "alpha_optimizer", None),
++        ):
++            if optimizer is not None:
++                self._strategy.offload_optimizer(optimizer)
++        super().offload_optimizer()
++
++    def load_optimizer(self, device_id: int) -> None:
++        """Restore every SAC optimizer without recreating optimizer state."""
++        super().load_optimizer(device_id)
++        for optimizer in (
++            getattr(self, "qf_optimizer", None),
++            getattr(self, "alpha_optimizer", None),
++        ):
++            if optimizer is not None:
++                self._strategy.onload_optimizer(optimizer, device_id)
++
      def setup_sac_components(self):
          """Initialize SAC-specific components"""
 +        filter_terminal_padding = self.cfg.algorithm.replay_buffer.get(
@@ -1786,7 +1851,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          # Initialize replay buffer
          seed = self.cfg.actor.get("seed", 1234)
          auto_save_path = self.cfg.algorithm.replay_buffer.get("auto_save_path", None)
-@@ -197,6 +260,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -197,6 +316,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
              trajectory_format=self.cfg.algorithm.replay_buffer.get(
                  "trajectory_format", "pt"
              ),
@@ -1795,7 +1860,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          )
  
          min_demo_buffer_size = 0
-@@ -258,7 +323,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -258,7 +379,7 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          )
  
      def _init_target_shadow(self):
@@ -1804,7 +1869,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
  
          bfloat16 has only 7 mantissa bits (ULP ~0.002 at magnitude 0.3).
          With tau=0.005, per-step EMA delta can be smaller than ULP/2, so
-@@ -266,9 +331,13 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -266,9 +387,13 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          keeps the accumulated EMA state in float32 (ULP ~3.6e-8) across
          steps, preventing precision loss.
          """
@@ -1819,7 +1884,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
  
      def soft_update_target_model(self, tau: Optional[float] = None):
          """Soft update target model parameters.
-@@ -307,6 +376,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -307,6 +432,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                      self.target_model.named_parameters(),
                  ):
                      assert name1 == name2
@@ -1828,7 +1893,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
                      if "q_head" not in name1 and self.target_update_type != "all":
                          shadow = self._target_shadow_f32[name1]
                          shadow.copy_(online_param.data.float())
-@@ -360,7 +431,10 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -360,7 +487,10 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          if use_dsrl:
              num_action_chunks = self.cfg.actor.model.get("num_action_chunks", 1)
              discount = self.cfg.algorithm.gamma**num_action_chunks
@@ -1840,7 +1905,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          else:
              discount = self.cfg.algorithm.gamma
              rewards_for_bootstrap = (
-@@ -532,6 +606,17 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -532,6 +662,17 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
          actor_loss = ((self.entropy_temp.alpha * log_pi) - qf_pi).mean()
  
          entropy = -log_pi.mean()
@@ -1858,7 +1923,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          return actor_loss, entropy, metrics
  
      @Worker.timer("forward_alpha")
-@@ -578,6 +663,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -578,6 +719,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  drq.apply_drq(batch["next_obs"], pad=4)
              train_micro_batch_list[i] = batch
  
@@ -1868,7 +1933,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
          self.qf_optimizer.zero_grad()
          gbs_critic_loss = []
          all_critic_metrics = {}
-@@ -606,6 +694,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -606,6 +750,8 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
  
          if self.update_step % self.critic_actor_ratio == 0 and train_actor:
              self.optimizer.zero_grad()
@@ -1877,7 +1942,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
              gbs_actor_loss = []
              gbs_entropy = []
              all_actor_metrics = {}
-@@ -620,6 +710,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -620,6 +766,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  f"actor/{key}": np.mean(value)
                  for key, value in all_actor_metrics.items()
              }
@@ -1887,10 +1952,55 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
              actor_grad_norm = self.model.clip_grad_norm_(
                  max_norm=self.cfg.actor.optim.clip_grad
              )
-@@ -770,16 +863,35 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
-             self.load_optimizer(self.device)
-             self.is_optimizer_offloaded = False
+@@ -710,17 +859,27 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+     @Worker.timer("run_training")
+     def run_training(self):
+         """SAC training using replay buffer"""
+-        if self.cfg.actor.get("enable_offload", False):
+-            self.load_param_and_grad(self.device)
+-            self.load_optimizer(self.device)
+-
+-        # Check if replay buffer has enough samples
+         min_buffer_size = self.cfg.algorithm.replay_buffer.get("min_buffer_size", 100)
+-        if not self.replay_buffer.is_ready(min_buffer_size):
+-            self.log_on_first_rank(
+-                f"Replay buffer size {len(self.replay_buffer)} < {min_buffer_size}, skipping training"
+-            )
+-            return {}
++        enable_offload = self.cfg.actor.get("enable_offload", False)
++        try:
++            # Warmup needs only the CPU replay metadata. Loading either decoder
++            # here adds GPU pressure without doing an optimizer update.
++            if not self.replay_buffer.is_ready(min_buffer_size):
++                self.log_on_first_rank(
++                    f"Replay buffer size {len(self.replay_buffer)} < {min_buffer_size}, skipping training"
++                )
++                return {}
++            if enable_offload:
++                self.load_param_and_grad(self.device)
++                self.load_optimizer(self.device)
++            return self._run_training_on_device(min_buffer_size)
++        finally:
++            if enable_offload:
++                self.offload_optimizer()
++                self.offload_param_and_grad(True)
++
++    def _run_training_on_device(self, min_buffer_size):
++        """Run the unchanged SAC schedule while its models are on the GPU."""
  
+         # Delay actor training until buffer has enough samples
+         train_actor_steps = self.cfg.algorithm.get("train_actor_steps", 0)
+@@ -763,23 +922,61 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+         return {}
+ 
+     def save_checkpoint(self, save_base_path, step):
+-        if self.is_weight_offloaded:
+-            self.load_param_and_grad(self.device)
+-            self.is_weight_offloaded = False
+-        if self.is_optimizer_offloaded:
+-            self.load_optimizer(self.device)
+-            self.is_optimizer_offloaded = False
+-
 -        # Save model
 -        self._strategy.save_checkpoint(
 -            model=self.model,
@@ -1900,6 +2010,32 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
 -            checkpoint_format="local_shard"
 -            if self.cfg.actor.fsdp_config.use_orig_params
 -            else "dcp",
++        return self._checkpoint_on_device(
++            self._save_checkpoint_on_device, save_base_path, step
++        )
++
++    def _checkpoint_on_device(self, operation, *args):
++        """Keep checkpoint operations on the FSDP device and restore residency.
++
++        A newly initialized offloaded worker has not necessarily run FSDP's
++        lazy initialization yet. Its first state-dict operation therefore also
++        needs both models restored before entering the FSDP checkpoint APIs.
++        """
++        restore_weight_offload = self.is_weight_offloaded
++        restore_optimizer_offload = self.is_optimizer_offloaded
++        try:
++            if restore_weight_offload:
++                self.load_param_and_grad(self.device)
++            if restore_optimizer_offload:
++                self.load_optimizer(self.device)
++            return operation(*args)
++        finally:
++            if restore_optimizer_offload:
++                self.offload_optimizer()
++            if restore_weight_offload:
++                self.offload_param_and_grad(True)
++
++    def _save_checkpoint_on_device(self, save_base_path, step):
 +        compact_dsrl = self.use_dsrl and self.cfg.actor.get(
 +            "dsrl_compact_checkpoint", False
          )
@@ -1932,7 +2068,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
  
          # Save sac components
          # save alpha
-@@ -793,36 +905,203 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -793,36 +990,208 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  save_full_model_weights=False,
              )
  
@@ -2033,8 +2169,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
 +            raise ValueError("Compact DSRL checkpoint trainable parameter names differ")
 +        base_path = os.path.join(
 +            os.path.dirname(checkpoint_path), state["frozen_base_path"]
-         )
--        self.replay_buffer.save_checkpoint(buffer_save_path)
++        )
 +        base_state = torch.load(base_path, map_location="cpu", weights_only=True)
 +        base_state.update(state["model"])
 +        self._strategy.load_model_with_state_dict(
@@ -2067,7 +2202,8 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
 +        os.makedirs(state_dir, exist_ok=True)
 +        torch.save(
 +            state, os.path.join(state_dir, f"training_state_rank_{self._rank}.pt")
-+        )
+         )
+-        self.replay_buffer.save_checkpoint(buffer_save_path)
 +
 +    def _load_sac_training_state(self, load_base_path: str) -> None:
 +        """Restore local EMA shards after loading the target model weights."""
@@ -2125,6 +2261,11 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
 -            checkpoint_format="local_shard"
 -            if self.cfg.actor.fsdp_config.use_orig_params
 -            else "dcp",
++        return self._checkpoint_on_device(
++            self._load_checkpoint_on_device, load_base_path
++        )
++
++    def _load_checkpoint_on_device(self, load_base_path):
 +        compact_path = os.path.join(
 +            load_base_path, "dsrl_checkpoint", f"checkpoint_rank_{self._rank}.pt"
          )
@@ -2156,7 +2297,7 @@ index 0440933ee92a04d664f6e70a98963cc4f6d82319..8be1db9508b4b3df968c5183d1419770
  
          # load alpha
          if self.alpha_optimizer is not None:
-@@ -834,22 +1113,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
+@@ -834,22 +1203,9 @@ class EmbodiedSACFSDPPolicy(EmbodiedFSDPActor):
                  load_path=alpha_load_path,
              )
  

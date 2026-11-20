@@ -1,0 +1,484 @@
+{
+  "hashed_pin_count": 95,
+  "note": "Launch-time content identities only. Historical hashes do not contain source/model bytes. Runtime receipt hashes include local process/path evidence and are not numeric inputs to the policy.",
+  "original_manifest": "outputs/motus_noise20/adjust_bottle/simulator_run/experiment_manifest.json",
+  "original_manifest_sha256": "dd1f90408583de833a43e4b0c8e1f1edcbae88cd0da1c5bdeef0ed247142dfbf",
+  "path_root": "ICR_REPO_ROOT",
+  "pins": {
+    "checkpoints/Motus-Pi05-RoboTwin2/README.md": {
+      "kind": "model_asset",
+      "sha256": "9b190ee56b9ab62f8a76edee1c698b5bbefd0b75a12ffa6ae214abfdfec51a0f",
+      "size": 3236
+    },
+    "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json": {
+      "kind": "model_asset",
+      "sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb",
+      "size": 3470
+    },
+    "checkpoints/Motus-Pi05-RoboTwin2/metadata.pt": {
+      "kind": "model_asset",
+      "sha256": "ef52d518167a652b74cc1c4d3a49fc18f758c286fc0ee8485d33a3caf3bd99ee",
+      "size": 3891
+    },
+    "configs/_robotwin_adjust_bottle_pi05_dsrl_base.yaml": {
+      "kind": "config_source",
+      "sha256": "354026f0047076ecff933a859244b5bb149b02385475937fcbb59eb1e85786e9",
+      "size": 6062
+    },
+    "configs/_robotwin_adjust_bottle_pi05_dsrl_learned_reward.yaml": {
+      "kind": "config_source",
+      "sha256": "ffc8a0ccf68d8627ae63c55f5db03d8f566d4c6fb047496fce5eefb3c7be406e",
+      "size": 1267
+    },
+    "configs/_robotwin_motus_pi05_dsrl.yaml": {
+      "kind": "config_source",
+      "sha256": "c941dc5503cedd7a7ab35cf1eaaeb03778eff04b1f56ce312df2e6497cd60ae3",
+      "size": 1239
+    },
+    "configs/_robotwin_motus_pi05_dsrl_eval.yaml": {
+      "kind": "config_source",
+      "sha256": "7f47028cecfb9ff5a87e2a8b038454bc46e0fc372a812b1561ee4c809d904486",
+      "size": 460
+    },
+    "configs/_robotwin_motus_pi05_dsrl_noise20.yaml": {
+      "kind": "config_source",
+      "sha256": "ec2a0e482130aa71427fa2477a3da2fae966d5069bd8acd60e4294b59e675c3a",
+      "size": 1262
+    },
+    "configs/_robotwin_motus_pi05_dsrl_noise20_eval.yaml": {
+      "kind": "config_source",
+      "sha256": "abc47e93a6e8b17fb9e9df4a69d01baa6f4f78340b8b94e61c65b2fbc21d0657",
+      "size": 207
+    },
+    "configs/_robotwin_motus_pi05_eval.yaml": {
+      "kind": "config_source",
+      "sha256": "3ca3cdf5aa92fea3c6b120e4ebcdc16a949ab437c63b5e98eeb1b9d9310161a7",
+      "size": 2398
+    },
+    "configs/robotwin_adjust_bottle_motus_pi05_dsrl_simulator_noise20.yaml": {
+      "kind": "config_source",
+      "sha256": "d30b4b415ac23ed6189387b71611d757fc71ae017322edd6f88e2a4f6ed41eb5",
+      "size": 700
+    },
+    "configs/robotwin_adjust_bottle_motus_pi05_dsrl_simulator_noise20_eval.yaml": {
+      "kind": "config_source",
+      "sha256": "6fb9fa2bd01008132511a341b8399a6387b049f1802386a4b8c2703feddeb2eb",
+      "size": 710
+    },
+    "scripts/continue_motus_with_icon_kv_cache.py": {
+      "kind": "runtime_source",
+      "sha256": "2387cda34a6e565386a4dd168978de000a06252c1e391c16635d1346b84ab6fe",
+      "size": 21113
+    },
+    "scripts/run_motus_multitask_experiment.py": {
+      "kind": "runtime_source",
+      "sha256": "0be005b0ad650e4658734c80df6257f1895d8ff5deaf8c59451a7540a0ab0bca",
+      "size": 46398
+    },
+    "scripts/run_motus_noise20_experiment.py": {
+      "kind": "runtime_source",
+      "sha256": "59265070d6ff3ed42b86191778ccca3754c11cd976a120e597b4d6dbd877fcd7",
+      "size": 36776
+    },
+    "src/icl_reward/http.py": {
+      "kind": "runtime_source",
+      "sha256": "7affff4bf6fc3942cae2f1a422560f74d6c94013b44bb3f63addca02339f50ca",
+      "size": 7840
+    },
+    "src/icl_reward/rlinf_reward.py": {
+      "kind": "runtime_source",
+      "sha256": "6322617da14e80b22c42d18ae6dcc1384194e75649ba6a0d6d6e3030f97c847b",
+      "size": 12174
+    },
+    "third_party/rlinf/examples/embodiment/config/env/robotwin_adjust_bottle.yaml": {
+      "kind": "other",
+      "sha256": "6e5b2129551d9b928ed7fcc5d417c6733860ee888e3656491c63cde62a079e77",
+      "size": 1648
+    },
+    "third_party/rlinf/examples/embodiment/config/hybrid_engines/fsdp.yaml": {
+      "kind": "other",
+      "sha256": "bfac32f0cab583b13ad3213dd5f604a93318616ad006b20209f9ff7074cbcb8f",
+      "size": 2954
+    },
+    "third_party/rlinf/examples/embodiment/config/model/pi0_5.yaml": {
+      "kind": "other",
+      "sha256": "4c2fe0aa37d86ce42cc05a7edc11df0d49983948558cc5caf0e075969f644eed",
+      "size": 1098
+    },
+    "third_party/rlinf/examples/embodiment/config/weight_syncer/patch_syncer.yaml": {
+      "kind": "other",
+      "sha256": "16f5995464834120bf17c06e92b59964f3d8c79f9d258812da54228b92ed0236",
+      "size": 163
+    },
+    "third_party/rlinf/rlinf/data/storage/replay/buffer.py": {
+      "kind": "runtime_source",
+      "sha256": "f966aa2fd6f01dd0d2253f68cf563ff7ae09925782ba39cd9ea2befebaa490e7",
+      "size": 57796
+    },
+    "third_party/rlinf/rlinf/envs/sim/robotwin/robotwin_env.py": {
+      "kind": "runtime_source",
+      "sha256": "9d468358e2286b55d807f8fe9569419f1ef4e343488b2f0bfd4eabd521fad210",
+      "size": 19729
+    },
+    "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json": {
+      "kind": "other",
+      "sha256": "194164f7380fd7cad2a8940ca93def01c2be865da265e4af1c463d73b2aa482f",
+      "size": 87016
+    },
+    "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/train_seeds.json": {
+      "kind": "other",
+      "sha256": "55b25866308d4e7da486282982ead4d5857b53fd977f659b216045f1950b45e2",
+      "size": 311987
+    },
+    "third_party/rlinf/rlinf/models/embodiment/modules/compact_encoders.py": {
+      "kind": "runtime_source",
+      "sha256": "f3d04206d0633a6e9927008993f26f3c9a1086ea803fc69211b226b5c069a52a",
+      "size": 11298
+    },
+    "third_party/rlinf/rlinf/models/embodiment/modules/gaussian_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "bfa3825413a3fc40b7326ac68b0434aa350e71aa7256e498710cf767fe88e772",
+      "size": 12178
+    },
+    "third_party/rlinf/rlinf/models/embodiment/modules/q_head.py": {
+      "kind": "runtime_source",
+      "sha256": "b213e8fa33664e1d2721819983e577d43c2eaf206f760fcd9b2c26d7a6f98929",
+      "size": 10317
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "8336c6fb60c539bcbced09da82d5145aec684445b7297f9ec6e9084e12e30f14",
+      "size": 16660
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/apxinf_adapter.py": {
+      "kind": "runtime_source",
+      "sha256": "ac93c8a9e53171269ea2b42c4fe33b53f09d2b0cc759eeff6e545d2442942a5b",
+      "size": 21312
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/checkpoint.py": {
+      "kind": "runtime_source",
+      "sha256": "048b6d48a372775d6c2cff9dd6d95ffc54480999d9d6c6786b546ead3b24298a",
+      "size": 9972
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "372cae108c7625edb3c0387e7aa05f1f80adde95753e2899df0a2b083715d6bc",
+      "size": 26714
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/behavior_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "84082b4b3acd7ac35830678ad9622bf22d42ed98df783581831628019c01ab99",
+      "size": 5699
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/calvin_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "b6236562343cad2790b615172b093dfc775928bdf7da96a65067bccfddc68192",
+      "size": 2920
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/dual_franka_tcp_rot6d_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "090d8e6e4c0a4402ca5c58c122727b6d2700bd2c81b285fa832a596699f5f393",
+      "size": 3215
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/franka_co_training_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "b275b212466ab9310683f539f6087b9f409a6d8c4fbd0c3a710923fcddaed76b",
+      "size": 3947
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/franka_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "5cd91d9e11ecb3342a01d9868befe69abd8becce03bb9d22e08c79a25eb37991",
+      "size": 3914
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/gsenv_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "34cf97e297f67d595cf997c0dc14b2d446a4fa19ab669607987721c80c608fa1",
+      "size": 2095
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/isaaclab_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "e38616c7e17e7e7f63ce279cba667d641f002b4e140a7d42ef31a1bf07d959b3",
+      "size": 2410
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/libero_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "80f5157a5d8c946f343c07bf1e31f782639203d86c91ede4a1b8af210c29e6a3",
+      "size": 5294
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/maniskill_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "064ebb68319dc400bbd6cd619e0fc3c5ef4805fc46a4186fb2f4a38a75d22b2d",
+      "size": 5331
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/maniskill_rlt_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "9bcc9996b17eefccd94fe2945210ab312fe51069df2a30e4f8f6cf0c40d57d7e",
+      "size": 3343
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/metaworld_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "2f2d6fc6e7af6277b424b419a1971862db1c2c723045ed291cb3a24ff771d99f",
+      "size": 2487
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/polaris_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "3c6e797da220b3d83aa28c6c4e2694ff0608f72cabb0c9441198a7a8bba0f448",
+      "size": 4621
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/realworld_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "e57b92ce825c8fc36546b906913ef46a6c10fc13bca9c77796df7033508a095e",
+      "size": 2771
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/robocasa_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "103188756962ab677b82fc5900b6186f8d92d8afd10b897a89a2f40c41fc1719",
+      "size": 4672
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/robotwin_aloha_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "2ceafb0798de7a9198ad8e12728f2af441f2c3f72c221b790b4f4867451797b1",
+      "size": 4286
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/dataconfig/yam_dataconfig.py": {
+      "kind": "runtime_source",
+      "sha256": "198e2055273f6aa943fb1ade98bf3339d76711f318390d1dbbf28c5b6b9730da",
+      "size": 2805
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/env_io.py": {
+      "kind": "runtime_source",
+      "sha256": "ba36371be49982fc921cb4bd1a1ec1e7a32f2c3f5eef084be59385f0155b86dc",
+      "size": 6017
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "40a162209a7702695a07639608ddc70212f266ed8cfc34d1c13310ceff4663fd",
+      "size": 659
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/gemma.py": {
+      "kind": "runtime_source",
+      "sha256": "552625553b40efb52e0880cdf663d0097fe008e1943ab205d9cfe00cc9c5ae78",
+      "size": 24817
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/lora.py": {
+      "kind": "runtime_source",
+      "sha256": "d8424a9a768813af753e27a1e7c201cd7f83c9e00db8c5beaa302b8ff0f31304",
+      "size": 7334
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/model.py": {
+      "kind": "runtime_source",
+      "sha256": "79b9c27a3783a1a3166bd5aa8e23d9220df0084ea718c0a98482754b216b0370",
+      "size": 13872
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/pointnet.py": {
+      "kind": "runtime_source",
+      "sha256": "46187b2b8448fb98d6cf75dd21a4bd652bcae08b50e7edf9f83bfe5f827ed653",
+      "size": 3800
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/siglip.py": {
+      "kind": "runtime_source",
+      "sha256": "828a57ef60eaac570c7fd6421432b7934ba9fcb03b6bcbcebc21913d878dd95e",
+      "size": 12126
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/modules/utils.py": {
+      "kind": "runtime_source",
+      "sha256": "ff4d13f8cd41e64844e12be64af1892fff409b7cdfa24443d98a96ed98375bfb",
+      "size": 1893
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/pi0.py": {
+      "kind": "runtime_source",
+      "sha256": "b5d84d0669362a96d5bb4c5cbc4012d74ee8ecbbf6251abb9952f42fc017299d",
+      "size": 37606
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/pi0_config.py": {
+      "kind": "runtime_source",
+      "sha256": "3f848a22de2bb5a458b25714880fd565d23bb30fc6831ceef1e336480b1321e1",
+      "size": 2555
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "c106f850b103b97d89d55b389e53927cad17e8add7bdfe251d3d9b071d038de1",
+      "size": 583
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/aloha_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "a1165b3d987fd021c67ce8722a2f86a150e3ebaf1340750ec6819bbe619c16c3",
+      "size": 8627
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/behavior_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "ec7c0025e886f1e73f9d803acc405d12055254e5699f7765a577f7c34116b841",
+      "size": 6816
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/calvin_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "f85d256abf7f7baa3e91b243bc96e23d1acd979ffeb9537a44633dbdf6a0131a",
+      "size": 3063
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/dual_franka_tcp_rot6d_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "cfa85b36379db218025a2358d931a0ad83d86fc67c86aa44b2e8b38debdbe687",
+      "size": 4028
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/franka_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "4436b48d9c92c2a8d88a607675b367be22023e50e127761cff059374ce6a463c",
+      "size": 4893
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/gsenv_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "e69a8c74af92bdf78ba89becdc972d0b1df583304dfc6fc745aef0d890f2edd7",
+      "size": 2325
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/isaaclab_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "32413a2ee79be5cac42440ce5316c4c28db656d8ab29bb6c39809e9c640a873a",
+      "size": 2879
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/libero_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "e060c68094f02bf90a456d1bfb7ab8cb5767aec620115770d519aadb3e7d2975",
+      "size": 4976
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/maniskill_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "d72ed59ccf3bd1bd6f334120ce4969c6d6b97ac865be2378b11e068d7ad4c506",
+      "size": 5059
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/metaworld_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "02b9e2aa41150b1d7d0db72985eb9f4abcd7ce0b818ad7f7b53ad13cc3e1422f",
+      "size": 2545
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/realworld_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "5902ba8c7fa3e7f0b14208fa10b0e51242ec5716c5f969fbe83212823aff7e3e",
+      "size": 4090
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/robocasa_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "6e90efc3a321d95219b5eb3fa739f8041336c0a1e29596051e905f71940f1f40",
+      "size": 8179
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/policies/yam_policy.py": {
+      "kind": "runtime_source",
+      "sha256": "c844ffe3136a92c7935dc9485000a2e3d38ebf36f8ec76e1fbab924214f2bae5",
+      "size": 3773
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/rlt_config.py": {
+      "kind": "runtime_source",
+      "sha256": "71de3d2298af10cc6ffbb894128d632a83da5bc54f10d2d4e05bcb9501e201d8",
+      "size": 2355
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/sampling/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "49cfd30f9c634dfe23ee37aea8636394a5a1fe04473dc2dfdd20e9b4997eb30c",
+      "size": 582
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/sampling/rl_sampler.py": {
+      "kind": "runtime_source",
+      "sha256": "e8ec916c5bcebab3bc2ecd6d043c5e859372c71f622c88a74b5e067a99c88086",
+      "size": 6528
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/sampling/rtc_guidance.py": {
+      "kind": "runtime_source",
+      "sha256": "805f5aa7a51d3f167ba2441cc954830a7defa0e29745695b9d4c789e66312d7e",
+      "size": 5922
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/tasks/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "cd87241ec38ef82988c3d9af8915ab9cf8a57ecada85d3a38fedf4aa068a2126",
+      "size": 805
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/tasks/dagger.py": {
+      "kind": "runtime_source",
+      "sha256": "fd7cc9238ac9296f1ef514c530a3c6d754f81acf88a72f2ffeb72aa7da89ed91",
+      "size": 7826
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/tasks/dsrl.py": {
+      "kind": "runtime_source",
+      "sha256": "0a95dd02c3ff4136b2c75fca200ff3276f525cb7633f7f9e19748ef9ff87585f",
+      "size": 13450
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/tasks/eval.py": {
+      "kind": "runtime_source",
+      "sha256": "ed5378ebd65c2a1948e42238017f10c2542a48b17c5df1c74cffe9d03e7b7231",
+      "size": 7009
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/tasks/rl.py": {
+      "kind": "runtime_source",
+      "sha256": "72e41f2cbeb3a485a8ff318ecdd70d80408c5895bb76291c323d8568cdb29d61",
+      "size": 22736
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "37a26b9a0d17cc921a5dac107586be212a243d18be5b8fcf32b9b29376f30dbd",
+      "size": 671
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/apply.py": {
+      "kind": "runtime_source",
+      "sha256": "c416bf7c803cad303659eafc95961400806cc7c4438b20f57f6895c96e2eb278",
+      "size": 3501
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/env/__init__.py": {
+      "kind": "runtime_source",
+      "sha256": "ddfff37ddec75b43b51c7a08d9908b831b3494fb831cb3aa2f608b20a8ca87ae",
+      "size": 1160
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/env/calvin.py": {
+      "kind": "runtime_source",
+      "sha256": "d9809e797a8a195071d0ed732f56ffa18da635633300cb88748d9b4d7f1fe0e2",
+      "size": 1549
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/env/default.py": {
+      "kind": "runtime_source",
+      "sha256": "d32b4c3408fa6cc080012c31bf901ceca915e99d0163ef7af089b521c213421c",
+      "size": 1396
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/pipeline.py": {
+      "kind": "runtime_source",
+      "sha256": "890e9f3e72c49c12c42fbfea18879d02456c66f8b2507bf19d48c81e4f8e57ec",
+      "size": 3755
+    },
+    "third_party/rlinf/rlinf/models/embodiment/openpi/transforms/rigid_body_delta.py": {
+      "kind": "runtime_source",
+      "sha256": "0ca3b1a099682700ebab117d62c78b52a385f6b52e875fbad2d56ad415faf23d",
+      "size": 5020
+    },
+    "third_party/rlinf/rlinf/runners/embodied_eval_runner.py": {
+      "kind": "runtime_source",
+      "sha256": "c42a895de352d1e858c4aa17dd2443cf588078df8de254d748363b67fd83cbcb",
+      "size": 3824
+    },
+    "third_party/rlinf/rlinf/runners/embodied_runner.py": {
+      "kind": "runtime_source",
+      "sha256": "7f2b4b044e994b123d589ce349335dae872eaeafedb1c66fe9a213c42ffd8e22",
+      "size": 26392
+    },
+    "third_party/rlinf/rlinf/workers/actor/fsdp_sac_policy_worker.py": {
+      "kind": "runtime_source",
+      "sha256": "de11142638cc83455465310044c9088ef8da5c163f3fa23adbbbc9dcf4815042",
+      "size": 47378
+    },
+    "third_party/rlinf/rlinf/workers/env/env_worker.py": {
+      "kind": "runtime_source",
+      "sha256": "07e2b6740244b818512ab8f3a885a19fa174808251797abe8d30e5d2f00e3412",
+      "size": 59439
+    },
+    "third_party/robotwin/envs/_base_task.py": {
+      "kind": "runtime_source",
+      "sha256": "e6ce32cd890030c41110bd95ecf6bc7597e064cd3663fb8436f39aecfe579470",
+      "size": 106424
+    },
+    "third_party/robotwin/envs/adjust_bottle.py": {
+      "kind": "runtime_source",
+      "sha256": "fc9288b497d588588d495540a7f42f18b5d50832f8b0169356b64925e26b0830",
+      "size": 3406
+    },
+    "third_party/robotwin/robotwin/envs/vector_env.py": {
+      "kind": "runtime_source",
+      "sha256": "e891e14f138c066b9511d07f6de86f45c2d6dac0ff2c0c82da6b8b3d6476a098",
+      "size": 19897
+    }
+  }
+}

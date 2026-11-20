@@ -1,0 +1,149 @@
+# Saved resolved configuration; learning values are unchanged.
+# Original configuration SHA256: 8c069bfe9436d54e85ae60b673768e0ce9556167771e234fcfbe7505c915df0d
+# Set ICR_REPO_ROOT and a fresh ICR_RUN_ROOT before using this snapshot.
+# Trained-policy evaluation also requires ICR_EVAL_CHECKPOINT.
+env:
+  eval:
+    env_type: robotwin
+    total_num_envs: 2
+    auto_reset: true
+    ignore_terminations: true
+    reward_coef: 1.0
+    use_custom_reward: true
+    use_rel_reward: true
+    center_crop: false
+    seed: 0
+    group_size: 1
+    use_fixed_reset_state_ids: false
+    max_steps_per_rollout_epoch: 200
+    max_episode_steps: 200
+    is_eval: true
+    assets_path: ${oc.env:ICR_REPO_ROOT}/third_party/robotwin
+    seeds_path: ${oc.env:ICR_REPO_ROOT}/third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json
+    video_cfg:
+      save_video: true
+      info_on_video: false
+      video_base_dir: ${oc.env:ICR_RUN_ROOT}/video/eval
+      fps: 20
+    enable_offload: false
+    task_config:
+      task_name: adjust_bottle
+      step_lim: 200
+      planner_backend: mplib
+      render_freq: 0
+      episode_num: 100
+      use_seed: false
+      save_freq: 15
+      embodiment:
+      - aloha-agilex
+      language_num: 100
+      domain_randomization:
+        random_background: false
+        cluttered_table: false
+        clean_background_rate: 1
+        random_head_camera_dis: 0
+        random_table_height: 0
+        random_light: false
+        crazy_random_light_rate: 0
+      camera:
+        head_camera_type: D435
+        wrist_camera_type: D435
+        collect_head_camera: true
+        collect_wrist_camera: true
+      data_type:
+        rgb: true
+        third_view: false
+        depth: false
+        pointcloud: false
+        observer: false
+        endpose: false
+        qpos: true
+        mesh_segmentation: false
+        actor_segmentation: false
+      pcd_down_sample_num: 1024
+      pcd_crop: true
+      save_path: ./data
+      clear_cache_freq: 1
+      collect_data: true
+      eval_video_log: true
+      render_denoiser: none
+      render_shader: default
+      single_thread_render: true
+    rollout_epoch: 75
+    skip_intermediate_renders: false
+  group_name: EnvGroup
+  enable_offload: true
+rollout:
+  model:
+    model_type: openpi
+    precision: bf16
+    pi05: true
+    is_lora: false
+    lora_rank: 32
+    num_action_chunks: 50
+    action_dim: 14
+    use_proprio: true
+    num_steps: 5
+    add_value_head: false
+    openpi:
+      task: dsrl
+      config_name: pi05_aloha_robotwin
+      num_images_in_input: 3
+      noise_level: 0.3
+      action_chunk: 50
+      num_steps: 5
+      train_expert_only: true
+      action_env_dim: 14
+      noise_method: flow_sde
+      add_value_head: false
+      value_after_vlm: false
+      value_vlm_mode: mean_token
+      detach_critic_input: true
+      model_action_dim: 32
+      paligemma_variant: gemma_2b
+      action_expert_variant: gemma_300m
+      max_token_len: 200
+      torch_compile: false
+      dsrl_state_dim: 14
+      dsrl_action_noise_dim: 32
+      dsrl_num_q_heads: 10
+      dsrl_image_latent_dim: 64
+      dsrl_state_latent_dim: 64
+      dsrl_hidden_dims:
+      - 128
+      - 128
+      - 128
+    model_path: ${oc.env:ICR_EVAL_CHECKPOINT}
+    openpi_data:
+      norm_stats_path: ${oc.env:ICR_REPO_ROOT}/checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json
+    add_q_head: true
+  group_name: RolloutGroup
+  backend: huggingface
+  recompute_logprobs: false
+  enable_offload: true
+  pipeline_stage_num: 1
+cluster:
+  num_nodes: 1
+  component_placement:
+    env, rollout: 0-1
+  tracer:
+    enable: false
+runner:
+  task_type: embodied_eval
+  logger:
+    log_path: ${oc.env:ICR_RUN_ROOT}
+    project_name: rlinf
+    experiment_name: pi05_dsrl_eval
+    logger_backends:
+    - tensorboard
+  max_epochs: 1
+  max_steps: -1
+  only_eval: true
+  val_check_interval: -1
+  save_interval: -1
+  resume_dir: null
+  ckpt_path: null
+  per_worker_log: false
+  per_worker_log_path: null
+  weight_sync_interval: 1
+  overlap_env_bootstrap: false

@@ -1,10 +1,11 @@
-"""Run fresh fixed-context noise20 ICON and Robometer trials in order.
+"""Run fresh noise20 DSRL trials in a selected reward-method order.
 
 Each method completes its own two-collection SAC smoke, fresh400-collection
 training and150-scene native-success evaluation before the next method starts.
 ICON uses one fixed successful training demonstration on port8002.
 Reward is native_success - penalty_weight * (1 - estimated_progress).
-The existing8000/8001 services are never stopped by this queue.
+Existing services are left untouched. The optional low-memory profile starts
+its own reward service only while its training method needs it.
 """
 
 from __future__ import annotations
@@ -39,9 +40,10 @@ deferred = noise.import_script(
 )
 TASK = "click_bell"
 METHODS = ("icon", "robometer")
+SUPPORTED_METHODS = ("simulator", *METHODS)
 OUT = ROOT / "outputs/motus_noise20_click_bell_lambda01"
 PENALTY_WEIGHT = 0.1
-TASK_CAPS = {"click_bell": 400, "adjust_bottle": 200}
+TASK_CAPS = {"click_bell": 400, "adjust_bottle": 200, "move_can_pot": 400}
 
 
 def validate_penalty_weight(value):
@@ -61,22 +63,27 @@ def penalty_tag(penalty_weight=PENALTY_WEIGHT):
     return text.replace(".", "" if text.startswith("0.") else "p")
 
 
-def default_output(task=TASK, penalty_weight=PENALTY_WEIGHT):
+def default_output(task=TASK, penalty_weight=PENALTY_WEIGHT, *, low_gpu_memory=False):
     if task not in TASK_CAPS:
         raise ValueError(f"Unsupported task: {task}")
-    return ROOT / f"outputs/motus_noise20_{task}_lambda{penalty_tag(penalty_weight)}"
+    suffix = "_lowmem" if low_gpu_memory else ""
+    return ROOT / f"outputs/motus_noise20_{task}_lambda{penalty_tag(penalty_weight)}{suffix}"
 
 
 def experiment(method, *, task=TASK):
     default_output(task)
-    if method not in METHODS:
+    if method not in SUPPORTED_METHODS:
         raise ValueError(f"Unknown method: {method}")
     return f"pi05_motus_{task}_dsrl_{method}_noise20"
 
 
 def config_name(method, *, evaluation=False, task=TASK):
     experiment(method, task=task)
-    suffix = "_lambda01" if task == "adjust_bottle" else ""
+    suffix = (
+        "_lambda01"
+        if method != "simulator" and task in {"adjust_bottle", "move_can_pot"}
+        else ""
+    )
     return f"robotwin_{task}_motus_pi05_dsrl_{method}_noise20{suffix}" + (
         "_eval" if evaluation else ""
     )
@@ -108,19 +115,24 @@ def checkpoint_path(
 
 
 def stage_overrides(
-    method, stage, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT
+    method, stage, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT,
+    low_gpu_memory=False,
 ):
+    if out is None:
+        out = default_output(task, penalty_weight, low_gpu_memory=low_gpu_memory)
     values = [
         "runner.logger.log_path="
         + str(
             stage_path(method, stage, out=out, task=task, penalty_weight=penalty_weight)
         )
     ]
-    if stage != "eval":
+    if stage != "eval" and method != "simulator":
         values.append(
             "reward.model.progress_penalty_weight="
             + str(validate_penalty_weight(penalty_weight))
         )
+    if low_gpu_memory and stage != "eval":
+        values.append("actor.enable_offload=true")
     if stage == "smoke":
         values += [
             "runner.max_epochs=2",
@@ -144,10 +156,13 @@ def stage_overrides(
 
 
 def verify_config(
-    cfg, method, stage, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT
+    cfg, method, stage, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT,
+    low_gpu_memory=False,
 ):
     """Validate task-specific fields, then reuse the unchanged SAC contract."""
     evaluation = stage == "eval"
+    if out is None:
+        out = default_output(task, penalty_weight, low_gpu_memory=low_gpu_memory)
     required = {
         "runner.logger.log_path": str(
             stage_path(method, stage, out=out, task=task, penalty_weight=penalty_weight)
@@ -174,21 +189,23 @@ def verify_config(
             checkpoint_path(method, out=out, task=task, penalty_weight=penalty_weight)
         )
     else:
+        required["actor.enable_offload"] = low_gpu_memory
         required["env.train.video_cfg.max_videos"] = 8
         required["env.train.use_fixed_reset_state_ids"] = False
         required["env.train.seeds_path"] = str(
             ROOT / "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/train_seeds.json"
         )
-        if (
-            cfg["reward"]["model"].get("context_match_mode", "fixed") != "fixed"
-            or cfg["reward"]["model"].get("context_demo_bank_path") is not None
-        ):
-            raise RuntimeError(
-                f"{task} rewards require fixed context without an object bank"
+        if method != "simulator":
+            if (
+                cfg["reward"]["model"].get("context_match_mode", "fixed") != "fixed"
+                or cfg["reward"]["model"].get("context_demo_bank_path") is not None
+            ):
+                raise RuntimeError(
+                    f"{task} rewards require fixed context without an object bank"
+                )
+            required["reward.model.progress_penalty_weight"] = validate_penalty_weight(
+                penalty_weight
             )
-        required["reward.model.progress_penalty_weight"] = validate_penalty_weight(
-            penalty_weight
-        )
     for key, value in required.items():
         if base.saved_value(cfg, key) != value:
             raise RuntimeError(
@@ -224,31 +241,38 @@ def verify_config(
     )
 
 
-def resolved_configs(*, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
+def resolved_configs(
+    *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT, methods=METHODS,
+    low_gpu_memory=False,
+):
     penalty_weight = validate_penalty_weight(penalty_weight)
-    out = default_output(task, penalty_weight) if out is None else out
+    out = default_output(task, penalty_weight, low_gpu_memory=low_gpu_memory) if out is None else out
     result = {}
-    for method in METHODS:
+    for method in methods:
         result[method] = {}
         for stage in ("smoke", "train", "eval"):
             cfg = context.compose_config(
                 config_name(method, evaluation=stage == "eval", task=task),
                 stage_overrides(
-                    method, stage, out=out, task=task, penalty_weight=penalty_weight
+                    method, stage, out=out, task=task, penalty_weight=penalty_weight,
+                    low_gpu_memory=low_gpu_memory,
                 ),
             )
             verify_config(
-                cfg, method, stage, out=out, task=task, penalty_weight=penalty_weight
+                cfg, method, stage, out=out, task=task, penalty_weight=penalty_weight,
+                low_gpu_memory=low_gpu_memory,
             )
             result[method][stage] = cfg
     return result
 
 
-def require_fresh(*, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
+def require_fresh(
+    *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT, methods=METHODS
+):
     out = default_output(task, penalty_weight) if out is None else out
     if (out / "queue_run").exists() or (out / "summary.json").exists():
         raise RuntimeError(f"Fresh {task} queue state already exists")
-    for method in METHODS:
+    for method in methods:
         for stage in ("smoke", "train", "eval", "run"):
             path = stage_path(
                 method, stage, out=out, task=task, penalty_weight=penalty_weight
@@ -364,9 +388,14 @@ def reward_trace_proof(directory, *, penalty_weight=PENALTY_WEIGHT):
     }
 
 
-def verify_smoke(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
+def verify_smoke(
+    method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT,
+    low_gpu_memory=False,
+):
     import yaml
 
+    if out is None:
+        out = default_output(task, penalty_weight, low_gpu_memory=low_gpu_memory)
     directory = stage_path(
         method, "smoke", out=out, task=task, penalty_weight=penalty_weight
     )
@@ -377,6 +406,7 @@ def verify_smoke(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
         out=out,
         task=task,
         penalty_weight=penalty_weight,
+        low_gpu_memory=low_gpu_memory,
     )
     metrics = {}
     for tag in (
@@ -415,13 +445,21 @@ def verify_smoke(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
         ),
         "fresh_training_resumes_smoke": False,
     }
-    proof["reward_trace"] = reward_trace_proof(directory, penalty_weight=penalty_weight)
+    if method != "simulator":
+        proof["reward_trace"] = reward_trace_proof(
+            directory, penalty_weight=penalty_weight
+        )
     return proof
 
 
-def evaluation_result(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT):
+def evaluation_result(
+    method, *, out=None, task=TASK, penalty_weight=PENALTY_WEIGHT,
+    low_gpu_memory=False,
+):
     import yaml
 
+    if out is None:
+        out = default_output(task, penalty_weight, low_gpu_memory=low_gpu_memory)
     directory = stage_path(
         method, "eval", out=out, task=task, penalty_weight=penalty_weight
     )
@@ -432,6 +470,7 @@ def evaluation_result(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEI
         out=out,
         task=task,
         penalty_weight=penalty_weight,
+        low_gpu_memory=low_gpu_memory,
     )
     counts = base.scalar_series(directory, "eval/num_trajectories")
     rates = base.scalar_series(directory, "eval/success_once")
@@ -462,7 +501,7 @@ def evaluation_result(method, *, out=None, task=TASK, penalty_weight=PENALTY_WEI
     }
 
 
-def collect_pins(demo, core, *, task=TASK):
+def collect_pins(demo, core, *, task=TASK, methods=METHODS, low_gpu_memory=False):
     # The old simulator helper supplies the common model/SAC/runtime dependency
     # set. Its additional bottle configs are harmless retained dependencies.
     pins = noise.collect_pins("simulator")
@@ -478,13 +517,18 @@ def collect_pins(demo, core, *, task=TASK):
         ROOT / "third_party/robometer/robometer/models/utils.py",
         ROOT / "third_party/robometer/robometer/evals/eval_server.py",
         ROOT / "outputs/robometer_chunk20/server_source_fingerprint.json",
-        Path(core["approval_path"]),
-        Path(demo["demo_path"]) / "frames.npy",
-        Path(demo["demo_path"]) / "metadata.json",
     }
-    paths.update(Path(value["path"]) for value in core["reports"].values())
+    if low_gpu_memory:
+        paths.add(ROOT / "scripts/serve_robometer_verified.py")
+    if core is not None:
+        paths.add(Path(core["approval_path"]))
+        paths.update(Path(value["path"]) for value in core["reports"].values())
+    if demo is not None:
+        paths.update(
+            Path(demo["demo_path"]) / name for name in ("frames.npy", "metadata.json")
+        )
     paths.update((ROOT / "third_party/robometer_v2/robometer").rglob("*.py"))
-    for method in METHODS:
+    for method in methods:
         for evaluation in (False, True):
             paths.update(
                 base.config_dependencies(
@@ -503,27 +547,92 @@ def collect_pins(demo, core, *, task=TASK):
     return pins
 
 
+def offline_robometer_preflight():
+    """Check weights and the logits converter without retaining a GPU service."""
+    model = ROOT / "checkpoints/Robometer-4B-inference"
+    required = [model / name for name in ("config.yaml", "config.json", "model.safetensors.index.json")]
+    if any(not path.is_file() or path.stat().st_size == 0 for path in required):
+        raise RuntimeError("Original Robometer checkpoint is incomplete")
+    index = json.loads(required[-1].read_text())
+    shards = sorted(set(index["weight_map"].values()))
+    if not shards or any(
+        not (model / name).is_file() or (model / name).stat().st_size == 0
+        for name in shards
+    ):
+        raise RuntimeError("Original Robometer checkpoint shards are missing")
+    env = base.server_environment()
+    env.update(CUDA_VISIBLE_DEVICES="", PYTHONPATH=str(ROOT / "third_party/robometer"))
+    proof = subprocess.run(
+        [str(ROOT / "robometer/bin/python"), str(ROOT / "scripts/serve_robometer_verified.py"), "--check-only"],
+        cwd=ROOT, env=env, check=True, text=True, capture_output=True,
+    )
+    return {
+        "deferred_until_method": True,
+        "gpu": 0,
+        "model_path": str(model),
+        "converter": json.loads(proof.stdout),
+    }
+
+
 class QueueSupervisor(noise.Supervisor):
     def __init__(self, args):
         self.task = getattr(args, "task", TASK)
+        self.low_gpu_memory = bool(getattr(args, "low_gpu_memory", False))
+        self.methods = tuple(getattr(args, "methods", METHODS))
+        if (
+            not self.methods
+            or len(set(self.methods)) != len(self.methods)
+            or any(method not in SUPPORTED_METHODS for method in self.methods)
+        ):
+            raise ValueError("Select one or more distinct supported methods")
         self.penalty_weight = validate_penalty_weight(
             getattr(args, "penalty_weight", PENALTY_WEIGHT)
         )
         if args.output_root is None:
-            args.output_root = default_output(self.task, self.penalty_weight)
-        args.method = METHODS[0]
+            args.output_root = default_output(
+                self.task, self.penalty_weight, low_gpu_memory=self.low_gpu_memory
+            )
+        args.method = self.methods[0]
         super().__init__(args)
         self.run_dir = self.out / "queue_run"
         self.state.update(
             task=self.task,
             method=None,
-            queue=list(METHODS),
+            queue=list(self.methods),
             progress_penalty_weight=self.penalty_weight,
+            low_gpu_memory=self.low_gpu_memory,
         )
         self.demo = None
+        self.server_kind = None
+        self.robometer_fingerprint = None
+        self._progress_token = None
 
     def status(self, stage, **details):
+        if getattr(self, "low_gpu_memory", False) and not self.owns_run:
+            self.state.update(stage=stage, updated_at_utc=noise.utc_now(), **details)
+            return
+        # The inherited cleanup owns self.server for either reward method.
+        if getattr(self, "server_kind", None) == "robometer" and "owned_icon_pid" in details:
+            details["owned_robometer_pid"] = details["owned_icon_pid"]
+            details["owned_icon_pid"] = None
         super().status(stage, **details)
+        if getattr(self, "low_gpu_memory", False) and self.owns_run:
+            token = (stage, self.state.get("global_step"))
+            if token != self._progress_token:
+                step = self.state.get("global_step")
+                maximum = {"smoke": 2, "train": 400, "eval": 1}.get(stage.rsplit("/", 1)[-1])
+                suffix = f" | step {step}/{maximum}" if step is not None and maximum else ""
+                with (self.out / "progress.log").open("a") as handle:
+                    handle.write(f"[{noise.utc_now()}] {stage}{suffix}\n")
+                self._progress_token = token
+            log_path = self.state.get("log_path")
+            if log_path and Path(log_path).is_file():
+                active = self.out / "current.log"
+                if not active.is_symlink() or os.readlink(active) != log_path:
+                    temporary = self.out / f".current-{os.getpid()}.log"
+                    temporary.unlink(missing_ok=True)
+                    temporary.symlink_to(log_path)
+                    temporary.replace(active)
         method = self.state.get("method")
         if (
             method
@@ -548,9 +657,14 @@ class QueueSupervisor(noise.Supervisor):
             )
 
     def preflight(self):
-        require_fresh(out=self.out, task=self.task, penalty_weight=self.penalty_weight)
+        require_fresh(
+            out=self.out, task=self.task, penalty_weight=self.penalty_weight,
+            methods=self.methods,
+        )
         configurations = resolved_configs(
-            out=self.out, task=self.task, penalty_weight=self.penalty_weight
+            out=self.out, task=self.task, penalty_weight=self.penalty_weight,
+            methods=self.methods,
+            low_gpu_memory=self.low_gpu_memory,
         )
         consumers = deferred.source_consumers(
             {
@@ -565,21 +679,32 @@ class QueueSupervisor(noise.Supervisor):
                 "Other main-checkout GPU jobs are active: " + json.dumps(consumers)
             )
         storage = base.require_storage(out=self.out)
-        base.require_port_free(8002)
-        service = base.verify_robometer()
-        demo = base.validate_demo(self.task)
-        core = context.require_cache_core()
-        pins = collect_pins(demo, core, task=self.task)
+        if "icon" in self.methods:
+            base.require_port_free(8002)
+        service = None
+        if "robometer" in self.methods:
+            if self.low_gpu_memory:
+                base.require_port_free(8000)
+                service = offline_robometer_preflight()
+            else:
+                service = base.verify_robometer()
+        demo = base.validate_demo(self.task) if "icon" in self.methods else None
+        core = context.require_cache_core() if "icon" in self.methods else None
+        pins = collect_pins(
+            demo, core, task=self.task, methods=self.methods,
+            low_gpu_memory=self.low_gpu_memory,
+        )
         base.verify_pins(pins)
         return {
             "passed": True,
             "task": self.task,
-            "ordered_methods": list(METHODS),
+            "ordered_methods": list(self.methods),
             "configurations": configurations,
             "storage": storage,
             "robometer": service,
             "fixed_context_demo": demo,
             "progress_penalty_weight": self.penalty_weight,
+            "low_gpu_memory": self.low_gpu_memory,
             "cache_core": core,
             "source_model_context_pins": pins,
             "fresh_training": True,
@@ -587,6 +712,7 @@ class QueueSupervisor(noise.Supervisor):
 
     def start_icon(self):
         base.require_port_free(8002)
+        self.server_kind = "icon"
         command = [
             str(ROOT / ".venv-icon/bin/python"),
             "-u",
@@ -653,6 +779,63 @@ class QueueSupervisor(noise.Supervisor):
             return
         raise RuntimeError("Owned ICON server did not become healthy within360seconds")
 
+    def start_robometer(self):
+        """Own a verified GPU0 server only for Robometer smoke and training."""
+        base.require_port_free(8000)
+        self.server_kind = "robometer"
+        directory = stage_path(
+            "robometer", "run", out=self.out, task=self.task,
+            penalty_weight=self.penalty_weight,
+        )
+        self.robometer_fingerprint = directory / "server_source_fingerprint.json"
+        command = [
+            str(ROOT / "robometer/bin/python"), "-u",
+            str(ROOT / "scripts/serve_robometer_verified.py"),
+            "--fingerprint", str(self.robometer_fingerprint),
+            "model_path=" + str(ROOT / "checkpoints/Robometer-4B-inference"),
+            "num_gpus=1", "max_workers=1",
+            "server_url=127.0.0.1", "server_port=8000",
+        ]
+        env = base.server_environment()
+        env.update(CUDA_VISIBLE_DEVICES="0", PYTHONPATH=str(ROOT / "third_party/robometer"))
+        with (directory / "robometer_service.log").open("x") as handle:
+            self.server = noise.OwnedChild(
+                subprocess.Popen(
+                    command, cwd=ROOT / "third_party/robometer", env=env,
+                    stdin=subprocess.DEVNULL, stdout=handle,
+                    stderr=subprocess.STDOUT, start_new_session=True,
+                )
+            )
+        self.status("robometer_service_loading", owned_robometer_pid=self.server.pid)
+        deadline = time.monotonic() + 420
+        while time.monotonic() < deadline:
+            if self.server.process.poll() is not None:
+                raise RuntimeError("Owned Robometer server exited while loading")
+            try:
+                identity = base.verify_robometer(fingerprint_path=self.robometer_fingerprint)
+            except (OSError, urllib.error.URLError, json.JSONDecodeError):
+                time.sleep(2)
+                continue
+            if identity["fingerprint"]["pid"] != self.server.pid:
+                raise RuntimeError("Robometer fingerprint belongs to a different process")
+            self.pins[str(self.robometer_fingerprint)] = base.file_identity(self.robometer_fingerprint)
+            base.write_json(
+                directory / "robometer_service_identity.json",
+                {"fingerprint_path": str(self.robometer_fingerprint), "identity": identity,
+                 "source_pin": self.pins[str(self.robometer_fingerprint)]},
+            )
+            return
+        raise RuntimeError("Owned Robometer server did not become healthy within420seconds")
+
+    def stop_owned_service(self):
+        if self.server is None:
+            return
+        kind = getattr(self, "server_kind", None) or "icon"
+        self.server.stop()
+        self.server = None
+        self.status(f"{kind}_service_stopped", **{f"owned_{kind}_pid": None})
+        self.server_kind = None
+
     def cache_evidence(self, stage):
         health = base.http_json("http://127.0.0.1:8002/health")
         base.validate_icon_health(health, self.task, self.demo)
@@ -674,7 +857,10 @@ class QueueSupervisor(noise.Supervisor):
         base.verify_pins(self.pins)
         base.require_storage(out=self.out)
         if method == "robometer" and stage != "eval":
-            base.verify_robometer()
+            if self.low_gpu_memory:
+                base.verify_robometer(fingerprint_path=self.robometer_fingerprint)
+            else:
+                base.verify_robometer()
         directory = stage_path(
             method,
             stage,
@@ -698,6 +884,7 @@ class QueueSupervisor(noise.Supervisor):
                 out=self.out,
                 task=self.task,
                 penalty_weight=self.penalty_weight,
+                low_gpu_memory=self.low_gpu_memory,
             ),
         ]
         log = directory.with_suffix(".log")
@@ -707,7 +894,7 @@ class QueueSupervisor(noise.Supervisor):
                     command,
                     cwd=ROOT / "third_party/rlinf",
                     env=base.native_environment(
-                        f"{'ab' if self.task == 'adjust_bottle' else 'cb'}-{method[0]}-{stage[0]}"
+                        f"{dict(adjust_bottle='ab', click_bell='cb', move_can_pot='mc')[self.task]}-{method[0]}-{stage[0]}"
                     ),
                     stdin=subprocess.DEVNULL,
                     stdout=handle,
@@ -725,7 +912,7 @@ class QueueSupervisor(noise.Supervisor):
             )
             while self.child.process.poll() is None:
                 if self.server and self.server.process.poll() is not None:
-                    raise RuntimeError("Owned ICON server exited during training")
+                    raise RuntimeError("Owned reward server exited during training")
                 self.status(f"{method}/{stage}", **noise.log_progress(log))
                 time.sleep(5)
             code = self.child.process.returncode
@@ -737,6 +924,13 @@ class QueueSupervisor(noise.Supervisor):
         self.status(f"{method}/{stage}_exited", child_pid=None, child_returncode=0)
 
     def run_method(self, method):
+        try:
+            return self._run_method(method)
+        finally:
+            if getattr(self, "low_gpu_memory", False):
+                self.stop_owned_service()
+
+    def _run_method(self, method):
         import yaml
 
         directory = stage_path(
@@ -751,9 +945,12 @@ class QueueSupervisor(noise.Supervisor):
         self.state.pop("evaluation", None)
         if method == "icon":
             self.start_icon()
+        elif method == "robometer" and getattr(self, "low_gpu_memory", False):
+            self.start_robometer()
         self.run_stage(method, "smoke")
         proof = verify_smoke(
-            method, out=self.out, task=self.task, penalty_weight=self.penalty_weight
+            method, out=self.out, task=self.task, penalty_weight=self.penalty_weight,
+            low_gpu_memory=getattr(self, "low_gpu_memory", False),
         )
         if method == "icon":
             proof["cache_health"] = self.cache_evidence("smoke")
@@ -792,30 +989,30 @@ class QueueSupervisor(noise.Supervisor):
             out=self.out,
             task=self.task,
             penalty_weight=self.penalty_weight,
+            low_gpu_memory=getattr(self, "low_gpu_memory", False),
         )
         checkpoint = verify_checkpoint(
             method, out=self.out, task=self.task, penalty_weight=self.penalty_weight
         )
-        checkpoint["reward_trace"] = reward_trace_proof(
-            stage_path(
-                method,
-                "train",
-                out=self.out,
-                task=self.task,
+        if method != "simulator":
+            checkpoint["reward_trace"] = reward_trace_proof(
+                stage_path(
+                    method,
+                    "train",
+                    out=self.out,
+                    task=self.task,
+                    penalty_weight=self.penalty_weight,
+                ),
                 penalty_weight=self.penalty_weight,
-            ),
-            penalty_weight=self.penalty_weight,
-        )
+            )
         if method == "icon":
             checkpoint["cache_health"] = self.cache_evidence("training")
         base.write_json(directory / "checkpoint_validation.json", checkpoint)
-        if self.server:
-            self.server.stop()
-            self.server = None
-            self.status("icon_service_stopped", owned_icon_pid=None)
+        self.stop_owned_service()
         self.run_stage(method, "eval")
         result = evaluation_result(
-            method, out=self.out, task=self.task, penalty_weight=self.penalty_weight
+            method, out=self.out, task=self.task, penalty_weight=self.penalty_weight,
+            low_gpu_memory=getattr(self, "low_gpu_memory", False),
         )
         base.write_json(directory / "evaluation.json", result)
         self.status(
@@ -838,12 +1035,13 @@ class QueueSupervisor(noise.Supervisor):
                 "created_at_utc": noise.utc_now(),
                 "fresh_training": True,
                 "progress_penalty_weight": self.penalty_weight,
+                "low_gpu_memory": getattr(self, "low_gpu_memory", False),
             },
         )
         (self.run_dir / "experiment.pid").write_text(str(os.getpid()) + "\n")
         self.status("preflight_passed", pinned_files=len(self.pins))
         results = []
-        for method in METHODS:
+        for method in self.methods:
             result = self.run_method(method)
             if self.args.smoke_only:
                 return
@@ -855,7 +1053,8 @@ class QueueSupervisor(noise.Supervisor):
         summary = {
             "task": self.task,
             "progress_penalty_weight": self.penalty_weight,
-            "ordered_methods": list(METHODS),
+            "ordered_methods": list(self.methods),
+            "low_gpu_memory": getattr(self, "low_gpu_memory", False),
             "evaluations": results,
         }
         base.write_json(self.out / "summary.json", summary)
@@ -868,18 +1067,30 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--task", choices=tuple(TASK_CAPS), default=TASK)
     parser.add_argument(
+        "--methods", nargs="+", choices=SUPPORTED_METHODS, default=METHODS,
+        help="Reward methods in execution order; default: ICON then Robometer",
+    )
+    parser.add_argument(
         "--penalty-weight", type=validate_penalty_weight, default=PENALTY_WEIGHT
     )
     parser.add_argument("--output-root", type=Path, default=None)
+    parser.add_argument(
+        "--low-gpu-memory", action="store_true",
+        help="Offload the actor between phases and load each reward service on GPU0 only when needed",
+    )
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument(
         "--smoke-only",
         action="store_true",
-        help="Run only the first ICON SAC smoke, then exit",
+        help="Run only the first selected method's SAC smoke, then exit",
     )
     args = parser.parse_args(argv)
+    if len(set(args.methods)) != len(args.methods):
+        parser.error("--methods must not contain duplicates")
     if args.output_root is None:
-        args.output_root = default_output(args.task, args.penalty_weight)
+        args.output_root = default_output(
+            args.task, args.penalty_weight, low_gpu_memory=args.low_gpu_memory
+        )
     return args
 
 

@@ -1,0 +1,126 @@
+{
+  "captured_date": "2026-11-20",
+  "installed_source_overlays": [
+    {
+      "distribution": "sapien",
+      "installed_sha256": "fcd70cffc803bd5510480cd597932416f2d70254dcba84e235a63bee6587c581",
+      "original_record_sha256": "61a7900ee84d846cd92bd6e0c0fe9a1de90981e4eb3c611828b7102e2c457d68",
+      "overlay_path": "installed_overlays/sapien/_oidn_tricks.py",
+      "package_path": "sapien/_oidn_tricks.py"
+    },
+    {
+      "distribution": "sapien",
+      "installed_sha256": "6d5067c69c2b6e7d2545d4edc4a7192f3bae3c2b769ea0895488b2d6342e02da",
+      "original_record_sha256": "51f41a69cfb9757f057662095c36883c141daae4a50415b8f07bfc5064a5f60a",
+      "overlay_path": "installed_overlays/sapien/wrapper/urdf_loader.py",
+      "package_path": "sapien/wrapper/urdf_loader.py"
+    },
+    {
+      "distribution": "mplib",
+      "installed_sha256": "23c51d083ce1892e5fbd0e1473df432d1c33609e50bfac8bdf9e8bfcf6c2cf3c",
+      "original_record_sha256": "785f77233baf4159f3327b664fae2507572c189223a6075f42546c1133ddfa0e",
+      "overlay_path": "installed_overlays/mplib/planner.py",
+      "package_path": "mplib/planner.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "86b22c45f793d8038838c4561ee01f014e7604fad0b9bb538e5f0440b03e4909",
+      "original_record_sha256": "f3a6f6d9ce397fbf7777cd37f3cdfc738e7ad5e7b4d5fd35e1eefad387da7746fd6dbe77f1ee5fd38e346f4ddee3dd3d",
+      "overlay_path": "installed_overlays/augmax/__init__.py",
+      "package_path": "augmax/__init__.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "eab29ac85eaeffc6696661799b22edc1ad240605aeea82136b9f89b3433f565e",
+      "original_record_sha256": "79a6f6f5a73ce5e69e7df73aebdebaeb5efdf5bdb679d73569ddb8d3ad3969e79af36d77e9bf5ff3d6f7e37ddfe7ae5e",
+      "overlay_path": "installed_overlays/augmax/base.py",
+      "package_path": "augmax/base.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "23f9cd15389cb039e5fdecc37a771b4e577974b929f8f5c57a039a32a2932069",
+      "original_record_sha256": "db77fd71dd79dfcf5c6f4dfd7b97dd79c737edaefbd5be1ee7befdef86fddbd7fc7f9739edad37f5adf66b6f77db4ebd",
+      "overlay_path": "installed_overlays/augmax/colorspace.py",
+      "package_path": "augmax/colorspace.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "3a8fe1fed50cedb0bc1651c18b60016179fb4d62ca98fff73b4c0fcc1be2145c",
+      "original_record_sha256": "ddaf1f7b57de779d1c79d6f46dcd7ae75735f1beb4d35eb5efd7dbe1deb671af7c7df7fbddbe1cd1f71cd5b7b6d78e5c",
+      "overlay_path": "installed_overlays/augmax/functional/__init__.py",
+      "package_path": "augmax/functional/__init__.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "3808087c7ff52578e36276c1b1ea6c78e3f7d8c6ee33983f7130fa0fcbedc643",
+      "original_record_sha256": "dfcd3cd3cedcedf7f9db9efc7b7eb6efa7356f579ae9cefc7b77fb77c73a79edf7f7cddfef5df47dad1f71b79d73ae37",
+      "overlay_path": "installed_overlays/augmax/functional/colorspace.py",
+      "package_path": "augmax/functional/colorspace.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "07cb87add2e1cff1f7798528f0b49b3483a2b92fb628b29370a54726f9caca94",
+      "original_record_sha256": "d3b71bf3b69d7767b571f7f57fbefdf39dbc7f46f8f5bdf8f376b66fdd9f6fadbc6f6f77ef46b9e3bdba7fd71a71af78",
+      "overlay_path": "installed_overlays/augmax/geometric.py",
+      "package_path": "augmax/geometric.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "73ac636b8173e884cc1d40063690e41270e7eac99945d4c3a07f338ddf54e717",
+      "original_record_sha256": "ef769ceb7e9bf35ef77bcf3871cd5de34d3adfaf747b8d76ef47bb79a73df7de397787376b4edfdf7f1d75fe787bbd7b",
+      "overlay_path": "installed_overlays/augmax/imagelevel.py",
+      "package_path": "augmax/imagelevel.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "3ac27f3338be443d7d2e3ca1677b13182ece9ccc50588e0dc714a0128ffe7d04",
+      "original_record_sha256": "dda736edfdf7dfc6dee38dddeddd9eddc6b5ebbedbd77d7cd9e71ef5c71ce74e7cf1ed1d73bd786b4d76f1f7deeddd38",
+      "overlay_path": "installed_overlays/augmax/optimized.py",
+      "package_path": "augmax/optimized.py"
+    },
+    {
+      "distribution": "augmax",
+      "installed_sha256": "0fda539e990e6d621faed610a3ad56f0fa95445154a8bce1a54c627d34d80193",
+      "original_record_sha256": "d1f75ae77f5ef7dd1ee9deb6d5f69e77ad746b769de7a7f47daf79e38e75e786bc6dc7b56b9e1ceb6edddf877cd35f77",
+      "overlay_path": "installed_overlays/augmax/utils.py",
+      "package_path": "augmax/utils.py"
+    }
+  ],
+  "interpreter": "rlinf/bin/python",
+  "openpi_transformers_replacements": [
+    {
+      "sha256": "26fd0d0f52730ab32b6f337eb73ae9a26cb71ae0915bc49eced1d0e2ed8d0ec6",
+      "source": "openpi/models_pytorch/transformers_replace/models/gemma/configuration_gemma.py",
+      "target": "transformers/models/gemma/configuration_gemma.py"
+    },
+    {
+      "sha256": "17eeb54e277939e58cd6f8a92719a275e36baf0c9f463b2754227d42f87aedde",
+      "source": "openpi/models_pytorch/transformers_replace/models/gemma/modeling_gemma.py",
+      "target": "transformers/models/gemma/modeling_gemma.py"
+    },
+    {
+      "sha256": "c945d330b829264f927f3ee5339f977238631772de07a28e855e265bb85fd53c",
+      "source": "openpi/models_pytorch/transformers_replace/models/paligemma/modeling_paligemma.py",
+      "target": "transformers/models/paligemma/modeling_paligemma.py"
+    },
+    {
+      "sha256": "466e8eb7887ac5ccc98118a3169298d6ab65a284d834bae74751e3854dbc4245",
+      "source": "openpi/models_pytorch/transformers_replace/models/siglip/check.py",
+      "target": "transformers/models/siglip/check.py"
+    },
+    {
+      "sha256": "ef2e99500f263fdd78db9d4d9a255e29d844eb92f53c25ad640f8056700ef84b",
+      "source": "openpi/models_pytorch/transformers_replace/models/siglip/modeling_siglip.py",
+      "target": "transformers/models/siglip/modeling_siglip.py"
+    }
+  ],
+  "schema_version": 1,
+  "versions": {
+    "augmax": "0.4.1",
+    "mplib": "0.2.1",
+    "rlinf-openpi": "0.1.1",
+    "rlinf-transformer-openpi": "4.53.2",
+    "sapien": "3.0.1",
+    "transformers": "4.57.6"
+  }
+}

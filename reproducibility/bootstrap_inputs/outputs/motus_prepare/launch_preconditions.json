@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "model_path": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+  "model_revision": "effc6e1a99bd4d0edf9447e8ba313def67649cfe",
+  "created_at_utc": "2026-11-02T08:51:08.315963+00:00",
+  "tasks": {
+    "adjust_bottle": {
+      "sft_smoke": {
+        "task": "adjust_bottle",
+        "method": "vanilla",
+        "episodes": 4,
+        "successes": 1,
+        "success_rate": 0.25,
+        "checkpoint": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+        "metrics": "/home/yifei/icr/outputs/motus_multitask/adjust_bottle/sft_smoke/metrics.log",
+        "model_load_evidence": [
+          "\u001b[36m(RolloutGroup(rank=0) pid=1244056)\u001b[0m [INFO 16:46:23 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+          "\u001b[36m(RolloutGroup(rank=1) pid=1244058)\u001b[0m [INFO 16:46:23 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+        ],
+        "status": "passed",
+        "finite_eval_scalars": {
+          "eval/success_at_end": [
+            0.25
+          ],
+          "eval/episode_len": [
+            200.0
+          ],
+          "eval/return": [
+            0.25
+          ],
+          "eval/success_once": [
+            0.25
+          ],
+          "eval/reward": [
+            0.0012499999720603228
+          ],
+          "eval/num_trajectories": [
+            4.0
+          ]
+        },
+        "loadproof": {
+          "ranks": [
+            0,
+            1
+          ],
+          "decoder_horizon": 32,
+          "execution_chunk": 20,
+          "lines": [
+            "\u001b[36m(RolloutGroup(rank=0) pid=1244056)\u001b[0m [INFO 16:46:23 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+            "\u001b[36m(RolloutGroup(rank=1) pid=1244058)\u001b[0m [INFO 16:46:23 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+          ]
+        }
+      },
+      "context": {
+        "status": "passed",
+        "demo_path": "/home/yifei/icr/data/context_demos/motus/adjust_bottle/demo_000",
+        "frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+        "metadata_sha256": "81986c9787dd193ec3c1f065934f7391483da18e485245d188c6e1c52a4760f3",
+        "actual_scene_seed": 1,
+        "action_count": 119
+      }
+    },
+    "move_can_pot": {
+      "sft_smoke": {
+        "task": "move_can_pot",
+        "method": "vanilla",
+        "episodes": 4,
+        "successes": 0,
+        "success_rate": 0.0,
+        "checkpoint": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+        "metrics": "/home/yifei/icr/outputs/motus_multitask/move_can_pot/sft_smoke/metrics.log",
+        "model_load_evidence": [
+          "\u001b[36m(RolloutGroup(rank=1) pid=1251690)\u001b[0m [INFO 16:48:04 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+          "\u001b[36m(RolloutGroup(rank=0) pid=1251688)\u001b[0m [INFO 16:48:04 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+        ],
+        "status": "passed",
+        "finite_eval_scalars": {
+          "eval/success_once": [
+            0.0
+          ],
+          "eval/success_at_end": [
+            0.0
+          ],
+          "eval/reward": [
+            0.0
+          ],
+          "eval/episode_len": [
+            200.0
+          ],
+          "eval/return": [
+            0.0
+          ],
+          "eval/num_trajectories": [
+            4.0
+          ]
+        },
+        "loadproof": {
+          "ranks": [
+            0,
+            1
+          ],
+          "decoder_horizon": 32,
+          "execution_chunk": 20,
+          "lines": [
+            "\u001b[36m(RolloutGroup(rank=1) pid=1251690)\u001b[0m [INFO 16:48:04 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+            "\u001b[36m(RolloutGroup(rank=0) pid=1251688)\u001b[0m [INFO 16:48:04 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+          ]
+        }
+      },
+      "context": {
+        "status": "passed",
+        "demo_path": "/home/yifei/icr/data/context_demos/motus/move_can_pot/demo_000",
+        "frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+        "metadata_sha256": "cf4b50ab0cb25c6e743d2fb3d2b6f12af3df28eb7a82f363eaf96d600865b51e",
+        "actual_scene_seed": 100000,
+        "action_count": 118
+      }
+    },
+    "click_bell": {
+      "sft_smoke": {
+        "task": "click_bell",
+        "method": "vanilla",
+        "episodes": 4,
+        "successes": 2,
+        "success_rate": 0.5,
+        "checkpoint": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+        "metrics": "/home/yifei/icr/outputs/motus_multitask/click_bell/sft_smoke/metrics.log",
+        "model_load_evidence": [
+          "\u001b[36m(RolloutGroup(rank=0) pid=1266339)\u001b[0m [INFO 16:49:41 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+          "\u001b[36m(RolloutGroup(rank=1) pid=1266341)\u001b[0m [INFO 16:49:41 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+        ],
+        "status": "passed",
+        "finite_eval_scalars": {
+          "eval/return": [
+            0.5
+          ],
+          "eval/success_at_end": [
+            0.5
+          ],
+          "eval/reward": [
+            0.0012499999720603228
+          ],
+          "eval/success_once": [
+            0.5
+          ],
+          "eval/episode_len": [
+            400.0
+          ],
+          "eval/num_trajectories": [
+            4.0
+          ]
+        },
+        "loadproof": {
+          "ranks": [
+            0,
+            1
+          ],
+          "decoder_horizon": 32,
+          "execution_chunk": 20,
+          "lines": [
+            "\u001b[36m(RolloutGroup(rank=0) pid=1266339)\u001b[0m [INFO 16:49:41 RolloutGroup-Rank-0][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20",
+            "\u001b[36m(RolloutGroup(rank=1) pid=1266341)\u001b[0m [INFO 16:49:41 RolloutGroup-Rank-1][__init__.py:277] openpi[eval]: loaded Pi0Config(dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pointnet_variant='pcd', action_dim=32, action_horizon=32, max_token_len=200, pi05=True, discrete_state_input=True, pcd=False) (3.35B params) from /home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/model.safetensors precision=bf16 num_steps=5 action_horizon=32 action_chunk=20"
+          ]
+        }
+      },
+      "context": {
+        "status": "passed",
+        "demo_path": "/home/yifei/icr/data/context_demos/motus/click_bell/demo_000",
+        "frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+        "metadata_sha256": "0a8f4b7c6c1e64fd60d09ccb6430464d4c80fb86e4e8b8e810272ac6fc588a4e",
+        "actual_scene_seed": 100001,
+        "action_count": 120
+      }
+    }
+  }
+}

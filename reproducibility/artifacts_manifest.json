@@ -1,0 +1,823 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-11-20",
+  "canonical_repo_root": "/home/yifei/icr",
+  "scope": "Inputs for current Motus three-task experiments, with optional task-specific SFT and object-context historical inputs. No trained policies or large model weights are stored in Git.",
+  "models": [
+    {
+      "id": "motus",
+      "local_path": "checkpoints/Motus-Pi05-RoboTwin2",
+      "repo_id": "motus-robotics/pi0.5_robotwin2",
+      "revision": "effc6e1a99bd4d0edf9447e8ba313def67649cfe",
+      "repo_type": "model",
+      "files": [
+        {
+          "path": "README.md",
+          "size": 3236,
+          "sha256": "9b190ee56b9ab62f8a76edee1c698b5bbefd0b75a12ffa6ae214abfdfec51a0f"
+        },
+        {
+          "path": "assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+          "size": 3470,
+          "sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+        },
+        {
+          "path": "metadata.pt",
+          "size": 3891,
+          "sha256": "ef52d518167a652b74cc1c4d3a49fc18f758c286fc0ee8485d33a3caf3bd99ee"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 7473091464,
+          "sha256": "de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb"
+        }
+      ],
+      "hash_provenance": "Completed downloader receipt verified full-file SHA-256 on 2026-11-02; metadata.pt is optional for inference."
+    },
+    {
+      "id": "icon",
+      "local_path": "checkpoints/ICON-4B-inference",
+      "repo_id": "sniper-qian/ICON-4B",
+      "revision": "e75b5fca997ab18f620ecb1931e5d9acba7c1f9b",
+      "repo_type": "model",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "config.json",
+          "size": 2776,
+          "sha256": "70f8b4017f571e5ae3074aac4cf1920e5a0ce197607b3d035f591a72aad98cde",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "config.yaml",
+          "size": 6214,
+          "sha256": "1f3d3eed08af74112f0cf02fdaf8aa8bf810fe2353c6123228976450c00c4e90",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "model-00001-of-00004.safetensors",
+          "size": 4950761384,
+          "sha256": "49c217185257f75754509d512cb10b0bb6630f58d1eb07c14155f841c95d1258",
+          "hash_provenance": "Hugging Face local download metadata LFS etag"
+        },
+        {
+          "path": "model-00002-of-00004.safetensors",
+          "size": 4944311064,
+          "sha256": "2278c237925e3a311912d344765b24e377980abb9e79d27dc9669090e26ae91f",
+          "hash_provenance": "Hugging Face local download metadata LFS etag"
+        },
+        {
+          "path": "model-00003-of-00004.safetensors",
+          "size": 4944311104,
+          "sha256": "705c5e37655715b9f63c017ab801123fd0e213c97fa66c225061f15349ed529a",
+          "hash_provenance": "Hugging Face local download metadata LFS etag"
+        },
+        {
+          "path": "model-00004-of-00004.safetensors",
+          "size": 2118279680,
+          "sha256": "530da0c6a0c80a0f45c562644ee1778495ce72e04a4bc3d69c9bdb13efe45c86",
+          "hash_provenance": "Hugging Face local download metadata LFS etag"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 66021,
+          "sha256": "51604f1f752280c1ddfd73500765c886640b50300a5c4d56f4d090303bb04f6a",
+          "hash_provenance": "Computed from current local small file"
+        }
+      ],
+      "inference_config_snapshot": "reproducibility/bootstrap_inputs/checkpoints/ICON-4B-inference/config.yaml",
+      "note": "Snapshot replaces downloaded config.yaml for use_unsloth=false and local pinned Qwen base. Weights are unchanged."
+    },
+    {
+      "id": "robometer",
+      "local_path": "checkpoints/Robometer-4B-inference",
+      "repo_id": "robometer/Robometer-4B",
+      "revision": "beef63bc914c5c189329d49c6d712d96d632aa34",
+      "repo_type": "model",
+      "files": [
+        {
+          "path": "config.json",
+          "size": 1606,
+          "sha256": "2287e93a95c1dcd5e471cf386cf5750e7643ee0b2c44a2544a1318b8b8f3c9be",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "config.yaml",
+          "size": 4527,
+          "sha256": "6e4b77171e0ec6d926767906892e630890c378f796c049188f5670ab64ca3abe",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size": 4965629698,
+          "sha256": "2cfa81761595f6b10bd079736eb32bdeeeb0b49224619411bd511d9d1f1171a4",
+          "hash_provenance": "Saved Hugging Face model_info LFS metadata"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size": 3935034144,
+          "sha256": "a25be9713ccc3cb14738be76ef6665742093d70323ec026ea70e8fa843a342be",
+          "hash_provenance": "Saved Hugging Face model_info LFS metadata"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 66422,
+          "sha256": "5f914c84012ce50f6d5a5903ab5abd84b6e08900d0f17be6f98e913fcc8a6b1c",
+          "hash_provenance": "Computed from current local small file"
+        }
+      ],
+      "inference_config_snapshot": "reproducibility/bootstrap_inputs/checkpoints/Robometer-4B-inference/config.yaml"
+    },
+    {
+      "id": "qwen",
+      "local_path": "checkpoints/Qwen3-VL-4B-Instruct",
+      "repo_id": "Qwen/Qwen3-VL-4B-Instruct",
+      "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+      "repo_type": "model",
+      "files": [
+        {
+          "path": "README.md",
+          "size": 7133,
+          "sha256": "a884e5e78f7d6f7bfe237f909dbc41a126542e259dc79d8ab33cc8980580ff79",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "chat_template.json",
+          "size": 5502,
+          "sha256": "6f8a6a55027e3da5160105556cda5dd69f6423f1c32645f6730d32de7773d0c4",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "config.json",
+          "size": 1505,
+          "sha256": "edac7703329133edfc53e46ac0081835144c99d7eebf28b71c732694d435224d",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 269,
+          "sha256": "8469742d1fce0de951c8909b26a2c0c0d8490837ce476efb114da9e0cefc4d44",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "merges.txt",
+          "size": 1671839,
+          "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size": 4967229296,
+          "sha256": "30a01a0556622645a3cce87b655bbbbbc1f170c196099f1b666c93202c3339a9",
+          "hash_provenance": "Saved Hugging Face model_info LFS metadata"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size": 3908490048,
+          "sha256": "046296a2a387efb43b0c997d5833c789604d168834f6e0d3064bf7bb13d002a6",
+          "hash_provenance": "Saved Hugging Face model_info LFS metadata"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 64742,
+          "sha256": "58a7841d7bff2548dd91577d216274a83cf1b500bc6a534b809d6c1b1707cf2b",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 7032403,
+          "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 10868,
+          "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "video_preprocessor_config.json",
+          "size": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+          "hash_provenance": "Computed from current local small file"
+        },
+        {
+          "path": "vocab.json",
+          "size": 2776833,
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+          "hash_provenance": "Computed from current local small file"
+        }
+      ]
+    },
+    {
+      "id": "task_specific_sft",
+      "optional": true,
+      "local_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+      "repo_id": "RLinf/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+      "revision": "fa8df6ed103db0f5549c122f3a17c00ba6426c98",
+      "repo_type": "model",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/arx/norm_stats.json",
+          "size": 3476,
+          "sha256": "aeafc86107ab3acfa8ac166760ad2753e5f9be1cd9d516b144d7455e5bec5d00",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/arx_mobile/norm_stats.json",
+          "size": 3677,
+          "sha256": "771a37e201d4ea74f478a5df11219cd9bcef9ce69a80f196d2b23625a04a3444",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/droid/norm_stats.json",
+          "size": 2062,
+          "sha256": "508e75bb8f28f86ad8998a2254d2076fdd42caf26d8a89baecd5de0f628e2280",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/fibocom_mobile/norm_stats.json",
+          "size": 3951,
+          "sha256": "25b4853b10da8546bdaa8c4a18836d3ab41637679c7b1797636d29585284660f",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/franka/norm_stats.json",
+          "size": 2081,
+          "sha256": "ddb8b0dcb9d869b7a152310ded9848c27857471d2999f70fd145ce7017b8d84f",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/trossen/norm_stats.json",
+          "size": 3394,
+          "sha256": "417c7dc8ee9598b28dc2f0b545e371338be9f4611b255975ba7ea07eb21e46c1",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/trossen_mobile/norm_stats.json",
+          "size": 3699,
+          "sha256": "3d817ca5af76f70a6eac6cee5963e521554a36558f627582f6edde389bb316c5",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/ur5e/norm_stats.json",
+          "size": 1851,
+          "sha256": "dd8529da1dd320da9a0d40bebe16f6763f8f8dc99d6b8a60b698689b2ad08902",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "assets/ur5e_dual/norm_stats.json",
+          "size": 3459,
+          "sha256": "fe4b05d20e30066f9818e080bdfabaee2146046c69bd546e2384cf4eb1dd96e4",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "config.json",
+          "size": 149,
+          "sha256": "5c2728c53f4b33ee16380140f303713fdb5df78a8d26ee1489ace374fc54327a",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "model-00001-of-00003.safetensors",
+          "size": 4229965544,
+          "sha256": "193732b06782c0c6adbf94f16b8ecd6141a1a9d61004fd57c75cc2731c59fb07",
+          "hash_provenance": "Hugging Face local download LFS metadata"
+        },
+        {
+          "path": "model-00002-of-00003.safetensors",
+          "size": 4292225880,
+          "sha256": "23395e59338f279566a63836b3661e9b88369f6472762faa6afe0b4ed56a2e17",
+          "hash_provenance": "Hugging Face local download LFS metadata"
+        },
+        {
+          "path": "model-00003-of-00003.safetensors",
+          "size": 6951764,
+          "sha256": "ef74f46bff64a2c81b63a8fe380648c7d780b660f67e1c9ef9b4c5c874081f41",
+          "hash_provenance": "Hugging Face local download LFS metadata"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 109565,
+          "sha256": "f8525c64ed662e1e186cd89343ff60d63f1c972347dd460cee27c32188bbf4b5",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "physical-intelligence/libero/norm_stats.json",
+          "size": 4507,
+          "sha256": "dae37d79a22108af83df9189c6710a3ec8e077d65b28e34bdf1da724e5ae30f1",
+          "hash_provenance": "Computed local file"
+        },
+        {
+          "path": "physical-intelligence/robotwin/norm_stats.json",
+          "size": 3464,
+          "sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52",
+          "hash_provenance": "Computed local file"
+        }
+      ]
+    }
+  ],
+  "simulator_assets": {
+    "repo_id": "TianxingChen/RoboTwin2.0",
+    "repo_type": "dataset",
+    "revision": "3dc3b798668feb99ac61cc9086d84cbcc3d79186",
+    "archives": [
+      {
+        "filename": "background_texture.zip",
+        "sha256": "54ede0fb5b783e0faa2bc98720d3affd6ca3bb9280b225b48c1aafaf31473070"
+      },
+      {
+        "filename": "embodiments.zip",
+        "sha256": "85ffeff55a5066def5931224a85cfa3f8abaa1fbf779bd17789a7fb3f85bc789"
+      },
+      {
+        "filename": "objects.zip",
+        "sha256": "6aa56b3cf1e1064f7c809308144da36b00815f8b137fef2d7e4de856f8becf27"
+      }
+    ],
+    "extract_to": "third_party/robotwin/assets",
+    "note": "Archive hashes come from saved completed HF download metadata; source ZIPs were deleted after extraction. Run script/update_embodiment_config_path.py after extracting on a new machine."
+  },
+  "bootstrap_files": [
+    {
+      "destination": "checkpoints/ICON-4B-inference/config.yaml",
+      "snapshot": "reproducibility/bootstrap_inputs/checkpoints/ICON-4B-inference/config.yaml",
+      "size": 6238,
+      "sha256": "873690ec1d78e0f3f8847ac36b331e0b3d5a100d4eb932399a69c31980382b36"
+    },
+    {
+      "destination": "checkpoints/Robometer-4B-inference/config.yaml",
+      "snapshot": "reproducibility/bootstrap_inputs/checkpoints/Robometer-4B-inference/config.yaml",
+      "size": 4551,
+      "sha256": "233df63c988552bf8e9725ba9c2da06e91be8edf33673c9bdd8c627d820b7c48"
+    },
+    {
+      "destination": "outputs/robometer_chunk20/server_source_fingerprint.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/robometer_chunk20/server_source_fingerprint.json",
+      "size": 575,
+      "sha256": "d8005ca2d6473757c65e3179d4d059df6c390b5935d98d307ac838eef1b75b98"
+    },
+    {
+      "destination": "outputs/icon_kv_cache_validation/validation_summary.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/icon_kv_cache_validation/validation_summary.json",
+      "size": 4010,
+      "sha256": "558172fa2ec6ad4cb0f30e79ac85e96cb042f04f431f70f3ccef7fe0e1d73aef"
+    },
+    {
+      "destination": "outputs/icon_kv_cache_validation/checkpoint_fp32_validated.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/icon_kv_cache_validation/checkpoint_fp32_validated.json",
+      "size": 86323,
+      "sha256": "b2335f4ac7e6cc85ef346a5204c84598157435ac6d0f1174c81757bb14a352e6"
+    },
+    {
+      "destination": "outputs/icon_kv_cache_validation/checkpoint_native_validated.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/icon_kv_cache_validation/checkpoint_native_validated.json",
+      "size": 87584,
+      "sha256": "43235dbcbdf02018f66cf4f3ac1f41eed765f5f79ce5972d74205ab7d18f9ff1"
+    },
+    {
+      "destination": "outputs/motus_prepare/download.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/motus_prepare/download.json",
+      "size": 1272,
+      "sha256": "fd9b02a80355d4d3d839936f9182de8f795a9d88b682b57220ce8fb7c50fc744"
+    },
+    {
+      "destination": "outputs/motus_prepare/adapter_cpu_audit.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/motus_prepare/adapter_cpu_audit.json",
+      "size": 2291,
+      "sha256": "696acecd3fbc61f2e257a1acceef106d2e48f30486c0740eab50562bca8fe791"
+    },
+    {
+      "destination": "outputs/motus_prepare/transform_cpu_parity.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/motus_prepare/transform_cpu_parity.json",
+      "size": 1260,
+      "sha256": "db5b440fad50aac371b648b658e89c8de7fe55bf6397ab802fdecdcb1d23e85f"
+    },
+    {
+      "destination": "outputs/motus_prepare/checkpoint_header_audit.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/motus_prepare/checkpoint_header_audit.json",
+      "size": 750,
+      "sha256": "1bb4b904b4c495fa74080e205612b5d83421bad1489c9d37a0e26b025337c84c"
+    },
+    {
+      "destination": "outputs/motus_prepare/launch_preconditions.json",
+      "snapshot": "reproducibility/bootstrap_inputs/outputs/motus_prepare/launch_preconditions.json",
+      "size": 10715,
+      "sha256": "e636513b1663737a293548d54d6a8cda5346d21c1757f1188b120bc4bda41662"
+    },
+    {
+      "destination": "data/context_demos/motus/adjust_bottle/object_bank/manifest.json",
+      "snapshot": "reproducibility/bootstrap_inputs/data/context_demos/motus/adjust_bottle/object_bank/manifest.json",
+      "size": 15559,
+      "sha256": "4d033730d308aed28c254162c52cebadf85bc56463f1c522765d044004dda829"
+    }
+  ],
+  "fixed_context_demos": [
+    {
+      "task": "adjust_bottle",
+      "kind": "task_specific_sft_fixed",
+      "destination": "data/context_demos/adjust_bottle/demo_000",
+      "archive": "reproducibility/context_demos/adjust_bottle/demo_000/frames.npy.gz",
+      "archive_size": 3506453,
+      "archive_sha256": "c285e3a910d619ea9b7555c0fde36695c7333686c59f8418598cf23dae444fed",
+      "frames_size": 29491328,
+      "frames_sha256": "69e02edeeec98efdbc424adf03449a74f38ecf9f98c157c0ce8fec862ae3e9ff",
+      "metadata_snapshot": "reproducibility/context_demos/adjust_bottle/demo_000/metadata.json",
+      "metadata_sha256": "47a187ab0a560d1804aa5469786697a8993a5878fd8cfb11ded29d7857b1ea47",
+      "scene_seed": 1,
+      "action_count": 127,
+      "frame_count": 128,
+      "context_frame_indices": [
+        0,
+        18,
+        36,
+        54,
+        73,
+        91,
+        109,
+        127
+      ]
+    },
+    {
+      "task": "adjust_bottle",
+      "kind": "motus_fixed",
+      "destination": "data/context_demos/motus/adjust_bottle/demo_000",
+      "archive": "reproducibility/context_demos/motus/adjust_bottle/demo_000/frames.npy.gz",
+      "archive_size": 3257755,
+      "archive_sha256": "86730f1ef5eab63a5663340f82af89ccf23f9ec0c37484a72518813bd525a66b",
+      "frames_size": 27648128,
+      "frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "metadata_snapshot": "reproducibility/context_demos/motus/adjust_bottle/demo_000/metadata.json",
+      "metadata_sha256": "81986c9787dd193ec3c1f065934f7391483da18e485245d188c6e1c52a4760f3",
+      "scene_seed": 1,
+      "action_count": 119,
+      "frame_count": 120,
+      "context_frame_indices": [
+        0,
+        17,
+        34,
+        51,
+        68,
+        85,
+        102,
+        119
+      ]
+    },
+    {
+      "task": "adjust_bottle",
+      "kind": "object_bank",
+      "destination": "data/context_demos/motus/adjust_bottle/object_bank/base13/demo_000",
+      "archive": "reproducibility/context_demos/motus/adjust_bottle/demo_000/frames.npy.gz",
+      "archive_size": 3257755,
+      "archive_sha256": "86730f1ef5eab63a5663340f82af89ccf23f9ec0c37484a72518813bd525a66b",
+      "frames_size": 27648128,
+      "frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "metadata_snapshot": "reproducibility/context_demos/motus/adjust_bottle/object_bank/base13/demo_000/metadata.json",
+      "metadata_sha256": "c6bc86bf706e36f717dafdd63c04a5c10c0a65cfeb89aac4c8bb76dfd05789c5",
+      "scene_seed": 1,
+      "action_count": 119,
+      "frame_count": 120,
+      "context_frame_indices": [
+        0,
+        17,
+        34,
+        51,
+        68,
+        85,
+        102,
+        119
+      ]
+    },
+    {
+      "task": "adjust_bottle",
+      "kind": "object_bank",
+      "destination": "data/context_demos/motus/adjust_bottle/object_bank/base16/demo_000",
+      "archive": "reproducibility/context_demos/motus/adjust_bottle/object_bank/base16/demo_000/frames.npy.gz",
+      "archive_size": 3840885,
+      "archive_sha256": "5a35284b5e5c73888fc39f21702a19c8a6e70f1ed6ff61bac46262eb0e6dc229",
+      "frames_size": 31795328,
+      "frames_sha256": "a81563b7ccddfd5dda03dcda6c7a0a4d2dfcc912815bfd8262c5ef31dcd1d558",
+      "metadata_snapshot": "reproducibility/context_demos/motus/adjust_bottle/object_bank/base16/demo_000/metadata.json",
+      "metadata_sha256": "e0ddb8c93120012ca2f70c2fb25dd2cc6dc0d9b1e4249897fc38d5c2a4c5bcdc",
+      "scene_seed": 7,
+      "action_count": 137,
+      "frame_count": 138,
+      "context_frame_indices": [
+        0,
+        20,
+        39,
+        59,
+        78,
+        98,
+        117,
+        137
+      ]
+    },
+    {
+      "task": "click_bell",
+      "kind": "motus_fixed",
+      "destination": "data/context_demos/motus/click_bell/demo_000",
+      "archive": "reproducibility/context_demos/motus/click_bell/demo_000/frames.npy.gz",
+      "archive_size": 1964552,
+      "archive_sha256": "dee06dda435b2983636bf9f98c22779c74f3de09d64e8ac732efa7a80c190486",
+      "frames_size": 27878528,
+      "frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "metadata_snapshot": "reproducibility/context_demos/motus/click_bell/demo_000/metadata.json",
+      "metadata_sha256": "0a8f4b7c6c1e64fd60d09ccb6430464d4c80fb86e4e8b8e810272ac6fc588a4e",
+      "scene_seed": 100001,
+      "action_count": 120,
+      "frame_count": 121,
+      "context_frame_indices": [
+        0,
+        17,
+        34,
+        51,
+        69,
+        86,
+        103,
+        120
+      ]
+    },
+    {
+      "task": "move_can_pot",
+      "kind": "motus_fixed",
+      "destination": "data/context_demos/motus/move_can_pot/demo_000",
+      "archive": "reproducibility/context_demos/motus/move_can_pot/demo_000/frames.npy.gz",
+      "archive_size": 2512635,
+      "archive_sha256": "291eb8f3396e4a71c30d79510eabd344de13db8e809d8ec76b125f3f27da656c",
+      "frames_size": 27417728,
+      "frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "metadata_snapshot": "reproducibility/context_demos/motus/move_can_pot/demo_000/metadata.json",
+      "metadata_sha256": "cf4b50ab0cb25c6e743d2fb3d2b6f12af3df28eb7a82f363eaf96d600865b51e",
+      "scene_seed": 100000,
+      "action_count": 118,
+      "frame_count": 119,
+      "context_frame_indices": [
+        0,
+        17,
+        34,
+        51,
+        67,
+        84,
+        101,
+        118
+      ]
+    }
+  ],
+  "runtime_files": [
+    {
+      "path": "data/nccl/2.31.2/nvidia/nccl/lib/libnccl.so.2",
+      "version": "NCCL2.31.2",
+      "size": 473266472,
+      "sha256": "dba12e429fe11268b895d0531ba96a7f679f35227d5b1ec77c5febbcd02281bd",
+      "obtain": "Transfer exact file or install nvidia-nccl-cu12==2.31.2 into an isolated target directory and verify this hash."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise.so",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 115336,
+      "sha256": "9ac9dcd18318cae879efb01c14cff72c2c4275428a15e5ab6e94c8ff8a43c4dc",
+      "symlink_target": "libOpenImageDenoise.so.2",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise.so.2",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 115336,
+      "sha256": "9ac9dcd18318cae879efb01c14cff72c2c4275428a15e5ab6e94c8ff8a43c4dc",
+      "symlink_target": "libOpenImageDenoise.so.2.3.3",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 115336,
+      "sha256": "9ac9dcd18318cae879efb01c14cff72c2c4275428a15e5ab6e94c8ff8a43c4dc",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise_core.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 50631472,
+      "sha256": "eadb2437d6ac4a88e5746980495ba1091f7d14745e3000b82a9382093d22f351",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise_device_cpu.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 539496,
+      "sha256": "744ce70325b2cf2ca34832513379f1a7384d2ee31be7cfb73c060e2221dd3812",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise_device_cuda.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 4156088,
+      "sha256": "12b3ff87cfa4b6a90481b757f5a56ee69380a45e3dcaeadf8dd22cb73d4f714a",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise_device_hip.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 7651528,
+      "sha256": "828a7c4375a7d7502f9a25b3ea591daf7ca76d8b45239e028958eb8d5751551e",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libOpenImageDenoise_device_sycl.so.2.3.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 8596376,
+      "sha256": "02ac8bf56b84336c7b824a68ba07d883d45e14ce7590176be94839103fa8686b",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libsycl.so.8",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 4929024,
+      "sha256": "78adeaf5c92961726cf5da48c261ea0e0ac168ea741925ba8b02335bed0ae43d",
+      "symlink_target": "libsycl.so.8.0.0-0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libsycl.so.8.0.0-0",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 4929024,
+      "sha256": "78adeaf5c92961726cf5da48c261ea0e0ac168ea741925ba8b02335bed0ae43d",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbb.so",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 3843184,
+      "sha256": "dcf63f8cb99f76c9c5a5e9e8410aa05ea2ed1e7efa07e1fe9d48e688c4dbd1c9",
+      "symlink_target": "libtbb.so.12",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbb.so.12",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 3843184,
+      "sha256": "dcf63f8cb99f76c9c5a5e9e8410aa05ea2ed1e7efa07e1fe9d48e688c4dbd1c9",
+      "symlink_target": "libtbb.so.12.12",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbb.so.12.12",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 3843184,
+      "sha256": "dcf63f8cb99f76c9c5a5e9e8410aa05ea2ed1e7efa07e1fe9d48e688c4dbd1c9",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind.so.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 234880,
+      "sha256": "eceac0a9ef5efcb6cdca3371a9d93a8f9bdc2e10338f93d8505239bfdf2d8b02",
+      "symlink_target": "libtbbbind.so.3.12",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind.so.3.12",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 234880,
+      "sha256": "eceac0a9ef5efcb6cdca3371a9d93a8f9bdc2e10338f93d8505239bfdf2d8b02",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind_2_0.so.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 234488,
+      "sha256": "c7e78dbb612a00b443e69e93dc8a3bff1230a09d228567348468f660361f9908",
+      "symlink_target": "libtbbbind_2_0.so.3.12",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind_2_0.so.3.12",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 234488,
+      "sha256": "c7e78dbb612a00b443e69e93dc8a3bff1230a09d228567348468f660361f9908",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind_2_5.so.3",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 238704,
+      "sha256": "266c7a9f2328f04cef244a3f6c85d864db76632b5d27aac3df5217fa1e17c2a8",
+      "symlink_target": "libtbbbind_2_5.so.3.12",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libtbbbind_2_5.so.3.12",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 238704,
+      "sha256": "266c7a9f2328f04cef244a3f6c85d864db76632b5d27aac3df5217fa1e17c2a8",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libumf.so",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 81312,
+      "sha256": "918e21e6f7d5b66be23cf5dd81d63ca5883817236e980516963a455ed2f642c0",
+      "symlink_target": "libumf.so.0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libumf.so.0",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 81312,
+      "sha256": "918e21e6f7d5b66be23cf5dd81d63ca5883817236e980516963a455ed2f642c0",
+      "symlink_target": "libumf.so.0.9.0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libumf.so.0.9.0",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 81312,
+      "sha256": "918e21e6f7d5b66be23cf5dd81d63ca5883817236e980516963a455ed2f642c0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_adapter_level_zero.so",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 1727536,
+      "sha256": "da46993e2634bef0e9d16b82ca48e1f9bc68c03fc2d04f7204cc4c42cdf6424a",
+      "symlink_target": "libur_adapter_level_zero.so.0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_adapter_level_zero.so.0",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 1727536,
+      "sha256": "da46993e2634bef0e9d16b82ca48e1f9bc68c03fc2d04f7204cc4c42cdf6424a",
+      "symlink_target": "libur_adapter_level_zero.so.0.10.8",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_adapter_level_zero.so.0.10.8",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 1727536,
+      "sha256": "da46993e2634bef0e9d16b82ca48e1f9bc68c03fc2d04f7204cc4c42cdf6424a",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_loader.so",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 18161136,
+      "sha256": "194e6d45b1db75de137c9bf5c54cde13b9fbf4efd48d8ee73a4816a75e9d8d5c",
+      "symlink_target": "libur_loader.so.0",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_loader.so.0",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 18161136,
+      "sha256": "194e6d45b1db75de137c9bf5c54cde13b9fbf4efd48d8ee73a4816a75e9d8d5c",
+      "symlink_target": "libur_loader.so.0.10.8",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "rlinf/lib/python3.11/site-packages/sapien/oidn_library/lib/libur_loader.so.0.10.8",
+      "version": "OIDN2.3.3 bundled native dependency",
+      "size": 18161136,
+      "sha256": "194e6d45b1db75de137c9bf5c54cde13b9fbf4efd48d8ee73a4816a75e9d8d5c",
+      "obtain": "Transfer runtime bundle or extract pinned oidn-2.3.3.x86_64.linux.tar.gz lib/ preserving all filenames. Bundle dereferences aliases to equivalent regular ELF files."
+    },
+    {
+      "path": "data/oidn/installation.json",
+      "version": "Original OIDN installation provenance",
+      "size": 2122,
+      "sha256": "af13c9174cf07dac774c7d0cd345ec89c07abd3b3ec01974ef74323eef8d978e",
+      "obtain": "Transfer runtime bundle for original provenance; historical paths are intentionally retained."
+    }
+  ],
+  "tokenizer": {
+    "source_url": "https://storage.googleapis.com/big_vision/paligemma_tokenizer.model",
+    "original_cache_path": "/home/yifei/.cache/openpi/big_vision/paligemma_tokenizer.model",
+    "bundle_destination": "data/runtime/openpi/big_vision/paligemma_tokenizer.model",
+    "environment": "OPENPI_DATA_HOME=<checkout>/data/runtime/openpi",
+    "size": 4264023,
+    "sha256": "8986bb4f423f07f8c7f70d0dbe3526fb2316056c17bae71b1ea975e77a168fc6"
+  },
+  "portability_notes": [
+    "The committed launchers derive Python paths from __file__ but public YAMLs still contain /home/yifei/icr. Use the canonical path for the first exact-recipe reproduction or explicitly rebase all runtime configs on the new machine.",
+    "Fixed demo metadata stores the original physical NVMe path; restore-small rebases policy_checkpoint and norm_stats_path to the restored local Motus checkpoint. Frame bytes are never changed.",
+    "KV reports are historical source-specific numerical evidence, not a benchmark of the new GPU. Keep them distinct from any new-machine parity report.",
+    "The canonical old Robometer receipt is a historical pin prerequisite; managed --low-gpu-memory creates a new live source receipt for its own server."
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "pid": 2991375,
+  "created_at_utc": "2026-11-18T13:53:23.075748+00:00",
+  "module_file": "/home/yifei/icr/third_party/robometer/robometer/models/utils.py",
+  "source_sha256": "f8622bef9e2e61eb7f92969244b2af378dd2f19db261ed96b251c98444d0d694",
+  "signature": "(bin_logits: torch.Tensor | numpy.ndarray, *, from_logits: bool = True) -> torch.Tensor | numpy.ndarray",
+  "from_logits_default": true,
+  "logits_sum_one_test": true,
+  "functional_test": {
+    "input_logits_sum": 1.0,
+    "expected_progress": 0.5733162611722946,
+    "actual_progress": 0.573316216468811
+  }
+}

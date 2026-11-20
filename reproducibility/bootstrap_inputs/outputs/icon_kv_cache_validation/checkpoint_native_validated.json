@@ -1,0 +1,3257 @@
+{
+  "started_at_utc": "2026-11-02T11:14:35.999280+00:00",
+  "checkpoint": "/home/yifei/icr/checkpoints/ICON-4B-inference",
+  "device": "cuda:0",
+  "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "torch_version": "2.8.0+cu128",
+  "repeats": 5,
+  "warmup": 1,
+  "cache_max_mib": 1024,
+  "precision": "native",
+  "model_first_parameter_dtype": "torch.bfloat16",
+  "vision_parameter_dtype": "torch.bfloat16",
+  "forward_autocast_enabled": true,
+  "float32_matmul_precision": "highest",
+  "cuda_matmul_allow_tf32": false,
+  "cudnn_allow_tf32": true,
+  "timing_scope": "server forward_model with CUDA synchronization; input collation measured separately",
+  "queries": "real RGB prefixes of the successful task demonstration; no reward or policy optimization",
+  "success_probability_conversion": "on-device sigmoid in model output dtype, matching HTTP serialization",
+  "cases": [
+    {
+      "task": "adjust_bottle",
+      "name": "single_query_1",
+      "batch_size": 1,
+      "query_frames": 1,
+      "context_frames": 8,
+      "context_frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "padded_input_tokens": [
+        1,
+        910
+      ],
+      "active_input_tokens": [
+        910
+      ],
+      "collation_seconds": 0.022670621052384377,
+      "uncached_first_seconds": 0.22154072811827064,
+      "cached_first_seconds": 0.10886588599532843,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.06555289402604103,
+        0.06558343814685941,
+        0.06541818799450994,
+        0.06515595503151417,
+        0.06511587603017688
+      ],
+      "cached_seconds": [
+        0.03483246103860438,
+        0.0353258210234344,
+        0.03515224694274366,
+        0.03468035883270204,
+        0.034429823979735374
+      ],
+      "uncached_median_seconds": 0.06541818799450994,
+      "cached_median_seconds": 0.03483246103860438,
+      "forward_speedup": 1.8780811359268523,
+      "estimated_collation_plus_forward_speedup": 1.5318971756593653,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            1,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.009960937313735485,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.00014799600467085838,
+          "mean_absolute_difference": 0.00014799600467085838,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.005594683811068535
+            ]
+          ],
+          "cached": [
+            [
+              0.0054466878063976765
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.4836273193359375e-05
+            ]
+          ],
+          "cached": [
+            [
+              5.4836273193359375e-05
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 0,
+        "bytes": 0,
+        "requests": 0,
+        "hits": 0,
+        "misses": 0,
+        "prefill_batches": 0,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        825
+      ],
+      "cache_entry_bytes": [
+        125875200
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "adjust_bottle",
+      "name": "single_query_2",
+      "batch_size": 1,
+      "query_frames": 2,
+      "context_frames": 8,
+      "context_frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "padded_input_tokens": [
+        1,
+        999
+      ],
+      "active_input_tokens": [
+        999
+      ],
+      "collation_seconds": 0.01161683606915176,
+      "uncached_first_seconds": 0.07263803505338728,
+      "cached_first_seconds": 0.039836413925513625,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.06977715203538537,
+        0.06970380595885217,
+        0.06974785006605089,
+        0.06985253281891346,
+        0.07012853492051363
+      ],
+      "cached_seconds": [
+        0.03899245313368738,
+        0.03890315187163651,
+        0.03921908303163946,
+        0.03896649484522641,
+        0.03889389894902706
+      ],
+      "uncached_median_seconds": 0.06977715203538537,
+      "cached_median_seconds": 0.03896649484522641,
+      "forward_speedup": 1.7906961432517305,
+      "estimated_collation_plus_forward_speedup": 1.6091069258035184,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            2,
+            10
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.02080078050494194,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.03125,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.00014699483290314674,
+          "mean_absolute_difference": 9.4955088570714e-05,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.005594683811068535,
+              0.38144296407699585
+            ]
+          ],
+          "cached": [
+            [
+              0.005447688978165388,
+              0.38140004873275757
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 7.152557373046875e-06,
+          "mean_absolute_difference": 3.5762786865234375e-06,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.4836273193359375e-05,
+              0.0001087188720703125
+            ]
+          ],
+          "cached": [
+            [
+              5.4836273193359375e-05,
+              0.00011587142944335938
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        825
+      ],
+      "cache_entry_bytes": [
+        125875200
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "adjust_bottle",
+      "name": "single_query_8",
+      "batch_size": 1,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "padded_input_tokens": [
+        1,
+        1533
+      ],
+      "active_input_tokens": [
+        1533
+      ],
+      "collation_seconds": 0.018814878072589636,
+      "uncached_first_seconds": 0.10789795382879674,
+      "cached_first_seconds": 0.0764985978603363,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.10730346594937146,
+        0.10747240204364061,
+        0.10788253089413047,
+        0.10764338192529976,
+        0.10764061799272895
+      ],
+      "cached_seconds": [
+        0.07712811301462352,
+        0.0768914979416877,
+        0.07642781198956072,
+        0.07653753110207617,
+        0.07668010611087084
+      ],
+      "uncached_median_seconds": 0.10764061799272895,
+      "cached_median_seconds": 0.07668010611087084,
+      "forward_speedup": 1.4037619853719645,
+      "estimated_collation_plus_forward_speedup": 1.3242108697811628,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.00881347618997097,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.00390625,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.0008744597434997559,
+          "mean_absolute_difference": 0.00040901987813413143,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.005597658455371857,
+              0.1125139445066452,
+              0.26903101801872253,
+              0.4113427400588989,
+              0.5886126160621643,
+              0.7248420715332031,
+              0.8622551560401917,
+              0.9973114728927612
+            ]
+          ],
+          "cached": [
+            [
+              0.005448231473565102,
+              0.1130780279636383,
+              0.2681628167629242,
+              0.41137051582336426,
+              0.5885634422302246,
+              0.7239676117897034,
+              0.8629915118217468,
+              0.9973141551017761
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 3.0517578125e-05,
+          "mean_absolute_difference": 3.814697265625e-06,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00116729736328125,
+              0.0093994140625,
+              1.0
+            ]
+          ],
+          "cached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00113677978515625,
+              0.0093994140625,
+              1.0
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        825
+      ],
+      "cache_entry_bytes": [
+        125875200
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "adjust_bottle",
+      "name": "batch_2_query_8",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "padded_input_tokens": [
+        2,
+        1533
+      ],
+      "active_input_tokens": [
+        1533,
+        1533
+      ],
+      "collation_seconds": 0.04464978398755193,
+      "uncached_first_seconds": 0.20230712601915002,
+      "cached_first_seconds": 0.12802942492999136,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.20102906203828752,
+        0.20095975790172815,
+        0.2022238029167056,
+        0.20146541600115597,
+        0.20154974795877934
+      ],
+      "cached_seconds": [
+        0.12828353606164455,
+        0.12851970200426877,
+        0.12892721593379974,
+        0.1286259451881051,
+        0.12837977893650532
+      ],
+      "uncached_median_seconds": 0.20146541600115597,
+      "cached_median_seconds": 0.12851970200426877,
+      "forward_speedup": 1.567583902384588,
+      "estimated_collation_plus_forward_speedup": 1.4212388434318772,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.006632995791733265,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.0078125,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0009440779685974121,
+          "mean_absolute_difference": 0.00019260175758972764,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.005447341129183769,
+              0.11307846009731293,
+              0.269061416387558,
+              0.4113304913043976,
+              0.5893563032150269,
+              0.7248377799987793,
+              0.8629870414733887,
+              0.9973137974739075
+            ],
+            [
+              0.005447341129183769,
+              0.06026942655444145,
+              0.10785036534070969,
+              0.22866514325141907,
+              0.3568057715892792,
+              0.4871353209018707,
+              0.6174693703651428,
+              0.6799652576446533
+            ]
+          ],
+          "cached": [
+            [
+              0.005449885968118906,
+              0.11307716369628906,
+              0.2690325081348419,
+              0.4113186001777649,
+              0.58866947889328,
+              0.7239502668380737,
+              0.8629897832870483,
+              0.9973134398460388
+            ],
+            [
+              0.005449885968118906,
+              0.060273442417383194,
+              0.10784907639026642,
+              0.22882819175720215,
+              0.3568171560764313,
+              0.48807939887046814,
+              0.6175645589828491,
+              0.6802032589912415
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.00030517578125,
+          "mean_absolute_difference": 2.7179718017578125e-05,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00116729736328125,
+              0.00970458984375,
+              1.0
+            ],
+            [
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              7.009506225585938e-05,
+              7.963180541992188e-05,
+              4.839897155761719e-05,
+              8.487701416015625e-05,
+              0.0005035400390625,
+              0.00154876708984375
+            ]
+          ],
+          "cached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00113677978515625,
+              0.0093994140625,
+              1.0
+            ],
+            [
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              7.009506225585938e-05,
+              7.963180541992188e-05,
+              4.839897155761719e-05,
+              8.487701416015625e-05,
+              0.0005035400390625,
+              0.00164794921875
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        825
+      ],
+      "cache_entry_bytes": [
+        125875200
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "adjust_bottle",
+      "name": "batch_2_different_instructions",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "539906fd0f52c786f674618015a16acba317fa3e2a539904ad5500ee6191af6e",
+      "padded_input_tokens": [
+        2,
+        1540
+      ],
+      "active_input_tokens": [
+        1533,
+        1540
+      ],
+      "collation_seconds": 0.04618495190516114,
+      "uncached_first_seconds": 0.234035650966689,
+      "cached_first_seconds": 0.19395054900087416,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.2362411399371922,
+        0.23676688689738512,
+        0.23626307304948568,
+        0.23536566295661032,
+        0.23539955308660865
+      ],
+      "cached_seconds": [
+        0.1297955468762666,
+        0.12990793213248253,
+        0.13007203210145235,
+        0.12968006008304656,
+        0.1298541130963713
+      ],
+      "uncached_median_seconds": 0.2362411399371922,
+      "cached_median_seconds": 0.1298541130963713,
+      "forward_speedup": 1.819281147928412,
+      "estimated_collation_plus_forward_speedup": 1.6043376044964497,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.05078125,
+          "mean_absolute_difference": 0.007601928897202015,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.0078125,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.001486659049987793,
+          "mean_absolute_difference": 0.00033937999978661537,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.005288073793053627,
+              0.11307977139949799,
+              0.2681169807910919,
+              0.41128143668174744,
+              0.5886171460151672,
+              0.7239656448364258,
+              0.8629851937294006,
+              0.997340977191925
+            ],
+            [
+              0.0054464577697217464,
+              0.0602901391685009,
+              0.10746707767248154,
+              0.22922047972679138,
+              0.3611273169517517,
+              0.485318124294281,
+              0.6189557909965515,
+              0.6823862195014954
+            ]
+          ],
+          "cached": [
+            [
+              0.005449642892926931,
+              0.11307838559150696,
+              0.2689986228942871,
+              0.4113244116306305,
+              0.5878358483314514,
+              0.7239585518836975,
+              0.8629869222640991,
+              0.9972831606864929
+            ],
+            [
+              0.005446107126772404,
+              0.060292765498161316,
+              0.1075567677617073,
+              0.22937658429145813,
+              0.3605556786060333,
+              0.4842311143875122,
+              0.6188552975654602,
+              0.6808995604515076
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.00030517578125,
+          "mean_absolute_difference": 2.193450927734375e-05,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00116729736328125,
+              0.00970458984375,
+              1.0
+            ],
+            [
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              7.486343383789062e-05,
+              7.486343383789062e-05,
+              4.839897155761719e-05,
+              8.487701416015625e-05,
+              0.0005035400390625,
+              0.00154876708984375
+            ]
+          ],
+          "cached": [
+            [
+              5.4836273193359375e-05,
+              7.963180541992188e-05,
+              7.486343383789062e-05,
+              7.009506225585938e-05,
+              0.000335693359375,
+              0.00113677978515625,
+              0.0093994140625,
+              1.0
+            ],
+            [
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              7.486343383789062e-05,
+              7.486343383789062e-05,
+              4.839897155761719e-05,
+              8.487701416015625e-05,
+              0.000518798828125,
+              0.00154876708984375
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125875200,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 2,
+        "bytes": 252818432,
+        "requests": 35,
+        "hits": 47,
+        "misses": 2,
+        "prefill_batches": 2,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        825,
+        832
+      ],
+      "cache_entry_bytes": [
+        125875200,
+        126943232
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "move_can_pot",
+      "name": "single_query_1",
+      "batch_size": 1,
+      "query_frames": 1,
+      "context_frames": 8,
+      "context_frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "padded_input_tokens": [
+        1,
+        913
+      ],
+      "active_input_tokens": [
+        913
+      ],
+      "collation_seconds": 0.014983588131144643,
+      "uncached_first_seconds": 0.06711096502840519,
+      "cached_first_seconds": 0.09578051720745862,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.06543755321763456,
+        0.06538780010305345,
+        0.06533144786953926,
+        0.06537862704135478,
+        0.06527851009741426
+      ],
+      "cached_seconds": [
+        0.034491599071770906,
+        0.03441917314194143,
+        0.03428344498388469,
+        0.03400462679564953,
+        0.03387310612015426
+      ],
+      "uncached_median_seconds": 0.06537862704135478,
+      "cached_median_seconds": 0.03428344498388469,
+      "forward_speedup": 1.9070028426865129,
+      "estimated_collation_plus_forward_speedup": 1.6311559696494942,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            1,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.01171875,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0005028117448091507,
+          "mean_absolute_difference": 0.0005028117448091507,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.008752291090786457
+            ]
+          ],
+          "cached": [
+            [
+              0.009255102835595608
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              4.5299530029296875e-05
+            ]
+          ],
+          "cached": [
+            [
+              4.5299530029296875e-05
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 0,
+        "bytes": 0,
+        "requests": 0,
+        "hits": 0,
+        "misses": 0,
+        "prefill_batches": 0,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        828
+      ],
+      "cache_entry_bytes": [
+        126332928
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "move_can_pot",
+      "name": "single_query_2",
+      "batch_size": 1,
+      "query_frames": 2,
+      "context_frames": 8,
+      "context_frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "padded_input_tokens": [
+        1,
+        1002
+      ],
+      "active_input_tokens": [
+        1002
+      ],
+      "collation_seconds": 0.011626698076725006,
+      "uncached_first_seconds": 0.07160364417359233,
+      "cached_first_seconds": 0.038927446119487286,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.06974785006605089,
+        0.07028548396192491,
+        0.07008002395741642,
+        0.06996688898652792,
+        0.07008318905718625
+      ],
+      "cached_seconds": [
+        0.0382139349821955,
+        0.03957493091002107,
+        0.039716849103569984,
+        0.039190399926155806,
+        0.03804697096347809
+      ],
+      "uncached_median_seconds": 0.07008002395741642,
+      "cached_median_seconds": 0.039190399926155806,
+      "forward_speedup": 1.7881936415414013,
+      "estimated_collation_plus_forward_speedup": 1.6078588751665726,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            2,
+            10
+          ],
+          "max_absolute_difference": 0.0390625,
+          "mean_absolute_difference": 0.00789489783346653,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.015625,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.0010824203491210938,
+          "mean_absolute_difference": 0.0005420497618615627,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.008752291090786457,
+              0.6681851148605347
+            ]
+          ],
+          "cached": [
+            [
+              0.008750611916184425,
+              0.6671026945114136
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 4.57763671875e-05,
+          "mean_absolute_difference": 2.288818359375e-05,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              4.5299530029296875e-05,
+              0.0013275146484375
+            ]
+          ],
+          "cached": [
+            [
+              4.5299530029296875e-05,
+              0.00128173828125
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        828
+      ],
+      "cache_entry_bytes": [
+        126332928
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "move_can_pot",
+      "name": "single_query_8",
+      "batch_size": 1,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "padded_input_tokens": [
+        1,
+        1536
+      ],
+      "active_input_tokens": [
+        1536
+      ],
+      "collation_seconds": 0.0188941671513021,
+      "uncached_first_seconds": 0.1072195521555841,
+      "cached_first_seconds": 0.07656482909806073,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.10745090804994106,
+        0.10775933787226677,
+        0.10779950697906315,
+        0.10770233487710357,
+        0.10770855518057942
+      ],
+      "cached_seconds": [
+        0.07680111192166805,
+        0.07651743711903691,
+        0.0763248959556222,
+        0.07664401107467711,
+        0.07639681384898722
+      ],
+      "uncached_median_seconds": 0.10770855518057942,
+      "cached_median_seconds": 0.07651743711903691,
+      "forward_speedup": 1.4076341189135622,
+      "estimated_collation_plus_forward_speedup": 1.3269111582398894,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.011474609375,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.01708984375,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.001382187008857727,
+          "mean_absolute_difference": 0.0005804836982861161,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.008990643545985222,
+              0.13681210577487946,
+              0.27327874302864075,
+              0.44261693954467773,
+              0.5884720683097839,
+              0.7282644510269165,
+              0.8805021047592163,
+              0.9951514601707458
+            ]
+          ],
+          "cached": [
+            [
+              0.009252871386706829,
+              0.13819429278373718,
+              0.27240994572639465,
+              0.4426010549068451,
+              0.5893957614898682,
+              0.7291884422302246,
+              0.8807095885276794,
+              0.9950918555259705
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.009765625,
+          "mean_absolute_difference": 0.0012230277061462402,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              4.267692565917969e-05,
+              5.817413330078125e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.00048828125,
+              0.002044677734375,
+              0.3203125,
+              0.99609375
+            ]
+          ],
+          "cached": [
+            [
+              4.267692565917969e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.0005035400390625,
+              0.002044677734375,
+              0.330078125,
+              0.99609375
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        828
+      ],
+      "cache_entry_bytes": [
+        126332928
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "move_can_pot",
+      "name": "batch_2_query_8",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "padded_input_tokens": [
+        2,
+        1536
+      ],
+      "active_input_tokens": [
+        1536,
+        1536
+      ],
+      "collation_seconds": 0.044286745833233,
+      "uncached_first_seconds": 0.19799738004803658,
+      "cached_first_seconds": 0.12766828993335366,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.19998277793638408,
+        0.1999581700656563,
+        0.20013204403221607,
+        0.20034019695594907,
+        0.20014531002379954
+      ],
+      "cached_seconds": [
+        0.12812165706418455,
+        0.12819758406840265,
+        0.128292451845482,
+        0.12836755602620542,
+        0.12838636990636587
+      ],
+      "uncached_median_seconds": 0.20013204403221607,
+      "cached_median_seconds": 0.128292451845482,
+      "forward_speedup": 1.55996741159222,
+      "estimated_collation_plus_forward_speedup": 1.4162702872247412,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.0089111328125,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.01416015625,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0009627342224121094,
+          "mean_absolute_difference": 0.00043631158769130707,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.008991684764623642,
+              0.137541264295578,
+              0.2723495364189148,
+              0.4425728917121887,
+              0.5893896222114563,
+              0.7282688021659851,
+              0.8805006146430969,
+              0.9951531887054443
+            ],
+            [
+              0.008991684764623642,
+              0.06461794674396515,
+              0.1500527709722519,
+              0.2565293312072754,
+              0.419810026884079,
+              0.47102898359298706,
+              0.6022064089775085,
+              0.6837279796600342
+            ]
+          ],
+          "cached": [
+            [
+              0.009254977107048035,
+              0.13813723623752594,
+              0.2724139392375946,
+              0.44315555691719055,
+              0.5886112451553345,
+              0.7291845083236694,
+              0.880710244178772,
+              0.9950923919677734
+            ],
+            [
+              0.009254977107048035,
+              0.06454884260892868,
+              0.14924269914627075,
+              0.2556305527687073,
+              0.4202413856983185,
+              0.47199171781539917,
+              0.6021730899810791,
+              0.6836864948272705
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.001953125,
+          "mean_absolute_difference": 0.00014719367027282715,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              4.5299530029296875e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.00048828125,
+              0.001983642578125,
+              0.318359375,
+              0.99609375
+            ],
+            [
+              4.5299530029296875e-05,
+              4.5299530029296875e-05,
+              5.4836273193359375e-05,
+              6.198883056640625e-05,
+              5.4836273193359375e-05,
+              6.198883056640625e-05,
+              0.000518798828125,
+              0.01361083984375
+            ]
+          ],
+          "cached": [
+            [
+              4.267692565917969e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.0005035400390625,
+              0.001983642578125,
+              0.3203125,
+              0.99609375
+            ],
+            [
+              4.267692565917969e-05,
+              4.5299530029296875e-05,
+              5.4836273193359375e-05,
+              6.198883056640625e-05,
+              5.4836273193359375e-05,
+              6.198883056640625e-05,
+              0.0005035400390625,
+              0.01324462890625
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        828
+      ],
+      "cache_entry_bytes": [
+        126332928
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "move_can_pot",
+      "name": "batch_2_different_instructions",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "7ab95af10139dfce6d31648bc2ef99b409537c35ce6513d70f6937d9b5ea58c2",
+      "padded_input_tokens": [
+        2,
+        1542
+      ],
+      "active_input_tokens": [
+        1536,
+        1542
+      ],
+      "collation_seconds": 0.04669078392907977,
+      "uncached_first_seconds": 0.2346345519181341,
+      "cached_first_seconds": 0.19447152712382376,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.23760462901555002,
+        0.2369394968263805,
+        0.2370140349958092,
+        0.2372061179485172,
+        0.2373166389297694
+      ],
+      "cached_seconds": [
+        0.1358915390446782,
+        0.13012097403407097,
+        0.1301380298100412,
+        0.1305234138853848,
+        0.13044498511590064
+      ],
+      "uncached_median_seconds": 0.2372061179485172,
+      "cached_median_seconds": 0.13044498511590064,
+      "forward_speedup": 1.8184380007997938,
+      "estimated_collation_plus_forward_speedup": 1.6027079308047971,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.008593750186264515,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.013916015625,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0024584829807281494,
+          "mean_absolute_difference": 0.00036459160037338734,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.00898947287350893,
+              0.13813793659210205,
+              0.2724092900753021,
+              0.4432061016559601,
+              0.5893872380256653,
+              0.7291948199272156,
+              0.8807060718536377,
+              0.9951516389846802
+            ],
+            [
+              0.009506133385002613,
+              0.06282980740070343,
+              0.1492018699645996,
+              0.2572017312049866,
+              0.4278181493282318,
+              0.47377243638038635,
+              0.6050916314125061,
+              0.6849639415740967
+            ]
+          ],
+          "cached": [
+            [
+              0.00925382412970066,
+              0.13740023970603943,
+              0.27235838770866394,
+              0.44372332096099854,
+              0.589394748210907,
+              0.7291834354400635,
+              0.8807095885276794,
+              0.9950922131538391
+            ],
+            [
+              0.009506810456514359,
+              0.06362815946340561,
+              0.14926303923130035,
+              0.256811261177063,
+              0.42535966634750366,
+              0.4735352694988251,
+              0.6050925254821777,
+              0.685198187828064
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.00042724609375,
+          "mean_absolute_difference": 3.17990779876709e-05,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              4.5299530029296875e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.0005035400390625,
+              0.002044677734375,
+              0.3203125,
+              0.99609375
+            ],
+            [
+              4.5299530029296875e-05,
+              4.5299530029296875e-05,
+              5.14984130859375e-05,
+              6.198883056640625e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              0.0004730224609375,
+              0.01361083984375
+            ]
+          ],
+          "cached": [
+            [
+              4.267692565917969e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              5.14984130859375e-05,
+              0.0005035400390625,
+              0.001983642578125,
+              0.3203125,
+              0.99609375
+            ],
+            [
+              4.267692565917969e-05,
+              4.5299530029296875e-05,
+              5.14984130859375e-05,
+              6.198883056640625e-05,
+              5.4836273193359375e-05,
+              5.817413330078125e-05,
+              0.00048828125,
+              0.0140380859375
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 126332928,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 2,
+        "bytes": 253581312,
+        "requests": 35,
+        "hits": 47,
+        "misses": 2,
+        "prefill_batches": 2,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        828,
+        834
+      ],
+      "cache_entry_bytes": [
+        126332928,
+        127248384
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "click_bell",
+      "name": "single_query_1",
+      "batch_size": 1,
+      "query_frames": 1,
+      "context_frames": 8,
+      "context_frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "padded_input_tokens": [
+        1,
+        906
+      ],
+      "active_input_tokens": [
+        906
+      ],
+      "collation_seconds": 0.014592427993193269,
+      "uncached_first_seconds": 0.06719296192750335,
+      "cached_first_seconds": 0.096779904095456,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.0652732599992305,
+        0.06527838599868119,
+        0.06514969887211919,
+        0.06512118806131184,
+        0.06500778184272349
+      ],
+      "cached_seconds": [
+        0.03408739296719432,
+        0.03416443499736488,
+        0.03390751080587506,
+        0.03376403101719916,
+        0.033638938097283244
+      ],
+      "uncached_median_seconds": 0.06514969887211919,
+      "cached_median_seconds": 0.03390751080587506,
+      "forward_speedup": 1.9213943260273436,
+      "estimated_collation_plus_forward_speedup": 1.644169638969612,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            1,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.006640625186264515,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.00033372174948453903,
+          "mean_absolute_difference": 0.00033372174948453903,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.012837301939725876
+            ]
+          ],
+          "cached": [
+            [
+              0.012503580190241337
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            1
+          ],
+          "max_absolute_difference": 0.0,
+          "mean_absolute_difference": 0.0,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.14984130859375e-05
+            ]
+          ],
+          "cached": [
+            [
+              5.14984130859375e-05
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 0,
+        "bytes": 0,
+        "requests": 0,
+        "hits": 0,
+        "misses": 0,
+        "prefill_batches": 0,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        821
+      ],
+      "cache_entry_bytes": [
+        125264896
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "click_bell",
+      "name": "single_query_2",
+      "batch_size": 1,
+      "query_frames": 2,
+      "context_frames": 8,
+      "context_frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "padded_input_tokens": [
+        1,
+        995
+      ],
+      "active_input_tokens": [
+        995
+      ],
+      "collation_seconds": 0.011664090910926461,
+      "uncached_first_seconds": 0.07141963415779173,
+      "cached_first_seconds": 0.03856600495055318,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.06963484408333898,
+        0.0695611760020256,
+        0.0699326591566205,
+        0.06999747408553958,
+        0.06983267283067107
+      ],
+      "cached_seconds": [
+        0.03768730303272605,
+        0.03847727598622441,
+        0.039061418967321515,
+        0.03837562701664865,
+        0.03822626895271242
+      ],
+      "uncached_median_seconds": 0.06983267283067107,
+      "cached_median_seconds": 0.03837562701664865,
+      "forward_speedup": 1.8197141847447935,
+      "estimated_collation_plus_forward_speedup": 1.6286415494897817,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            2,
+            10
+          ],
+          "max_absolute_difference": 0.16796875,
+          "mean_absolute_difference": 0.03535156324505806,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.15625,
+          "mean_absolute_difference": 0.078125,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.0035910606384277344,
+          "mean_absolute_difference": 0.001962007489055395,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.012837301939725876,
+              0.5507254004478455
+            ]
+          ],
+          "cached": [
+            [
+              0.01250434760004282,
+              0.5543164610862732
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            2
+          ],
+          "max_absolute_difference": 0.0004730224609375,
+          "mean_absolute_difference": 0.00023651123046875,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.14984130859375e-05,
+              0.0032806396484375
+            ]
+          ],
+          "cached": [
+            [
+              5.14984130859375e-05,
+              0.0028076171875
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 7,
+        "hits": 6,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        821
+      ],
+      "cache_entry_bytes": [
+        125264896
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "click_bell",
+      "name": "single_query_8",
+      "batch_size": 1,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "padded_input_tokens": [
+        1,
+        1529
+      ],
+      "active_input_tokens": [
+        1529
+      ],
+      "collation_seconds": 0.018803728045895696,
+      "uncached_first_seconds": 0.10802860790863633,
+      "cached_first_seconds": 0.07710119686089456,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.10897349799051881,
+        0.10938935517333448,
+        0.10899591981433332,
+        0.10939431190490723,
+        0.1093795511405915
+      ],
+      "cached_seconds": [
+        0.07696323189884424,
+        0.07728559290990233,
+        0.07710009184665978,
+        0.07697065197862685,
+        0.07700467295944691
+      ],
+      "uncached_median_seconds": 0.1093795511405915,
+      "cached_median_seconds": 0.07700467295944691,
+      "forward_speedup": 1.4204274485808703,
+      "estimated_collation_plus_forward_speedup": 1.337912728335162,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            1,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.01027831993997097,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.0185546875,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.0007713735103607178,
+          "mean_absolute_difference": 0.00027152744587510824,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.012501846067607403,
+              0.13620725274085999,
+              0.2651534974575043,
+              0.4207945168018341,
+              0.6145634055137634,
+              0.7092217803001404,
+              0.8410524129867554,
+              0.9837782979011536
+            ]
+          ],
+          "cached": [
+            [
+              0.012837482616305351,
+              0.13678596913814545,
+              0.2651623785495758,
+              0.4215658903121948,
+              0.6145980954170227,
+              0.7091566324234009,
+              0.8410482406616211,
+              0.9841518998146057
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            1,
+            8
+          ],
+          "max_absolute_difference": 0.0029296875,
+          "mean_absolute_difference": 0.0003857612609863281,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.14984130859375e-05,
+              6.198883056640625e-05,
+              8.487701416015625e-05,
+              7.009506225585938e-05,
+              0.00102996826171875,
+              0.00506591796875,
+              0.1240234375,
+              0.98828125
+            ]
+          ],
+          "cached": [
+            [
+              5.14984130859375e-05,
+              5.817413330078125e-05,
+              8.487701416015625e-05,
+              7.009506225585938e-05,
+              0.00102996826171875,
+              0.005218505859375,
+              0.126953125,
+              0.98828125
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 14,
+        "hits": 13,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        821
+      ],
+      "cache_entry_bytes": [
+        125264896
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "click_bell",
+      "name": "batch_2_query_8",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "padded_input_tokens": [
+        2,
+        1529
+      ],
+      "active_input_tokens": [
+        1529,
+        1529
+      ],
+      "collation_seconds": 0.044023693073540926,
+      "uncached_first_seconds": 0.2000880530104041,
+      "cached_first_seconds": 0.1292970480863005,
+      "first_cached_prefilled_prefix": false,
+      "uncached_seconds": [
+        0.20316678914241493,
+        0.20256284507922828,
+        0.20257736602798104,
+        0.20269978512078524,
+        0.202833617804572
+      ],
+      "cached_seconds": [
+        0.12977058487012982,
+        0.12955954298377037,
+        0.1294269789941609,
+        0.1294452699366957,
+        0.1294142019469291
+      ],
+      "uncached_median_seconds": 0.20269978512078524,
+      "cached_median_seconds": 0.1294452699366957,
+      "forward_speedup": 1.5659111006521456,
+      "estimated_collation_plus_forward_speedup": 1.4222917685843703,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.046875,
+          "mean_absolute_difference": 0.009854125790297985,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0625,
+          "mean_absolute_difference": 0.01904296875,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0018007159233093262,
+          "mean_absolute_difference": 0.00040298106614500284,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.012501641176640987,
+              0.13612322509288788,
+              0.26506713032722473,
+              0.4215790033340454,
+              0.6136432886123657,
+              0.7092422246932983,
+              0.8410696983337402,
+              0.983791708946228
+            ],
+            [
+              0.012501641176640987,
+              0.07246635109186172,
+              0.14246048033237457,
+              0.2377026230096817,
+              0.41637668013572693,
+              0.5191360712051392,
+              0.6484453678131104,
+              0.7061280012130737
+            ]
+          ],
+          "cached": [
+            [
+              0.012503717094659805,
+              0.1369010955095291,
+              0.26509958505630493,
+              0.42154935002326965,
+              0.615444004535675,
+              0.7092472314834595,
+              0.8410511016845703,
+              0.984157145023346
+            ],
+            [
+              0.012503717094659805,
+              0.07254912704229355,
+              0.14327028393745422,
+              0.237138032913208,
+              0.41589322686195374,
+              0.5179470777511597,
+              0.6484062075614929,
+              0.7058829665184021
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0009765625,
+          "mean_absolute_difference": 0.00011873245239257812,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.14984130859375e-05,
+              5.817413330078125e-05,
+              8.487701416015625e-05,
+              7.009506225585938e-05,
+              0.00102996826171875,
+              0.00506591796875,
+              0.1298828125,
+              0.98828125
+            ],
+            [
+              5.14984130859375e-05,
+              5.4836273193359375e-05,
+              5.14984130859375e-05,
+              8.487701416015625e-05,
+              9.632110595703125e-05,
+              0.00048828125,
+              0.002044677734375,
+              0.0206298828125
+            ]
+          ],
+          "cached": [
+            [
+              5.14984130859375e-05,
+              6.198883056640625e-05,
+              9.012222290039062e-05,
+              7.009506225585938e-05,
+              0.001068115234375,
+              0.00506591796875,
+              0.12890625,
+              0.98828125
+            ],
+            [
+              5.14984130859375e-05,
+              5.4836273193359375e-05,
+              5.14984130859375e-05,
+              8.487701416015625e-05,
+              9.012222290039062e-05,
+              0.0004730224609375,
+              0.002044677734375,
+              0.019775390625
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 21,
+        "hits": 20,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        821
+      ],
+      "cache_entry_bytes": [
+        125264896
+      ],
+      "exercised_cache": true,
+      "passed": true
+    },
+    {
+      "task": "click_bell",
+      "name": "batch_2_different_instructions",
+      "batch_size": 2,
+      "query_frames": 8,
+      "context_frames": 8,
+      "context_frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472",
+      "padded_input_tokens": [
+        2,
+        1536
+      ],
+      "active_input_tokens": [
+        1529,
+        1536
+      ],
+      "collation_seconds": 0.0469104980584234,
+      "uncached_first_seconds": 0.22756055486388505,
+      "cached_first_seconds": 0.19404152687638998,
+      "first_cached_prefilled_prefix": true,
+      "uncached_seconds": [
+        0.2303257631137967,
+        0.2302388760726899,
+        0.23047954286448658,
+        0.23065319214947522,
+        0.23098637908697128
+      ],
+      "cached_seconds": [
+        0.12996328505687416,
+        0.12956216000020504,
+        0.130125594092533,
+        0.1303281090222299,
+        0.12964887917041779
+      ],
+      "uncached_median_seconds": 0.23047954286448658,
+      "cached_median_seconds": 0.12996328505687416,
+      "forward_speedup": 1.7734204145703518,
+      "estimated_collation_plus_forward_speedup": 1.568293706603706,
+      "comparisons": {
+        "progress_logits/A": {
+          "shape": [
+            2,
+            8,
+            10
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.008532715030014515,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "success_logits/A": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.03125,
+          "mean_absolute_difference": 0.00732421875,
+          "atol": 0.2,
+          "rtol": 0.01,
+          "passed": true
+        },
+        "progress_pred": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0008690953254699707,
+          "mean_absolute_difference": 0.0003644293174147606,
+          "atol": 0.005,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              0.01250529009848833,
+              0.1367282271385193,
+              0.2650611102581024,
+              0.4216708242893219,
+              0.6145712733268738,
+              0.7092198729515076,
+              0.8409429788589478,
+              0.9842278957366943
+            ],
+            [
+              0.012156963348388672,
+              0.07172508537769318,
+              0.14271870255470276,
+              0.2366800308227539,
+              0.41646701097488403,
+              0.5194764137268066,
+              0.6476172208786011,
+              0.7045465707778931
+            ]
+          ],
+          "cached": [
+            [
+              0.012838364578783512,
+              0.13683979213237762,
+              0.2651485502719879,
+              0.42155852913856506,
+              0.6146224141120911,
+              0.7100487947463989,
+              0.8410248160362244,
+              0.984153687953949
+            ],
+            [
+              0.011839035898447037,
+              0.07250651717185974,
+              0.14278064668178558,
+              0.23714151978492737,
+              0.4173020124435425,
+              0.5200290679931641,
+              0.648486316204071,
+              0.7048174142837524
+            ]
+          ]
+        },
+        "success_probs": {
+          "shape": [
+            2,
+            8
+          ],
+          "max_absolute_difference": 0.0009765625,
+          "mean_absolute_difference": 9.298324584960938e-05,
+          "atol": 0.01,
+          "rtol": 0.0,
+          "passed": true,
+          "uncached": [
+            [
+              5.14984130859375e-05,
+              5.817413330078125e-05,
+              9.012222290039062e-05,
+              7.009506225585938e-05,
+              0.00102996826171875,
+              0.00506591796875,
+              0.12890625,
+              0.98828125
+            ],
+            [
+              5.14984130859375e-05,
+              5.4836273193359375e-05,
+              5.14984130859375e-05,
+              8.487701416015625e-05,
+              9.012222290039062e-05,
+              0.000457763671875,
+              0.002044677734375,
+              0.019775390625
+            ]
+          ],
+          "cached": [
+            [
+              5.14984130859375e-05,
+              5.817413330078125e-05,
+              9.012222290039062e-05,
+              7.009506225585938e-05,
+              0.001068115234375,
+              0.005218505859375,
+              0.1298828125,
+              0.98828125
+            ],
+            [
+              5.14984130859375e-05,
+              5.4836273193359375e-05,
+              5.14984130859375e-05,
+              8.487701416015625e-05,
+              9.012222290039062e-05,
+              0.000457763671875,
+              0.0021209716796875,
+              0.02001953125
+            ]
+          ]
+        }
+      },
+      "first_cached_vs_repeated_cached": {
+        "progress_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_logits/A": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "progress_pred": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        },
+        "success_probs": {
+          "bitwise_equal": true,
+          "max_absolute_difference": 0.0
+        }
+      },
+      "cache_before": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 1,
+        "bytes": 125264896,
+        "requests": 28,
+        "hits": 34,
+        "misses": 1,
+        "prefill_batches": 1,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_after": {
+        "enabled": true,
+        "implementation": "qwen3-vl-fixed-context-kv-v1",
+        "max_entries": 8,
+        "max_bytes": 1073741824,
+        "entries": 2,
+        "bytes": 251597824,
+        "requests": 35,
+        "hits": 47,
+        "misses": 2,
+        "prefill_batches": 2,
+        "evictions": 0,
+        "invalidations": 0,
+        "fallbacks": 0,
+        "oversized_entries": 0,
+        "fallback_reasons": {}
+      },
+      "cache_entry_token_lengths": [
+        821,
+        828
+      ],
+      "cache_entry_bytes": [
+        125264896,
+        126332928
+      ],
+      "exercised_cache": true,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "after_other_queries": {
+    "adjust_bottle": {
+      "progress_logits/A": {
+        "shape": [
+          1,
+          1,
+          10
+        ],
+        "max_absolute_difference": 0.03125,
+        "mean_absolute_difference": 0.009960937313735485,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "success_logits/A": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "progress_pred": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.00014799600467085838,
+        "mean_absolute_difference": 0.00014799600467085838,
+        "atol": 0.005,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            0.005594683811068535
+          ]
+        ],
+        "cached": [
+          [
+            0.0054466878063976765
+          ]
+        ]
+      },
+      "success_probs": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.01,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            5.4836273193359375e-05
+          ]
+        ],
+        "cached": [
+          [
+            5.4836273193359375e-05
+          ]
+        ]
+      }
+    },
+    "move_can_pot": {
+      "progress_logits/A": {
+        "shape": [
+          1,
+          1,
+          10
+        ],
+        "max_absolute_difference": 0.03125,
+        "mean_absolute_difference": 0.01171875,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "success_logits/A": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "progress_pred": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0005028117448091507,
+        "mean_absolute_difference": 0.0005028117448091507,
+        "atol": 0.005,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            0.008752291090786457
+          ]
+        ],
+        "cached": [
+          [
+            0.009255102835595608
+          ]
+        ]
+      },
+      "success_probs": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.01,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            4.5299530029296875e-05
+          ]
+        ],
+        "cached": [
+          [
+            4.5299530029296875e-05
+          ]
+        ]
+      }
+    },
+    "click_bell": {
+      "progress_logits/A": {
+        "shape": [
+          1,
+          1,
+          10
+        ],
+        "max_absolute_difference": 0.03125,
+        "mean_absolute_difference": 0.006640625186264515,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "success_logits/A": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.2,
+        "rtol": 0.01,
+        "passed": true
+      },
+      "progress_pred": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.00033372174948453903,
+        "mean_absolute_difference": 0.00033372174948453903,
+        "atol": 0.005,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            0.012837301939725876
+          ]
+        ],
+        "cached": [
+          [
+            0.012503580190241337
+          ]
+        ]
+      },
+      "success_probs": {
+        "shape": [
+          1,
+          1
+        ],
+        "max_absolute_difference": 0.0,
+        "mean_absolute_difference": 0.0,
+        "atol": 0.01,
+        "rtol": 0.0,
+        "passed": true,
+        "uncached": [
+          [
+            5.14984130859375e-05
+          ]
+        ],
+        "cached": [
+          [
+            5.14984130859375e-05
+          ]
+        ]
+      }
+    }
+  },
+  "cache_per_task": {
+    "adjust_bottle": {
+      "enabled": true,
+      "implementation": "qwen3-vl-fixed-context-kv-v1",
+      "max_entries": 8,
+      "max_bytes": 1073741824,
+      "entries": 2,
+      "bytes": 252818432,
+      "requests": 36,
+      "hits": 48,
+      "misses": 2,
+      "prefill_batches": 2,
+      "evictions": 0,
+      "invalidations": 0,
+      "fallbacks": 0,
+      "oversized_entries": 0,
+      "fallback_reasons": {}
+    },
+    "move_can_pot": {
+      "enabled": true,
+      "implementation": "qwen3-vl-fixed-context-kv-v1",
+      "max_entries": 8,
+      "max_bytes": 1073741824,
+      "entries": 2,
+      "bytes": 253581312,
+      "requests": 36,
+      "hits": 48,
+      "misses": 2,
+      "prefill_batches": 2,
+      "evictions": 0,
+      "invalidations": 0,
+      "fallbacks": 0,
+      "oversized_entries": 0,
+      "fallback_reasons": {}
+    },
+    "click_bell": {
+      "enabled": true,
+      "implementation": "qwen3-vl-fixed-context-kv-v1",
+      "max_entries": 8,
+      "max_bytes": 1073741824,
+      "entries": 2,
+      "bytes": 251597824,
+      "requests": 36,
+      "hits": 48,
+      "misses": 2,
+      "prefill_batches": 2,
+      "evictions": 0,
+      "invalidations": 0,
+      "fallbacks": 0,
+      "oversized_entries": 0,
+      "fallback_reasons": {}
+    }
+  },
+  "completed_at_utc": "2026-11-02T11:15:00.063018+00:00",
+  "peak_allocated_bytes": 10566878208
+}

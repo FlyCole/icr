@@ -1,0 +1,240 @@
+custom_eval:
+  comparisons_per_task: 5
+  confusion_matrix:
+  - mw
+  confusion_matrix_n_trajectories_per_source: 5
+  custom_eval_random_seed: 42
+  eval_types:
+  - reward_alignment
+  - policy_ranking
+  max_comparisons: null
+  num_examples_per_quality_pr: 5
+  num_partial_successes: 5
+  pad_frames: true
+  policy_ranking:
+  - rbm-1m-ood
+  policy_ranking_max_tasks: 100
+  quality_preference:
+  - mw
+  require_context_trajectory: false
+  reward_alignment:
+  - rbm-1m-ood
+  reward_alignment_max_trajectories: 10
+  subsample_n_frames: null
+  trajectory_num_shards: 1
+  trajectory_shard_index: 0
+  use_frame_steps: true
+data:
+  add_context_progress_tokens: true
+  alignment_aug_blur_sigma:
+  - 0.1
+  - 1.0
+  alignment_aug_brightness: 0.2
+  alignment_aug_contrast: 0.2
+  alignment_aug_crop_ratio:
+  - 0.95
+  - 1.05
+  alignment_aug_crop_scale:
+  - 0.9
+  - 1.0
+  alignment_aug_gaussian_blur_p: 0.1
+  alignment_aug_grayscale_p: 0.03
+  alignment_aug_hue: 0.03
+  alignment_aug_noise_p: 0.1
+  alignment_aug_noise_std: 0.01
+  alignment_aug_saturation: 0.15
+  alignment_frame_jitter: 0.15
+  alignment_image_augmentation: true
+  alignment_include_language: false
+  alignment_max_frames: 32
+  alignment_min_frames: 16
+  alignment_num_frames: 24
+  conditioning_mode: language_context
+  context_condition_dropout_prob: 0.0
+  context_frames: 8
+  data_source_weights: null
+  dataloader_num_workers: 8
+  dataloader_persistent_workers: true
+  dataloader_pin_memory: true
+  dataset_backend: processed
+  dataset_preference_ratio: 0.7
+  dataset_success_cutoff_file: robometer/data/dataset_success_cutoff.txt
+  dataset_type: strategy_first
+  dtw_cache_miss_policy: absolute
+  dtw_label_cache_path: /data/robometer-v2/logs/rbm_1m_host_alignment_processed_full_parameter_strict_matching/ckpt-eval_loss=-1.0172_step=3250/embedding_cache_rbm_1m_id_16frames_strict/dtw_pair_label_cache_monotonic_processed_complete
+  dtw_pair_cache_require_hit: true
+  eval_datasets:
+  - rbm-1m-ood
+  eval_subset_size: null
+  include_language_with_context: true
+  language_condition_dropout_prob: 0.0
+  load_embeddings: false
+  max_frames: 8
+  max_frames_after_preprocessing: 64
+  max_success: 1.0
+  max_trajectories: -1
+  min_frames_per_trajectory: 5
+  min_success: 0.5
+  partial_success_threshold: 0.2
+  predict_last_frame_partial_progress: true
+  preference_strategy_ratio:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  progress_discrete_bins: 10
+  progress_loss_type: discrete
+  progress_pred_type: dtw
+  progress_strategy_ratio:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  raw_dataset_path: ''
+  raw_metadata_cache_dir: ''
+  raw_metadata_num_threads: 16
+  raw_video_frame_cap: 32
+  require_same_source_and_view: true
+  resized_height: null
+  resized_width: null
+  sample_type_ratio:
+  - 1.0
+  - 0.0
+  - 0.0
+  seed: 42
+  shuffle: true
+  shuffle_progress_frames: false
+  train_datasets:
+  - rbm-1m-id
+  traj_same_source_prob: 0.5
+  use_multi_image: true
+  use_per_frame_progress_token: true
+debug: false
+logging:
+  log_level: INFO
+  log_to:
+  - wandb
+  save_best:
+    greater_is_better:
+    - true
+    - true
+    - true
+    - true
+    - true
+    hub_private: false
+    hub_save_every: 1000
+    hub_token: null
+    keep_top_k: 3
+    metric_names:
+    - eval_p_rank/kendall_last_utd_so101_clean_top
+    - eval_p_rank/kendall_last_usc_xarm
+    - eval_p_rank/kendall_last_usc_franka
+    - eval_p_rank/kendall_last_rfm_new_mit_franka_nowrist
+    - eval_p_rank/kendall_last_usc_trossen
+    save_every: 250
+    upload_to_hub: false
+  save_model: true
+  save_processor: true
+  wandb_entity: cheng_qian
+  wandb_mode: null
+  wandb_notes: training Robometer
+  wandb_project: robometer
+loss:
+  alignment_column_temperature: 0.1
+  alignment_dtw_weight: 0.3
+  alignment_label_smoothing: 0.1
+  alignment_loss_type: host
+  alignment_sdtw_temperature: 1.0
+  alignment_softmax_temperature: 0.1
+  alignment_variance_epsilon: 0.0001
+  alignment_variance_weight: 0.001
+  predict_last_frame_progress: false
+  progress_discrete_bins: 10
+  progress_loss_type: discrete
+  success_positive_weight: 1.0
+mode: train
+model:
+  alignment_dim: 128
+  alignment_projection_bias: false
+  average_temporal_patches: true
+  base_model_id: /home/yifei/icr/checkpoints/Qwen3-VL-4B-Instruct
+  frame_pooling: mean
+  frame_pooling_attn_temperature: 1.0
+  model_type: default
+  peft_vision_encoder: false
+  progress_discrete_bins: 10
+  progress_loss_type: discrete
+  quantization: false
+  qwen_vision_t5: null
+  rewind: null
+  torch_dtype: bfloat16
+  train_alignment_head: false
+  train_language_model: true
+  train_preference_head: true
+  train_progress_head: true
+  train_success_head: true
+  train_vision_encoder: false
+  trust_remote_code: true
+  use_multi_image: true
+  use_peft: false
+  use_per_frame_progress_token: true
+  use_unsloth: false
+peft:
+  bias: none
+  lora_alpha: 64
+  lora_dropout: 0.05
+  peft_vision_encoder: false
+  r: 32
+  target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+trainer_cls: rbm_heads
+training:
+  beta: 0.1
+  bf16: true
+  custom_eval_steps: 250
+  dataloader_num_workers: 8
+  dataloader_persistent_workers: true
+  dataloader_pin_memory: true
+  ddp_bucket_cap_mb: 25
+  ddp_find_unused_parameters: false
+  detect_anomaly: false
+  do_eval: true
+  eval_steps: 250
+  evaluation_strategy: steps
+  exp_name: rbm_1m_context_processed_alignment_dtw_label_language_v2_resumed_1750
+  fp16: false
+  gradient_accumulation_steps: 1
+  gradient_checkpointing: false
+  learning_rate: 2.0e-05
+  load_backbone_only: false
+  load_from_checkpoint: null
+  logging_steps: 1
+  lr_scheduler_type: cosine
+  max_grad_norm: 10.0
+  max_seq_length: 1024
+  max_steps: 15000
+  num_gpus: 2
+  num_train_epochs: -1
+  output_dir: /data/robometer-v2/logs/
+  overwrite_output_dir: false
+  per_device_eval_batch_size: 64
+  per_device_train_batch_size: 64
+  predict_pref_progress: true
+  prediction_loss_only: true
+  remove_unused_columns: false
+  reset_progress_token: false
+  resume_from_checkpoint: /data/robometer-v2/logs/rbm_1m_context_processed_alignment_dtw_label_language_v2/ckpt-latest-avg-5metrics=0.6064_step=1750
+  run_default_eval: false
+  save_steps: 250
+  save_strategy: 'no'
+  vision_encoder_lr: 5.0e-06
+  vision_encoder_num_layers: 3
+  warmup_ratio: 0.1
+  warmup_steps: 0
+  weight_decay: 0.01

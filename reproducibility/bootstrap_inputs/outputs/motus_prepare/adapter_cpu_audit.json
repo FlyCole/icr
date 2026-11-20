@@ -1,0 +1,76 @@
+{
+  "checkpoint": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2",
+  "weights": {
+    "bytes": 7473091464,
+    "sha256": "de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb",
+    "integrity_verified": true
+  },
+  "normalization": {
+    "path": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+    "sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+  },
+  "structure": {
+    "passed": true,
+    "source_tensor_count": 812,
+    "converted_tensor_count": 667,
+    "source_dtype_counts": {
+      "F32": 122,
+      "BF16": 690
+    },
+    "decoder_horizon": 32,
+    "action_env_dim": 14,
+    "internal_action_dim": 32,
+    "download_complete": true,
+    "validation": "actual key conversion against actual Pi0 meta architecture; no tensor body/model inference"
+  },
+  "transforms": {
+    "passed": true,
+    "reference": "installed upstream openpi.training.config.LeRobotAlohaDataConfig",
+    "batch_size": 2,
+    "raw_state_dim": 14,
+    "normalized_padded_state_dim": 32,
+    "raw_camera_order": [
+      "head",
+      "left_wrist",
+      "right_wrist"
+    ],
+    "adapt_to_pi": true,
+    "delta_joint_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ],
+    "quantile_normalization": true,
+    "decoder_horizon": 32,
+    "executed_action_chunk": 20,
+    "input_max_abs_error": 0.0,
+    "output_max_abs_error": 0.0,
+    "checks": [
+      "camera orientation and order",
+      "joint/gripper state conversion",
+      "normalized state tokens",
+      "inverse normalization and delta-joint reconstruction",
+      "20-action prefix cropping"
+    ],
+    "reference_source_sha256": {
+      "upstream_config": "b54b77a123537bcb304ffe4ad3ed191ee065890f8d7d6a0973d13a0231b93cec",
+      "upstream_aloha": "50d7ad972d80142ecb0f03b0780dacfd3af212946f4c9aac31a204b02db4543d"
+    }
+  },
+  "limitations": [
+    "No GPU or full decoder inference is run.",
+    "This compares the installed upstream OpenPI transforms, not an unreleased exact Motus training fork.",
+    "Key/shape and transform parity does not establish full decoder numerical or task-success parity."
+  ]
+}

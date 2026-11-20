@@ -1,0 +1,2652 @@
+{
+  "schema_version": 1,
+  "captured_on": "2026-11-20",
+  "timezone": "Asia/Shanghai",
+  "purpose": "Versioned completed evaluation results and saved resolved recipes for another checkout.",
+  "project_path_variables": {
+    "ICR_REPO_ROOT": "Absolute path of the cloned/restored repository.",
+    "ICR_RUN_ROOT": "Fresh log/video/output directory for one train or evaluation invocation.",
+    "ICR_EVAL_CHECKPOINT": "Transferred or newly trained checkpoint directory for a trained-policy evaluation."
+  },
+  "captured_parent_commit_before_this_backup": "8db03e42c050444d781e6f074731b5abd5584ea1",
+  "runtime_source_backup": "vendor_patches/manifest.json",
+  "checkpoint_and_asset_provenance": "reproducibility/artifacts_manifest.json",
+  "reproduction_note": "Saved resolved configs preserve parameters after path-only substitution. Identical training scores are not guaranteed across hardware/software or nondeterministic CUDA execution. Historical launch hashes do not restore removed historical implementations.",
+  "completed_evaluation_count": 31,
+  "saved_config_counts": {
+    "train": 23,
+    "eval": 31
+  },
+  "seed_protocol": {
+    "train_seeds.json": {
+      "path": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/train_seeds.json",
+      "sha256": "55b25866308d4e7da486282982ead4d5857b53fd977f659b216045f1950b45e2",
+      "tasks": {
+        "adjust_bottle": {
+          "count": 1000,
+          "first": 0,
+          "last": 1262,
+          "ordered_seeds_sha256": "cb7a662d5806d65b08d025337e29f7a77a77ea3e89bc4c30b45eb5fa102efd58"
+        },
+        "click_bell": {
+          "count": 1000,
+          "first": 100000,
+          "last": 108224,
+          "ordered_seeds_sha256": "150e2c42d637ef75f91ce596f4f477ada3cb706bde30298c56660ca44f948922"
+        },
+        "move_can_pot": {
+          "count": 1000,
+          "first": 100000,
+          "last": 108249,
+          "ordered_seeds_sha256": "c450ddcc77397d5e238ef2f35b188d19b33a5f134a692061b7cd7ad12558440a"
+        }
+      }
+    },
+    "eval_seeds.json": {
+      "path": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+      "sha256": "194164f7380fd7cad2a8940ca93def01c2be865da265e4af1c463d73b2aa482f",
+      "tasks": {
+        "adjust_bottle": {
+          "count": 150,
+          "first": 100100000,
+          "last": 100100177,
+          "ordered_seeds_sha256": "cba4572ea7ee8b1ec45070b7e611e9e96bab28cdd37260eebd2ba91c5a1ac0ac"
+        },
+        "click_bell": {
+          "count": 150,
+          "first": 100100001,
+          "last": 100100175,
+          "ordered_seeds_sha256": "bb3677aef71163052260bb9372363a517083e8f9541781c9b2b8b96d84aefcdc"
+        },
+        "move_can_pot": {
+          "count": 150,
+          "first": 100100000,
+          "last": 100100195,
+          "ordered_seeds_sha256": "75d62014ce9ae64d66d5b1b85be66ebc2156d450fa902090f7e144e16fc3baaa"
+        }
+      }
+    }
+  },
+  "experiments": [
+    {
+      "id": "motus_sft_bottle",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "SFT baseline",
+      "result": {
+        "episodes": 150,
+        "successes": 48,
+        "success_rate": 0.32,
+        "success_rate_percent": 32.0,
+        "tensorboard_success_once": 0.3199999928474426,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_sft_bottle__eval.yaml",
+          "sha256": "35415457fc1552fe1f5c2b0bbcc96044176deb33262728ab9f5bf0260ca33886",
+          "original_path": "outputs/motus_multitask/adjust_bottle/vanilla_eval/tensorboard/config.yaml",
+          "original_sha256": "5aae0661029ecc5f8b7d64342447636d40adacb0db379465a2e894dda792ac7f",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_multitask/adjust_bottle/vanilla_eval/metrics.log",
+        "metrics_sha256": "8ce8a5873900935939613ff70838aed0b005dbefb17c956cd4576f7b1a997ea8",
+        "checkpoint_path": "checkpoints/Motus-Pi05-RoboTwin2",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_multitask__experiment_manifest.json",
+          "sha256": "1c04c80251c0bb1911b4efcc95e12672c57f2f6a64ae4af8791a125fedb983e5",
+          "hashed_pin_count": 129
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Gaussian noise",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_repeat_icon",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL ICON, fixed context",
+      "result": {
+        "episodes": 150,
+        "successes": 4,
+        "success_rate": 0.02666666666666667,
+        "success_rate_percent": 2.666667,
+        "tensorboard_success_once": 0.02666666731238365,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_repeat_icon__eval.yaml",
+          "sha256": "e5a568f1413244a33d3193163adfc1e7eb8fb3685817a6fa3e10e4a7d89e6c95",
+          "original_path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_eval/tensorboard/config.yaml",
+          "original_sha256": "9dd639ec7e7717b552553f530742ec2d030ee3ec148c0ed240ac457b98018204",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_repeat_icon__train.yaml",
+          "sha256": "d706d522709ca58a1a6fd517d1537452c382a0c5dcad58fd1f8d074be772dc3c",
+          "original_path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_train/tensorboard/config.yaml",
+          "original_sha256": "9b5d95ffd2adc0d21d05d5636f3a12220e96d06d1e05d0b5b6fd75f202f4670b",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_eval/metrics.log",
+        "metrics_sha256": "fbc84d29789cea991fda48ffb367db778c1c7fe107d119da6ea38fa5a02547e5",
+        "checkpoint_path": "outputs/motus_multitask_kv_cache/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_multitask_kv_cache__experiment_manifest.json",
+          "sha256": "9be2d5b7b872b9beb42a7cac55f8abcaf643f3cecca48d9a73ba1e1ea1766643",
+          "hashed_pin_count": 173
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Repeated 32D controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_repeat_robometer",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL Robometer",
+      "result": {
+        "episodes": 150,
+        "successes": 6,
+        "success_rate": 0.04,
+        "success_rate_percent": 4.0,
+        "tensorboard_success_once": 0.03999999910593033,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_repeat_robometer__eval.yaml",
+          "sha256": "b9f0a010c396b518e0e9ff60135fa06ebef9d7279c3c3e61475891f50cb95f6f",
+          "original_path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_eval/tensorboard/config.yaml",
+          "original_sha256": "3979c87e0abc4ffbba28b90300a4a23ff301684d4b4c5fa6107caa18f31a1a74",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_repeat_robometer__train.yaml",
+          "sha256": "b904a7c34abb827edb442ad2ea8c27ec8b9ed4ffdec110c2dd3542b9f839e32a",
+          "original_path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_train/tensorboard/config.yaml",
+          "original_sha256": "3afb819990a7f0132d14906a965872e7156ec2c8b3ac7a0875831a40af2d9335",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_eval/metrics.log",
+        "metrics_sha256": "8f1282735751c236dbcfd20b71b75a4218cd2a52a6e86b1864d78ecf5f5d89ef",
+        "checkpoint_path": "outputs/motus_multitask_kv_cache/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_multitask_kv_cache__experiment_manifest.json",
+          "sha256": "9be2d5b7b872b9beb42a7cac55f8abcaf643f3cecca48d9a73ba1e1ea1766643",
+          "hashed_pin_count": 173
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Repeated 32D controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_icon",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL ICON, fixed context",
+      "result": {
+        "episodes": 150,
+        "successes": 66,
+        "success_rate": 0.44,
+        "success_rate_percent": 44.0,
+        "tensorboard_success_once": 0.4399999976158142,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon__eval.yaml",
+          "sha256": "95bc787a2df2472ca39ec36c12b26526238f1eccf8fd4d07d6ae5bcf148a459a",
+          "original_path": "outputs/motus_noise20/adjust_bottle/icon_eval/tensorboard/config.yaml",
+          "original_sha256": "6ee5d8d88f7828d3bdf636760070895da4b5e2282e5c43f08750984774f0250d",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon__train.yaml",
+          "sha256": "cace596052acdffa13f6680b7be78f3f38a5febf7321a836602137b55ba265eb",
+          "original_path": "outputs/motus_noise20/adjust_bottle/icon_train/tensorboard/config.yaml",
+          "original_sha256": "06784cb30a2d00bd13a4c91049a0e993edd0434f124fc16b856ac7b66e41cf2e",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20/adjust_bottle/icon_eval/metrics.log",
+        "metrics_sha256": "3722af58e071f4ae1eb4f529916b3ee8dfef4e66fbf4c8d94770d40caf6b667e",
+        "checkpoint_path": "outputs/motus_noise20/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20__adjust_bottle__icon_run__experiment_manifest.json",
+          "sha256": "791925180598cdb0ee26ab17955e43f360afd4021f5647f0588b41d20c6a50fb",
+          "hashed_pin_count": 193
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "20x32 controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_simulator",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL simulator sparse",
+      "result": {
+        "episodes": 150,
+        "successes": 77,
+        "success_rate": 0.5133333333333333,
+        "success_rate_percent": 51.333333,
+        "tensorboard_success_once": 0.5133333206176758,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_simulator__eval.yaml",
+          "sha256": "e4a11a66e8107bb97da78755ada856041873774388ed7ced38a6e93a703dcc45",
+          "original_path": "outputs/motus_noise20/adjust_bottle/simulator_eval/tensorboard/config.yaml",
+          "original_sha256": "e7bb0a7200421e59723402fe888fab8eb4b7e7956a7bb85b689749cbc50bd66c",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_simulator__train.yaml",
+          "sha256": "77b86ddd659468b4b81a113b6610902223209a86f51c5d1ddc6a9ddc47c9d6a2",
+          "original_path": "outputs/motus_noise20/adjust_bottle/simulator_train/tensorboard/config.yaml",
+          "original_sha256": "fda99c3a6e464e6f0212e187a1854d5366e2966bf08c72eafe2eff25c41d27c4",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 1.0,
+        "learned_reward_weight": 0.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20/adjust_bottle/simulator_eval/metrics.log",
+        "metrics_sha256": "43fd0d3df99e542a3ee1b1b180fc38602082356e0cf19b24c9bc54ed4e204bff",
+        "checkpoint_path": "outputs/motus_noise20/adjust_bottle/simulator_train/pi05_motus_adjust_bottle_dsrl_simulator_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20__adjust_bottle__simulator_run__experiment_manifest.json",
+          "sha256": "23c755aca054b9a8dc5887e11f7f10b55d1950c01827f0d205c29104db9ece77",
+          "hashed_pin_count": 95
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "20x32 controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_object_context",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL ICON, object-matched context",
+      "result": {
+        "episodes": 150,
+        "successes": 62,
+        "success_rate": 0.41333333333333333,
+        "success_rate_percent": 41.333333,
+        "tensorboard_success_once": 0.41333332657814026,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_object_context__eval.yaml",
+          "sha256": "41a2b92dd5969d77e33fe2e175e54adc963cec23d9c9e41527eea73879afea31",
+          "original_path": "outputs/motus_noise20_object_context/adjust_bottle/icon_eval/tensorboard/config.yaml",
+          "original_sha256": "c0bf43baedf57fd5810d784e52764399836ed8536b6da12f21922c0fc5a8dc58",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_object_context__train.yaml",
+          "sha256": "2c17c5c4dc0acb08396fd6b1f6add3e50a925059dff941cdd09725a77d20cb8a",
+          "original_path": "outputs/motus_noise20_object_context/adjust_bottle/icon_train/tensorboard/config.yaml",
+          "original_sha256": "57920ab11d5bd4e8c15caff43609dae994d4a559be0084b191a79f43a1cf460b",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_object_context/adjust_bottle/icon_eval/metrics.log",
+        "metrics_sha256": "05e6a0db303541a7bcdb648ee1bcce00b0f9cf4706e8ffc159edafb20143141f",
+        "checkpoint_path": "outputs/motus_noise20_object_context/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20_object_context/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_object_context__adjust_bottle__icon_run__experiment_manifest.json",
+          "sha256": "beb0957cb1abcaa822766ff64c8377338055dd003f1b5ff810787937566835cc",
+          "hashed_pin_count": 201
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "20x32 controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_sft_canpot",
+      "status": "completed_formal_evaluation",
+      "task": "move_can_pot",
+      "backbone": "Motus",
+      "method": "SFT baseline",
+      "result": {
+        "episodes": 150,
+        "successes": 21,
+        "success_rate": 0.14,
+        "success_rate_percent": 14.0,
+        "tensorboard_success_once": 0.14000000059604645,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_sft_canpot__eval.yaml",
+          "sha256": "76b323e8332d81d8bdd26ae59f6283ea7f0fd22912c81324eb759cda2969370f",
+          "original_path": "outputs/motus_multitask/move_can_pot/vanilla_eval/tensorboard/config.yaml",
+          "original_sha256": "a10a3a1c863f11845c409a26a196f79f89ccf474ebc4b51da03b36d5b980b2c7",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_multitask/move_can_pot/vanilla_eval/metrics.log",
+        "metrics_sha256": "15a661689847c62a9755a09d5ae12212d0ada83031c698397031806f5cf7fd0b",
+        "checkpoint_path": "checkpoints/Motus-Pi05-RoboTwin2",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_multitask__experiment_manifest.json",
+          "sha256": "1c04c80251c0bb1911b4efcc95e12672c57f2f6a64ae4af8791a125fedb983e5",
+          "hashed_pin_count": 129
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Gaussian noise",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_sft_bell",
+      "status": "completed_formal_evaluation",
+      "task": "click_bell",
+      "backbone": "Motus",
+      "method": "SFT baseline",
+      "result": {
+        "episodes": 150,
+        "successes": 65,
+        "success_rate": 0.43333333333333335,
+        "success_rate_percent": 43.333333,
+        "tensorboard_success_once": 0.4333333373069763,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_sft_bell__eval.yaml",
+          "sha256": "24d83c8394c1a4c4fdf30487782cfea5306a99078903a1d13fd8ab2bb0e676d3",
+          "original_path": "outputs/motus_multitask/click_bell/vanilla_eval/tensorboard/config.yaml",
+          "original_sha256": "5991a0f282812d43962a354556214811b3466a3e6d4b96d458e09e6b6833fbc0",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 400,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_multitask/click_bell/vanilla_eval/metrics.log",
+        "metrics_sha256": "ad4ae8f0fb21ee2b1dc0bbea6f3bd518efb5f8b6ffd4b290248fac9e56f0f767",
+        "checkpoint_path": "checkpoints/Motus-Pi05-RoboTwin2",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_multitask__experiment_manifest.json",
+          "sha256": "1c04c80251c0bb1911b4efcc95e12672c57f2f6a64ae4af8791a125fedb983e5",
+          "hashed_pin_count": 129
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Gaussian noise",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "sft50",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "SFT baseline",
+      "result": {
+        "episodes": 150,
+        "successes": 122,
+        "success_rate": 0.8133333333333334,
+        "success_rate_percent": 81.333333,
+        "tensorboard_success_once": 0.8133333325386047,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/sft50__eval.yaml",
+          "sha256": "3cbb8104c7814bb5500af3f6fee1e8d7c19667f40f14bb86030d49adb868c008",
+          "original_path": "outputs/sft_raster_eval_150/tensorboard/config.yaml",
+          "original_sha256": "9570472b813e3402281a149188a6c94bfabfbcc55153a3b93a0b80d7555967fd",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/sft_raster_eval_150/metrics.log",
+        "metrics_sha256": "04e3af7784c1e34cf9a159a41692ad1e0fa8ca922fbbdca652121c99186635fa",
+        "checkpoint_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "zero_noise50",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "Zero-noise control",
+      "result": {
+        "episodes": 150,
+        "successes": 122,
+        "success_rate": 0.8133333333333334,
+        "success_rate_percent": 81.333333,
+        "tensorboard_success_once": 0.8133333325386047,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/zero_noise50__eval.yaml",
+          "sha256": "e77769cea1122742584303a74ac7d64fcf561d2c1de83a76136ca7be2e2eab7b",
+          "original_path": "outputs/dsrl_zero_noise_eval_150/tensorboard/config.yaml",
+          "original_sha256": "7f9d94ee3cb566c97436cfcc8b9c957a31e08d23c757578cd1ad3354e66f622f",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "zero",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/dsrl_zero_noise_eval_150/metrics.log",
+        "metrics_sha256": "98226751a9bcfbcc85df151fafb886227461216464645b14b88b5e46e42680cf",
+        "checkpoint_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "original_simulator",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "Original DSRL simulator sparse",
+      "result": {
+        "episodes": 150,
+        "successes": 122,
+        "success_rate": 0.8133333333333334,
+        "success_rate_percent": 81.333333,
+        "tensorboard_success_once": 0.8133333325386047,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/original_simulator__eval.yaml",
+          "sha256": "1ad4efc8251986b2bead4f5906986a8b5e0cf9d7ea14b5ae5a620b2437a54858",
+          "original_path": "outputs/dsrl_sim_raster_eval_150/tensorboard/config.yaml",
+          "original_sha256": "8c069bfe9436d54e85ae60b673768e0ce9556167771e234fcfbe7505c915df0d",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 200,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/dsrl_sim_raster_eval_150/metrics.log",
+        "metrics_sha256": "e24a038862105c77705161c0b6f8f6cc0749c4a3b70a93598653a52a150ed369",
+        "checkpoint_path": "outputs/dsrl_sim_benchmark_s1234/pi05_dsrl/checkpoints/global_step_200",
+        "checkpoint_present_on_capture": false,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Historical checkpoint path is now absent; evaluation metrics retained",
+      "historical_reproduction_limits": [
+        "Original training resolved configuration was removed; exact historical training recipe is incomplete.",
+        "Historical evaluated checkpoint is no longer present locally.",
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "simulator_v2",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL v2 simulator sparse",
+      "result": {
+        "episodes": 150,
+        "successes": 120,
+        "success_rate": 0.8,
+        "success_rate_percent": 80.0,
+        "tensorboard_success_once": 0.800000011920929,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_v2__eval.yaml",
+          "sha256": "0d66790dbff0e66b7a6952f9e38f2ce55ea4c7230e16e28ad22559d065a21b16",
+          "original_path": "outputs/dsrl_sim_v2_alpha001_eval_150/tensorboard/config.yaml",
+          "original_sha256": "6c51f10e5f189b1470c65073d9558207fb7fb0b28e1232cd6df80d3dcb83234c",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 200,
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_v2__train.yaml",
+          "sha256": "ca248202db801ec2578a03651e4ad10cfcb4caf7d34684b39f47074178544223",
+          "original_path": "outputs/dsrl_sim_v2_alpha001_s1234/tensorboard/config.yaml",
+          "original_sha256": "2cbf20b1ed67d1f1de6fab4c6bbaf28224cbe4539c74c853234650349d4e8f3d",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 4,
+        "actor_offload": false,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 16,
+        "micro_batch_size_per_rank": 4,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": null,
+        "learned_reward_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/dsrl_sim_v2_alpha001_eval_150/metrics.log",
+        "metrics_sha256": "f2aa87e4179676a004d3030025b98e089b4697776d2d55ece2d86fa1c6dcf140",
+        "checkpoint_path": "outputs/dsrl_sim_v2_alpha001_s1234/pi05_dsrl_v2/checkpoints/global_step_200",
+        "checkpoint_present_on_capture": false,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Historical checkpoint path is now absent; evaluation metrics retained",
+      "historical_reproduction_limits": [
+        "Historical evaluated checkpoint is no longer present locally.",
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "simulator_large_unfiltered",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL large simulator, unfiltered",
+      "result": {
+        "episodes": 150,
+        "successes": 129,
+        "success_rate": 0.86,
+        "success_rate_percent": 86.0,
+        "tensorboard_success_once": 0.8600000143051147,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_large_unfiltered__eval.yaml",
+          "sha256": "927c31f222998389f0ee3d4eae07937222265bf537dd0e6aa671e5b256141dc2",
+          "original_path": "outputs/dsrl_sim_v2_large_eval_150/tensorboard/config.yaml",
+          "original_sha256": "efbed364473c57f082b7061695a1ee105d2688e3fff27cd576deee62cb67b84f",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_large_unfiltered__train.yaml",
+          "sha256": "22e5fad82adcb763b74d1994e86aafaefed21cdb55f2e93af9710a46aa16f71d",
+          "original_path": "outputs/dsrl_sim_v2_large_s1234/tensorboard/config.yaml",
+          "original_sha256": "19c6f0046e39414d5b2a5d2ea3c42c3610601d65f62223fadf5c3ec84350cc9d",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 32,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": null,
+        "learned_reward_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/dsrl_sim_v2_large_eval_150/metrics.log",
+        "metrics_sha256": "a10c8643305cde27a7c7672b2188d4e32d63c1a0aa28ad439bfb4fd180acfcc5",
+        "checkpoint_path": "outputs/dsrl_sim_v2_large_s1234/pi05_dsrl_v2_large/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "simulator_large_filtered",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL large simulator, filtered",
+      "result": {
+        "episodes": 150,
+        "successes": 126,
+        "success_rate": 0.84,
+        "success_rate_percent": 84.0,
+        "tensorboard_success_once": 0.8399999737739563,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_large_filtered__eval.yaml",
+          "sha256": "0fbc401aa000af5485250c86824d18555611888b1f2c471586e3784d9878e980",
+          "original_path": "outputs/dsrl_sim_v2_large_filtered_eval_150/tensorboard/config.yaml",
+          "original_sha256": "3999a2850472d620d2a11a19787a47dfc39b87b2052a15cc2f159561c85ace7a",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/simulator_large_filtered__train.yaml",
+          "sha256": "ef71764e5fa9ecc5cef138e2ab9edd6dacf417f4d4954ae7b467c322aa84ef2b",
+          "original_path": "outputs/dsrl_sim_v2_large_filtered_s1234/tensorboard/config.yaml",
+          "original_sha256": "02c2fc9c46565b9c59e973894ecf14b1cc17703a37561a3ef36f96c38a27ef7a",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 32,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": null,
+        "learned_reward_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/dsrl_sim_v2_large_filtered_eval_150/metrics.log",
+        "metrics_sha256": "cf689c1e8e72e803be6a5dce660ae9656550599082cded2b2e28cb16849647ba",
+        "checkpoint_path": "outputs/dsrl_sim_v2_large_filtered_s1234/pi05_dsrl_v2_large_filtered/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "original_robometer_delta",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "Original DSRL Robometer delta",
+      "result": {
+        "episodes": 150,
+        "successes": 121,
+        "success_rate": 0.8066666666666666,
+        "success_rate_percent": 80.666667,
+        "tensorboard_success_once": 0.8066666722297668,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/original_robometer_delta__eval.yaml",
+          "sha256": "21fd858ffd8234a62cbc1a30f4293a847a372f07ea5b4237a0e0f89d4b10e92c",
+          "original_path": "outputs/robometer_dsrl_raster_eval_150/tensorboard/config.yaml",
+          "original_sha256": "e34aa51c383f2dd762af521e000c700851b2581bd66a6255692d5f796fd494bf",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 200,
+        "resolved_config": {
+          "path": "reproducibility/configs/original_robometer_delta__train.yaml",
+          "sha256": "f6e4d61a5d1ebdc40ad180471cd94c40504c9150055e32381b45da1aef9ee90e",
+          "original_path": "outputs/robometer_dsrl_benchmark_s1234_fixed/tensorboard/config.yaml",
+          "original_sha256": "c19c443b7b11730a8e0d4042c7e2d1699bb2ede2217e08a49e387b3f0e4783ee",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 4,
+        "actor_offload": false,
+        "reward_mode": "progress_delta",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 16,
+        "micro_batch_size_per_rank": 4,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 1.0,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/robometer_dsrl_raster_eval_150/metrics.log",
+        "metrics_sha256": "e0191f9175be406da2a6e148bf5c31782fa9c63184e7ecb6da8b5fc51fb994ee",
+        "checkpoint_path": "outputs/robometer_dsrl_benchmark_s1234_fixed/pi05_dsrl_robometer/checkpoints/global_step_200",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Historical reward recipe",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "robometer_large_filtered_delta",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL large Robometer delta, filtered",
+      "result": {
+        "episodes": 150,
+        "successes": 40,
+        "success_rate": 0.26666666666666666,
+        "success_rate_percent": 26.666667,
+        "tensorboard_success_once": 0.2666666805744171,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_large_filtered_delta__eval.yaml",
+          "sha256": "e99f512dd218361e83c5e3a8d67363241306b3fec6c2f229ef9baa56d219129e",
+          "original_path": "outputs/robometer_dsrl_v2_large_filtered_eval_150/tensorboard/config.yaml",
+          "original_sha256": "d1b32988df36b90f6906a21b6f592e5396bf770a3b2b63b297ac1c356e723ed4",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_large_filtered_delta__train.yaml",
+          "sha256": "be5747c83717e217cf0d313dd41dcabfa59f2d7965348ecb159a3398a6e55f32",
+          "original_path": "outputs/robometer_dsrl_v2_large_filtered_s1234/tensorboard/config.yaml",
+          "original_sha256": "34c0f31118f5a936b11a6b900eb1c0e7df4dfed2ebf2fb1262d991a09e0e4b3b",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "progress_delta",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 32,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/robometer_dsrl_v2_large_filtered_eval_150/metrics.log",
+        "metrics_sha256": "9a4f12ee5e06dabd52b08bacb260780145fe78da0dbaaabd16787976e96b291c",
+        "checkpoint_path": "outputs/robometer_dsrl_v2_large_filtered_s1234/pi05_dsrl_v2_large_robometer/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": false,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Historical converter bug; Historical checkpoint path is now absent; evaluation metrics retained",
+      "historical_reproduction_limits": [
+        "Historical evaluated checkpoint is no longer present locally.",
+        "No retained launch-time source/model manifest was found for this historical run.",
+        "This historical result used a reward-converter bug; current corrected source does not reproduce that implementation."
+      ]
+    },
+    {
+      "id": "robometer_dense8_pilot",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL Robometer dense8 single_stage, filtered",
+      "result": {
+        "episodes": 150,
+        "successes": 114,
+        "success_rate": 0.76,
+        "success_rate_percent": 76.0,
+        "tensorboard_success_once": 0.7599999904632568,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_dense8_pilot__eval.yaml",
+          "sha256": "c4c71205492d4bc1a4a2f2c92a898630b9d30788a5bae4ec0a2feca1d0f1a3f4",
+          "original_path": "outputs/robometer_dsrl_dense8_single_stage_eval_150/tensorboard/config.yaml",
+          "original_sha256": "bddc659a8fbfb1e56b7de2e0142cf3309896d4f95477498e143b45409643ecec",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 100,
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_dense8_pilot__train.yaml",
+          "sha256": "66752ae4ef4f78c2def4df66925cd0c44fc3826b24ad45905b3a5dae2a6a0449",
+          "original_path": "outputs/robometer_dsrl_dense8_single_stage_s1234/tensorboard/config.yaml",
+          "original_sha256": "2cf9b63044b7d3412e00173ab96d2cd2444f229a5faedda904fe0895fb0902da",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 32,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/robometer_dsrl_dense8_single_stage_eval_150/metrics.log",
+        "metrics_sha256": "add04b1548dc42b480cac825bb081b70f4332e61366d7c6b53d9aeedf4432fa6",
+        "checkpoint_path": "outputs/robometer_dsrl_dense8_single_stage_s1234/pi05_dsrl_dense8_single_stage/checkpoints/global_step_100",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Loaded converter repair unverified; smaller training budget",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run.",
+        "The original run did not establish which reward-converter repair was loaded."
+      ]
+    },
+    {
+      "id": "icon_dense8_large",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL ICON dense8 single_stage, filtered",
+      "result": {
+        "episodes": 150,
+        "successes": 124,
+        "success_rate": 0.8266666666666667,
+        "success_rate_percent": 82.666667,
+        "tensorboard_success_once": 0.8266666531562805,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_dense8_large__eval.yaml",
+          "sha256": "32573297a7abc9eefbaa814d827c51207db6163750c74fb00bb6dd61bc2232d2",
+          "original_path": "outputs/icon_dsrl_dense8_single_stage_large_eval_150/tensorboard/config.yaml",
+          "original_sha256": "c82349bce0370233e8243dd6f7135d469e9ba53af3dd907a7b103c8bca027e41",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_dense8_large__train.yaml",
+          "sha256": "b1a7cf7d7f38245c04fd04303b991ab702fc0a0bfdb5a6a881078636508bc35d",
+          "original_path": "outputs/icon_dsrl_dense8_single_stage_large_s1234/tensorboard/config.yaml",
+          "original_sha256": "000eb2c41a75ed043ca344f7c522c0b46bb2ab0152f0b52f55437332092581f1",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 32,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/icon_dsrl_dense8_single_stage_large_eval_150/metrics.log",
+        "metrics_sha256": "790a8ee1d074e01eb93fe7a1db2d3588dc54c5859abb46e1badf2be5c298637c",
+        "checkpoint_path": "outputs/icon_dsrl_dense8_single_stage_large_s1234/pi05_dsrl_icon_dense8_single_stage_large/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "sft20",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "Matched SFT20 baseline",
+      "result": {
+        "episodes": 150,
+        "successes": 118,
+        "success_rate": 0.7866666666666666,
+        "success_rate_percent": 78.666667,
+        "tensorboard_success_once": 0.7866666913032532,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/sft20__eval.yaml",
+          "sha256": "e0dafaecc3f0dcc978fd85c412dcdea58fd675fee8eba4e186b7c894d16ab383",
+          "original_path": "outputs/sft_chunk20_eval_150/tensorboard/config.yaml",
+          "original_sha256": "a3db0d2c952aa5449ddcf2b4da57fb854e515008f388bcac61d538b8605e07a4",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 50,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/sft_chunk20_eval_150/metrics.log",
+        "metrics_sha256": "1f967b95f1f93ada84fa265dddb27b1d36b8802a6c4442b1147f6f84bf0da2ba",
+        "checkpoint_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "icon_chunk20_large",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL ICON chunk20, large update budget",
+      "result": {
+        "episodes": 150,
+        "successes": 131,
+        "success_rate": 0.8733333333333333,
+        "success_rate_percent": 87.333333,
+        "tensorboard_success_once": 0.8733333349227905,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_chunk20_large__eval.yaml",
+          "sha256": "62a2ac8f1b4d1df5700feea14933588734b638156b7b5fef4d3b6acb20f11ab1",
+          "original_path": "outputs/icon_dsrl_chunk20_large_eval_150/tensorboard/config.yaml",
+          "original_sha256": "a3f11cbed20d86ce03979c23e2db56c49c32b4f8a149c01ca3a581f29bddff97",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 50,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_chunk20_large__train.yaml",
+          "sha256": "e98fc02ddc234946e4b4b7cdf9de9492b478279eeb825d86fd23dc43a7a3172a",
+          "original_path": "outputs/icon_dsrl_chunk20_large_s1234/tensorboard/config.yaml",
+          "original_sha256": "3dc47687fc5f399748e607b198abcd599bd187556cc48223e81df79107e0a16e",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 50,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/icon_dsrl_chunk20_large_eval_150/metrics.log",
+        "metrics_sha256": "06bd4a0d5b0cda5f9fc5945b3e1b037af1d4f19d5cf1e431cb257cc76f087e98",
+        "checkpoint_path": "outputs/icon_dsrl_chunk20_large_s1234/pi05_dsrl_icon_chunk20_large/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "18800 critic +18800 actor updates",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "robometer_chunk20_large",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL Robometer chunk20, large update budget",
+      "result": {
+        "episodes": 150,
+        "successes": 138,
+        "success_rate": 0.92,
+        "success_rate_percent": 92.0,
+        "tensorboard_success_once": 0.9200000166893005,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_chunk20_large__eval.yaml",
+          "sha256": "c8eb529698b7d655fb78f9f04396f61728f7fe5346e14efaaf970f8f8e2f9193",
+          "original_path": "outputs/robometer_dsrl_chunk20_large_eval_150/tensorboard/config.yaml",
+          "original_sha256": "8a06a639d57ef4e1be18766512636ef9b3ef6951553e22dde7da84a4216421fd",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 50,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_chunk20_large__train.yaml",
+          "sha256": "ef93a78fa885be68e6316268fce65e7710c957c63adb8d4b2e83b93c572c8c55",
+          "original_path": "outputs/robometer_dsrl_chunk20_large_s1234/tensorboard/config.yaml",
+          "original_sha256": "905f56f8db2be18d36b992a01da4c78c5dd2a7d22b20deab1c95134a27419997",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 50,
+        "critic_actor_ratio": 1,
+        "actor_learning_rate": 0.0001,
+        "critic_learning_rate": 0.0003,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/robometer_dsrl_chunk20_large_eval_150/metrics.log",
+        "metrics_sha256": "5ed6977cf4f1a6951db2d8bd54062408423f4f558c8072e753f00f60bc2136fe",
+        "checkpoint_path": "outputs/robometer_dsrl_chunk20_large_s1234/pi05_dsrl_robometer_chunk20_large/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "18800 critic +18800 actor updates",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "icon_chunk20_stable",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL ICON chunk20, stable recipe",
+      "result": {
+        "episodes": 150,
+        "successes": 134,
+        "success_rate": 0.8933333333333333,
+        "success_rate_percent": 89.333333,
+        "tensorboard_success_once": 0.8933333158493042,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_chunk20_stable__eval.yaml",
+          "sha256": "eb16e9ccb3a9a99c60afb1f36a8e94bcf05e2cf6d9f1269b436937d20a1d7159",
+          "original_path": "outputs/icon_dsrl_chunk20_stable_eval_150/tensorboard/config.yaml",
+          "original_sha256": "7ef02d0cb1b4981fb1a49f6b394bc45e96e58a2ca58ddff7004a46db484e1e94",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 50,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/icon_chunk20_stable__train.yaml",
+          "sha256": "54cdb01d7973bee83ef37d3678ddb4cf7f10d17992cdc4aaaee1d5fbcb1a49e7",
+          "original_path": "outputs/icon_dsrl_chunk20_stable_s1234/tensorboard/config.yaml",
+          "original_sha256": "e29790ce96ab5ad00e411c2278bcadc3170ca76e5a42b31fa7f154b6607b42d1",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/icon_dsrl_chunk20_stable_eval_150/metrics.log",
+        "metrics_sha256": "9874201bcf2ddfbd5ad50281c7baefa5bb5ade4907b9ac9b13f1b2d51c5d9d9b",
+        "checkpoint_path": "outputs/icon_dsrl_chunk20_stable_s1234/pi05_dsrl_icon_chunk20_stable/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "7520 critic +3760 actor updates",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "robometer_chunk20_stable",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "DSRL Robometer chunk20, stable recipe",
+      "result": {
+        "episodes": 150,
+        "successes": 141,
+        "success_rate": 0.94,
+        "success_rate_percent": 94.0,
+        "tensorboard_success_once": 0.9399999976158142,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_chunk20_stable__eval.yaml",
+          "sha256": "0bb7ad2ca817470d7eb35584d4dacfdd72ce4c43d8c4268992a71b2e7fc82323",
+          "original_path": "outputs/robometer_dsrl_chunk20_stable_eval_150/tensorboard/config.yaml",
+          "original_sha256": "1047979d0b80d3ad591d3ce35fcb765d3d804518d2fe267c2ca81814881cd8ed",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 50,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/robometer_chunk20_stable__train.yaml",
+          "sha256": "44ff44df3cb0e7762def6c4cb7b89d7d8f75df98cc772486b63663c3aafda39e",
+          "original_path": "outputs/robometer_dsrl_chunk20_stable_s1234/tensorboard/config.yaml",
+          "original_sha256": "a23353bdb08de47db18d993452b150b42b700417090ec6d7ab32e20cc2e1b5ba",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.01,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/robometer_dsrl_chunk20_stable_eval_150/metrics.log",
+        "metrics_sha256": "e9a546a3eb4926d4e766e5c6af8be2ba54447675d38257d75676686391ff8cbd",
+        "checkpoint_path": "outputs/robometer_dsrl_chunk20_stable_s1234/pi05_dsrl_robometer_chunk20_stable/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "7520 critic +3760 actor updates",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "ppo_simulator",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Task-specific RLInf SFT",
+      "method": "PPO simulator sparse",
+      "result": {
+        "episodes": 150,
+        "successes": 0,
+        "success_rate": 0.0,
+        "success_rate_percent": 0.0,
+        "tensorboard_success_once": 0.0,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/ppo_simulator__eval.yaml",
+          "sha256": "0cf41cdae6413381295af211949b82699aaa74a24a40afe8c8c0e1ae38f70455",
+          "original_path": "outputs/ppo_sim_raster_eval_150/tensorboard/config.yaml",
+          "original_sha256": "1ba2b43d3c6ac1c414946b11a3ef1c60a8bad66c0b3b4767ab09893e4f5a2fcb",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 50,
+        "decoder_horizon": null,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/RLinf-Pi05-RoboTwin-SFT-adjust_bottle/physical-intelligence/robotwin/norm_stats.json",
+        "norm_stats_sha256": "bff5fcadaba626c28c1c2350d3baa7f1a04befc9f8b73f3e558a09c1b9c6ee52"
+      },
+      "training_recipe": {
+        "collections": 100,
+        "resolved_config": {
+          "path": "reproducibility/configs/ppo_simulator__train.yaml",
+          "sha256": "32908e8a2d0104001a2469556d0c0d1b6b58a692a847fb93719da6a7caa2fc75",
+          "original_path": "outputs/ppo_sim_raster_s1234/tensorboard/config.yaml",
+          "original_sha256": "a1755e58c71c3c6d88c6e55b85435fbbff9bfa669148c6f73d167d4ca13a8808",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": true,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 16,
+        "micro_batch_size_per_rank": 1,
+        "update_rounds_per_collection": 5,
+        "critic_actor_ratio": null,
+        "actor_learning_rate": 5e-06,
+        "critic_learning_rate": null,
+        "entropy_initial_alpha": null,
+        "gamma": 0.99,
+        "tau": null,
+        "env_reward_weight": 1.0,
+        "learned_reward_weight": 0.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/ppo_sim_raster_eval_150/metrics.log",
+        "metrics_sha256": "799da3613f9aa3bf59c76042a1c44c87d70565c1af89d6fd13845a880629dbd0",
+        "checkpoint_path": "outputs/ppo_sim_raster_s1234/pi05_ppo/checkpoints/global_step_100",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "Failed training recipe; training12.5% is not held-out evaluation",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "motus_noise20_robometer",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL Robometer, 20x32 noise",
+      "result": {
+        "episodes": 150,
+        "successes": 62,
+        "success_rate": 0.41333333333333333,
+        "success_rate_percent": 41.333333,
+        "tensorboard_success_once": 0.41333332657814026,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer__eval.yaml",
+          "sha256": "894e4ed658d55305028e544c3be52d32e6deedf94e9c83b4b08e51631ce8f917",
+          "original_path": "outputs/motus_noise20/adjust_bottle/robometer_eval/tensorboard/config.yaml",
+          "original_sha256": "2b2dddf77f5a581e7b948fcb87b8d57bd56916480fc22b30af9c8b67cbbaff1a",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer__train.yaml",
+          "sha256": "c6b4d6d68c883642f5fef557ebf089b7e2c3ab06b444f3b189a14828ff25868b",
+          "original_path": "outputs/motus_noise20/adjust_bottle/robometer_train/tensorboard/config.yaml",
+          "original_sha256": "b64bfccd73d5be322ea2b1db9295d92768c4632138ba88c1d6928757df8a2463",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": null,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20/adjust_bottle/robometer_eval/metrics.log",
+        "metrics_sha256": "c10da0e9566665a85cadff8cfdde0f7719d106c894ad11b590f87e2e64a833dc",
+        "checkpoint_path": "outputs/motus_noise20/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20__adjust_bottle__robometer_run__experiment_manifest.json",
+          "sha256": "44e8da0bfe3449a35f9474cfaf5cbe90a64eb8258fb732d7aceaaf6f0b10abf9",
+          "hashed_pin_count": 104
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "lambda=1; fixed backbone; no context",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_icon_lambda01",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL ICON, fixed context, 20x32 noise",
+      "result": {
+        "episodes": 150,
+        "successes": 72,
+        "success_rate": 0.48,
+        "success_rate_percent": 48.0,
+        "tensorboard_success_once": 0.47999998927116394,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon_lambda01__eval.yaml",
+          "sha256": "4b3da300798e0e1fffee10d8ef4a850e92e047609cdf9a10337e79caff7e5c0b",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_eval/tensorboard/config.yaml",
+          "original_sha256": "1fd89e88bd40299a12fe8c36d35183319a1dd51d088344d05d7eeddf2dceed84",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon_lambda01__train.yaml",
+          "sha256": "1bcdf00c4111a606baf398de49a62009ffd40c7bee9243393218e88a35242346",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_train/tensorboard/config.yaml",
+          "original_sha256": "8bc3cfb834fdea3303add3fcba95939276170507edf086f2926c11a03b7c8e2b",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": 0.1,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": 0.1,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_eval/metrics.log",
+        "metrics_sha256": "45afbf217f4f81751c7662230000af8afa607bc4876ed577692d698e686ac518",
+        "checkpoint_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_adjust_bottle_lambda01__queue_run__experiment_manifest.json",
+          "sha256": "55d16a9739e3e7e7a0c39e67bfcc7354f033945bb20a3e63f2001a64f2443971",
+          "hashed_pin_count": 213
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "lambda=0.1; fixed training-seed context",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_robometer_lambda01",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL Robometer, 20x32 noise",
+      "result": {
+        "episodes": 150,
+        "successes": 79,
+        "success_rate": 0.5266666666666666,
+        "success_rate_percent": 52.666667,
+        "tensorboard_success_once": 0.5266666412353516,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer_lambda01__eval.yaml",
+          "sha256": "393be7a7083675c12efd46afb6ef1502c6067198749bc7810e93ecda2bf7afef",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_eval/tensorboard/config.yaml",
+          "original_sha256": "3bc4078e7fe398561f315fefe884bdc45f6f19d25c920d6df4bf74db869cb867",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer_lambda01__train.yaml",
+          "sha256": "fb269bc8190edf55cae42dbcff65a352b0a4ecf5ae92d469e1ebc027e7bdec6e",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_train/tensorboard/config.yaml",
+          "original_sha256": "d4fde81352ddfc5685a0ee157072d9b32f08296c4314e6d59137f181e6b7dc57",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": 0.1,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": 0.1,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_eval/metrics.log",
+        "metrics_sha256": "7d43ae227813a809c9e6f683585f0a1b20dcfea073b2fa26ec011c64b66c8297",
+        "checkpoint_path": "outputs/motus_noise20_adjust_bottle_lambda01/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_adjust_bottle_lambda01__queue_run__experiment_manifest.json",
+          "sha256": "55d16a9739e3e7e7a0c39e67bfcc7354f033945bb20a3e63f2001a64f2443971",
+          "hashed_pin_count": 213
+        },
+        "result_receipt": null,
+        "result_receipt_sha256": null
+      },
+      "notes": "lambda=0.1; no context",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_icon_lambda03",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL ICON, fixed context, lambda0.3, 20x32 noise",
+      "result": {
+        "episodes": 150,
+        "successes": 57,
+        "success_rate": 0.38,
+        "success_rate_percent": 38.0,
+        "tensorboard_success_once": 0.3799999952316284,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon_lambda03__eval.yaml",
+          "sha256": "27ea3ee0b7881f278557da66ae1edb7d8edf133f35a1c1b3a19438c7553002c4",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/icon_eval/tensorboard/config.yaml",
+          "original_sha256": "8a81969555759ec98f3a812724cc782434e69b8c7aa343cc513a1c08b376ee79",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_icon_lambda03__train.yaml",
+          "sha256": "d5a1239e58a02c826b02311b8102163a563d164c3d0f2001582d58cd48c21d84",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/icon_train/tensorboard/config.yaml",
+          "original_sha256": "6b28cc5767cdceb535e51f440636cd1feeb486b419d3233e063280797ee0ec96",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": 0.3,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": 0.3,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/icon_eval/metrics.log",
+        "metrics_sha256": "cb840899c38328ab3f52cc3951fe9edab9b1a98cd8d35493478169fd8b1ab6b1",
+        "checkpoint_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/icon_train/pi05_motus_adjust_bottle_dsrl_icon_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_adjust_bottle_lambda03__queue_run__experiment_manifest.json",
+          "sha256": "18d3007f60073c082364e79fcdb37fcccc73a2eb74f90496377fb0e5359c5fbf",
+          "hashed_pin_count": 213
+        },
+        "result_receipt": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/icon_run/evaluation.json",
+        "result_receipt_sha256": "5593319dc19eb5bb22fda82395139a248d183e20dd9ea2aded1dd7fd8cbbb4b5"
+      },
+      "notes": "Native simulator success; penalty lambda=0.3; 20x32 controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_noise20_robometer_lambda03",
+      "status": "completed_formal_evaluation",
+      "task": "adjust_bottle",
+      "backbone": "Motus",
+      "method": "DSRL Robometer, lambda0.3, 20x32 noise",
+      "result": {
+        "episodes": 150,
+        "successes": 67,
+        "success_rate": 0.44666666666666666,
+        "success_rate_percent": 44.666667,
+        "tensorboard_success_once": 0.4466666579246521,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer_lambda03__eval.yaml",
+          "sha256": "d554adc6a867370b0deb64ff106df6c5607e2d9fadaee01473a67ae4cb7554f5",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/robometer_eval/tensorboard/config.yaml",
+          "original_sha256": "2cb4c4c52f2e10ca462b13d5fdc1d210724c204ba754ae28eff3dd4a7b54d532",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 200,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_robometer_lambda03__train.yaml",
+          "sha256": "7dc0780c8b2053ceef8603d52130518474d54d0c810b1227a9caf462121ac462",
+          "original_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/robometer_train/tensorboard/config.yaml",
+          "original_sha256": "f0afb4ace1711729536199c2e0d0b19f2427a8a9602950be7ec1bd04ff78b562",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": false,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": 0.3,
+        "learned_reward_enabled": true,
+        "configured_progress_penalty_weight": 0.3,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 0.0,
+        "learned_reward_weight": 1.0
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/robometer_eval/metrics.log",
+        "metrics_sha256": "685504c3434f6c6869a89210cc9bc7cea69ee206fb09ddae78cb1ee61bd1c477",
+        "checkpoint_path": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/robometer_train/pi05_motus_adjust_bottle_dsrl_robometer_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_adjust_bottle_lambda03__queue_run__experiment_manifest.json",
+          "sha256": "18d3007f60073c082364e79fcdb37fcccc73a2eb74f90496377fb0e5359c5fbf",
+          "hashed_pin_count": 213
+        },
+        "result_receipt": "outputs/motus_noise20_adjust_bottle_lambda03/adjust_bottle/robometer_run/evaluation.json",
+        "result_receipt_sha256": "866b41a977facb7b973907b2fa7a77ddb9538f1386c89dd5623be25830b9b1ec"
+      },
+      "notes": "Native simulator success; penalty lambda=0.3; 20x32 controller",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    },
+    {
+      "id": "motus_sft_canpot_400",
+      "status": "completed_formal_evaluation",
+      "task": "move_can_pot",
+      "backbone": "Motus",
+      "method": "SFT baseline, 400-action cap",
+      "result": {
+        "episodes": 150,
+        "successes": 26,
+        "success_rate": 0.17333333333333334,
+        "success_rate_percent": 17.333333,
+        "tensorboard_success_once": 0.1733333319425583,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_sft_canpot_400__eval.yaml",
+          "sha256": "edc595a254b5a95e5ce394247a2284716af9b24042d5de067bbdfd5658255c42",
+          "original_path": "outputs/motus_move_can_pot_400_sft_eval/evaluation/tensorboard/config.yaml",
+          "original_sha256": "d2215bc49abf2cea87fc0bb13a41696b19d71fe426236c4840a2597939d694ef",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "action_limit": 400,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": null,
+        "noise_row_dim": null,
+        "evaluation_noise_mode": null,
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 0,
+        "resolved_config": null,
+        "actor_seed": null,
+        "environment_seed": null,
+        "episodes_per_collection": null,
+        "actor_offload": null,
+        "reward_mode": null,
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": null
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_move_can_pot_400_sft_eval/evaluation/metrics.log",
+        "metrics_sha256": "257a01733a13a88b6efcda485c01630cfd039b991414cb44ee073fdbc4d1f8c4",
+        "checkpoint_path": "checkpoints/Motus-Pi05-RoboTwin2",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": null,
+        "result_receipt": "outputs/motus_move_can_pot_400_sft_eval/result.json",
+        "result_receipt_sha256": "d0e2830d61292a72e917757e030f002bf0ec2cc9308f2caecb7edec5c7fdfe7b"
+      },
+      "notes": "Native simulator success on held-out seeds; 400-action cap",
+      "historical_reproduction_limits": [
+        "No retained launch-time source/model manifest was found for this historical run."
+      ]
+    },
+    {
+      "id": "motus_noise20_canpot_simulator_400_lowmem",
+      "status": "completed_formal_evaluation",
+      "task": "move_can_pot",
+      "backbone": "Motus",
+      "method": "DSRL simulator sparse, 400-action cap, low-memory execution",
+      "result": {
+        "episodes": 150,
+        "successes": 58,
+        "success_rate": 0.38666666666666666,
+        "success_rate_percent": 38.666667,
+        "tensorboard_success_once": 0.3866666555404663,
+        "native_simulator_success": true,
+        "learning_during_evaluation": false
+      },
+      "evaluation_recipe": {
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_canpot_simulator_400_lowmem__eval.yaml",
+          "sha256": "1951846edcd8204f8d6ffd90c13a53cb82000729a5b6d64bc7636b6b647530cd",
+          "original_path": "outputs/motus_noise20_move_can_pot_lambda03_lowmem/move_can_pot/simulator_eval/tensorboard/config.yaml",
+          "original_sha256": "ad38f1a2cf3eed979726fc6695cea382e9ea77fa9657c23f30aa20d21e44d1c3",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT",
+            "ICR_EVAL_CHECKPOINT"
+          ]
+        },
+        "action_limit": 400,
+        "execution_chunk": 20,
+        "decoder_horizon": 32,
+        "denoising_steps": 5,
+        "noise_rows": 20,
+        "noise_row_dim": 32,
+        "evaluation_noise_mode": "policy",
+        "seed_file": "third_party/rlinf/rlinf/envs/sim/robotwin/seeds/eval_seeds.json",
+        "shader": "default",
+        "denoiser": "none",
+        "norm_stats_path": "checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+        "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+      },
+      "training_recipe": {
+        "collections": 400,
+        "resolved_config": {
+          "path": "reproducibility/configs/motus_noise20_canpot_simulator_400_lowmem__train.yaml",
+          "sha256": "31eb04982d39579a6b54d50f3cd6811147337eb2047369bdc218cb1cf5d17af3",
+          "original_path": "outputs/motus_noise20_move_can_pot_lambda03_lowmem/move_can_pot/simulator_train/tensorboard/config.yaml",
+          "original_sha256": "912d7ae827fa505b33a7a1a2097058bd0d28ab67ea712ef159095d507abbebdb",
+          "path_variables": [
+            "ICR_REPO_ROOT",
+            "ICR_RUN_ROOT"
+          ]
+        },
+        "actor_seed": 1234,
+        "environment_seed": 0,
+        "episodes_per_collection": 8,
+        "actor_offload": true,
+        "reward_mode": "single_stage",
+        "progress_penalty_weight": null,
+        "learned_reward_enabled": false,
+        "configured_progress_penalty_weight": 1.0,
+        "global_batch_size": 128,
+        "micro_batch_size_per_rank": 64,
+        "update_rounds_per_collection": 20,
+        "critic_actor_ratio": 2,
+        "actor_learning_rate": 5e-05,
+        "critic_learning_rate": 0.0001,
+        "entropy_initial_alpha": 0.0005,
+        "gamma": 0.999,
+        "tau": 0.005,
+        "env_reward_weight": 1.0,
+        "learned_reward_weight": 0.0,
+        "progress_penalty_note": "Configured inherited value is inactive because reward.use_reward_model=false."
+      },
+      "evidence": {
+        "original_metrics_path": "outputs/motus_noise20_move_can_pot_lambda03_lowmem/move_can_pot/simulator_eval/metrics.log",
+        "metrics_sha256": "cae70659ff335dc6782419b36b9afc5c633496a6bc262bf53ad79758e9de4af3",
+        "checkpoint_path": "outputs/motus_noise20_move_can_pot_lambda03_lowmem/move_can_pot/simulator_train/pi05_motus_move_can_pot_dsrl_simulator_noise20/checkpoints/global_step_400",
+        "checkpoint_present_on_capture": true,
+        "launch_provenance": {
+          "path": "reproducibility/provenance/motus_noise20_move_can_pot_lambda03_lowmem__queue_run__experiment_manifest.json",
+          "sha256": "e3d0a9bd520da4b84caa918e74bedaeecb99ad95ec4c4d895681bcd52db33f4e",
+          "hashed_pin_count": 217
+        },
+        "result_receipt": "outputs/motus_noise20_move_can_pot_lambda03_lowmem/move_can_pot/simulator_run/evaluation.json",
+        "result_receipt_sha256": "bccc22e0f9f10457698489180f70c40661985206ea1ebb0226ab080e37f42745"
+      },
+      "notes": "Native simulator success on held-out seeds; 400-action cap",
+      "historical_reproduction_limits": [
+        "Launch hashes identify original content but are not a full archive of historical source/weights; compare before claiming an exact rerun."
+      ]
+    }
+  ],
+  "unfinished_at_capture": [
+    {
+      "id": "motus_noise20_canpot_icon_lambda03_400_lowmem",
+      "task": "move_can_pot",
+      "method": "ICON",
+      "status": "training_not_formally_evaluated",
+      "latest_collection": 243,
+      "budget_collections": 400,
+      "source_status_updated_at_utc": "2026-11-20T04:57:05.477432+00:00"
+    },
+    {
+      "id": "motus_noise20_canpot_robometer_lambda03_400_lowmem",
+      "task": "move_can_pot",
+      "method": "Robometer",
+      "status": "queued_not_formally_evaluated",
+      "budget_collections": 400
+    }
+  ]
+}

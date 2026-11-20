@@ -2,21 +2,85 @@
 
 This checkout trains RLinf's SAC controller to steer a frozen π0.5 policy on RoboTwin. Completed `adjust_bottle` experiments use a task-specific SFT decoder or the released multi-task Motus decoder. The current Motus experiment replaces repeated noise with a 20-row noise controller and compares ICON, Robometer and native simulator rewards. Earlier multi-task results are retained below. PPO recipes are historical experiments.
 
+## Start on another computer
+
+Read **[the reproduction guide](docs/REPRODUCE.md)** first. It links the exact
+environment snapshots, model/asset revisions, fixed ICON demonstrations, vendor
+patches, and saved experiment configurations. **[AGENTS.md](AGENTS.md)** gives
+Codex the same reading order and execution rules automatically.
+
+Git contains code, configurations, vendor patches, small reproducibility
+inputs, and the results ledger. Large pretrained/trained weights and simulator
+assets require the separate artifact procedure; copying virtual environments
+or cloning Git alone is insufficient. Preserve the exact context-frame hashes,
+software versions, seeds and action caps when comparing results. A fresh
+training run on different hardware is not guaranteed to return an identical score.
+
+The [versioned results ledger](docs/experiment_results.csv) and
+[saved recipes](reproducibility/experiments.json) describe completed formal
+evaluations. Dated sections below preserve earlier experiments; old PIDs,
+absolute output links and statements about running processes are local history.
+
+Backup validation on November 20: **692 CPU tests passed, 18 skipped**. A
+temporary clean checkout restored all four vendor patches and the exact context
+frames successfully. Installed-source overlays and the local artifact inventory
+also passed their checks. A fresh environment installation and GPU rerun on the
+destination remain part of the reproduction guide.
+
+## Move-can-pot with lower GPU memory usage — November 20, 2026
+
+The frozen Motus baseline with a 400-action limit completed **26/150 successes
+(17.33%)**. The lower-memory simulator DSRL run completed training and evaluated
+its final step-400 checkpoint at **58/150 (38.67%)**, a gain of **21.33 percentage
+points**. Both use the same 400-action cap, 20-action execution and five flow steps.
+
+| Policy | Action limit | Held-out result | State at this documentation snapshot |
+| --- | ---: | ---: | --- |
+| Frozen Motus, earlier baseline | 200 | 21/150 (14.00%) | Completed; different action cap |
+| Frozen Motus, matched baseline | 400 | 26/150 (17.33%) | Completed |
+| Motus + simulator sparse DSRL | 400 | 58/150 (38.67%) | Completed |
+| Motus + ICON DSRL, lambda 0.3 | 400 | Pending | Training; no final evaluation yet |
+| Motus + Robometer DSRL, lambda 0.3 | 400 | Pending | Queued after ICON |
+
+The queue now supports `--low-gpu-memory`: SAC models and optimizer state move
+to CPU between GPU phases, and each reward server loads on GPU 0 only during
+its own method's training. Learning hyperparameters, including global batch
+128, microbatch 64, independent 20×32 noise and the 400-action limit, are
+preserved. See the [profile, commands and validation](docs/motus_low_gpu_memory.md)
+for a fresh simulator → ICON → Robometer comparison. The simulator checkpoint
+audit confirmed 7,520 critic / 3,760 actor updates and identical controller
+replicas. All formal evaluations use 150 held-out scenes and native success,
+without reward-server calls or optimizer updates.
+
+The first attempt, before this memory profile, stopped after 24 warmup
+collections with an OOM and made no main SAC updates. It is not a completed
+comparison and must not be resumed as a trained checkpoint.
+
 ## Cleanup and source backup — November 6, 2026
 
 Cleanup reclaimed **577.08GiB** by removing17 inactive completed-run replay buffers, nine disposable smoke checkpoint directories, canceled/staged run copies and duplicated PPO distributed training shards. Another56 inactive Ray, diagnostic and generated cache paths were removed. All18 distinct final inference checkpoints, pretrained models, context demos, completed evaluation metrics and the active lambda0.3 run were preserved; its220 source/model/context pins were verified unchanged. [Checkpoint retention receipt](docs/checkpoint_retention_20261106.json), [full local cleanup receipt](outputs/cleanup_audit/cleanup_20261106.json).
 
-The retained completed policies support evaluation. Their replay buffers were removed, so they no longer support exact training resume; each affected checkpoint has a removal marker with the former replay metadata. Negative results retain final inference weights as comparison evidence. [Versioned experiment results](docs/experiment_results.csv) record27 completed150-seed evaluations, including the latest lambda0.1 ICON/Robometer results. The lambda0.3 series is still running and has no final score in that table.
+The retained completed policies support evaluation. Their replay buffers were removed, so they no longer support exact training resume; each affected checkpoint has a removal marker with the former replay metadata. Negative results retain final inference weights as comparison evidence. The cleanup snapshot recorded27 completed150-seed evaluations. The [versioned experiment results](docs/experiment_results.csv) have since been updated with the completed lambda0.3 bottle comparisons and400-action can-pot results.
 
 Useful collectors, evaluators, launchers, diagnostics and regression tests are included in the source backup. Model/data/environment/run artifacts and generated caches remain local and ignored; `.env` files are also ignored. The four vendor patch backups match the live submodule source. Validation passed610 CPU tests with14 dependency-based skips.
 
 ## Adjust-bottle lambda0.3 comparison — November 6, 2026
 
-The next series keeps the fixed Motus context, independent20×32 noise,200-action episode cap and matched SAC settings from the completed lambda0.1 trial. Only the single-stage progress penalty changes: `reward = native_success - 0.3 * (1 - estimated_progress)`. ICON trains400 collections (3,200 episode attempts) and evaluates its own final checkpoint on150 held-out seeds, followed by the same fresh training/evaluation for Robometer. Reward normalization remains disabled. Completed lambda0.1 outputs and checkpoints are retained.
+This series completed on November6. ICON scored **57/150 (38.00%)** and Robometer
+**67/150 (44.67%)**, each from its own final step-400 checkpoint. It kept the
+fixed Motus context, independent20×32 noise,200-action cap and matched SAC
+settings of the lambda0.1 trial, changing the reward to
+`native_success - 0.3 * (1 - estimated_progress)`. Each trained400 collections
+(3,200 episode attempts); reward normalization remained disabled. The matched
+lambda0.1 results were48.00% for ICON and52.67% for Robometer. These are separate
+single-training-seed comparisons, not repeated-seed confidence estimates.
 
 The [launcher](scripts/run_motus_click_bell_noise20_queue.py) accepts `--task adjust_bottle --penalty-weight 0.3`. It applies the weight through Hydra overrides to the existing lambda0.1 base configs and records the actual weight in saved resolved configs, command arguments, manifests and reward sidecars. Fresh outputs use NVMe-backed `outputs/motus_noise20_adjust_bottle_lambda03/`; follow [queue status](outputs/motus_noise20_adjust_bottle_lambda03/experiment_status.json). Final results are written to `adjust_bottle/{icon,robometer}_run/evaluation.json` and combined in `summary.json`.
 
-The detached lambda0.3 queue launched at13:30:58 Shanghai time on November6, supervisor PID1813135, after65 queue tests, independent recipe comparison and host preflight passed. [Launch receipt](outputs/motus_noise20_adjust_bottle_lambda03/launch.json). The queue status is authoritative for current progress and any failure.
+The detached lambda0.3 queue launched at13:30:58 Shanghai time on November6,
+supervisor PID1813135, after65 queue tests and host preflight passed, and later
+finished both evaluations. [Completed local results](outputs/motus_noise20_adjust_bottle_lambda03/summary.json).
+Its historical PID must not be treated as a current process identifier.
 
 ## Adjust-bottle lambda0.1 reward queue — November 5, 2026
 

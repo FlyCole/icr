@@ -1,0 +1,202 @@
+{
+  "created_at_utc": "2026-11-02T08:51:03.064968+00:00",
+  "policy_checkpoint": "/media/yifei/workspace_nvme/icr_motus/checkpoints/Motus-Pi05-RoboTwin2",
+  "checkpoint_weights_sha256": "de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb",
+  "checkpoint_weights_file": "model.safetensors",
+  "policy_task": "eval",
+  "policy_seed": 1235,
+  "policy_sampling": "SFT Gaussian initial noise; deterministic Euler flow; no DSRL",
+  "optimization_steps": 0,
+  "flow_steps": 5,
+  "action_horizon": 32,
+  "action_chunk_size": 20,
+  "episode_action_limit": 400,
+  "render_shader": "default",
+  "render_denoiser": "none",
+  "center_crop": false,
+  "camera_type": "D435",
+  "attempts": [
+    {
+      "requested_scene_seed": 100000,
+      "actual_scene_seed": 100000,
+      "task_instruction": "Pinpoint the blue dome-shaped bell and click its top center.",
+      "action_count": 400,
+      "simulator_success": false,
+      "reason": "timeout"
+    },
+    {
+      "requested_scene_seed": 100001,
+      "actual_scene_seed": 100001,
+      "task_instruction": "Pinpoint the metal bell with plastic parts and click its top center.",
+      "action_count": 120,
+      "simulator_success": true,
+      "reason": "native_success"
+    }
+  ],
+  "git": {
+    "icr": {
+      "revision": "198f97f0ae9ceba7485729f64ce3273ba6bc1e02",
+      "dirty": true
+    },
+    "rlinf": {
+      "revision": "8fc378bceb3e761442e9bd0936a682455b4d35b8",
+      "dirty": true
+    },
+    "robotwin": {
+      "revision": "dca9ec682688821c42944eacd7f5dd9bfb15396f",
+      "dirty": true
+    }
+  },
+  "source_sha256": {
+    "collector": "b48322cd2dabf595fc029edfb443c3f571560794891eb742f4d87cc9ff22bf7c",
+    "native_task": "e6ce32cd890030c41110bd95ecf6bc7597e064cd3663fb8436f39aecfe579470",
+    "vector_env": "e891e14f138c066b9511d07f6de86f45c2d6dac0ff2c0c82da6b8b3d6476a098",
+    "rlinf_env": "9d468358e2286b55d807f8fe9569419f1ef4e343488b2f0bfd4eabd521fad210"
+  },
+  "norm_stats_path": "/media/yifei/workspace_nvme/icr_motus/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+  "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb",
+  "collection_config": {
+    "env": {
+      "env_type": "robotwin",
+      "total_num_envs": 1,
+      "auto_reset": false,
+      "ignore_terminations": false,
+      "reward_coef": 1.0,
+      "use_custom_reward": true,
+      "use_rel_reward": true,
+      "center_crop": false,
+      "seed": 1234,
+      "group_size": 1,
+      "use_fixed_reset_state_ids": true,
+      "max_steps_per_rollout_epoch": 400,
+      "max_episode_steps": 400,
+      "is_eval": false,
+      "assets_path": "/home/yifei/icr/third_party/robotwin",
+      "seeds_path": "/tmp/icr-icon-context-ulxkipm0/training_seed.json",
+      "video_cfg": {
+        "save_video": false,
+        "info_on_video": true,
+        "video_base_dir": null
+      },
+      "enable_offload": false,
+      "task_config": {
+        "task_name": "click_bell",
+        "step_lim": 400,
+        "planner_backend": "mplib",
+        "render_freq": 0,
+        "episode_num": 100,
+        "use_seed": false,
+        "save_freq": 15,
+        "embodiment": [
+          "aloha-agilex"
+        ],
+        "language_num": 100,
+        "domain_randomization": {
+          "random_background": false,
+          "cluttered_table": false,
+          "clean_background_rate": 1,
+          "random_head_camera_dis": 0,
+          "random_table_height": 0,
+          "random_light": false,
+          "crazy_random_light_rate": 0
+        },
+        "camera": {
+          "head_camera_type": "D435",
+          "wrist_camera_type": "D435",
+          "collect_head_camera": true,
+          "collect_wrist_camera": true
+        },
+        "data_type": {
+          "rgb": true,
+          "third_view": false,
+          "depth": false,
+          "pointcloud": false,
+          "observer": false,
+          "endpose": false,
+          "qpos": true,
+          "mesh_segmentation": false,
+          "actor_segmentation": false
+        },
+        "pcd_down_sample_num": 1024,
+        "pcd_crop": true,
+        "save_path": "./data",
+        "clear_cache_freq": 8,
+        "collect_data": false,
+        "eval_video_log": false,
+        "render_shader": "default",
+        "render_denoiser": "none",
+        "single_thread_render": true,
+        "save_data": false
+      },
+      "skip_intermediate_renders": false
+    },
+    "policy": {
+      "model_type": "openpi",
+      "precision": "bf16",
+      "pi05": true,
+      "is_lora": false,
+      "lora_rank": 32,
+      "num_action_chunks": 20,
+      "action_dim": 14,
+      "use_proprio": true,
+      "num_steps": 5,
+      "add_value_head": false,
+      "openpi": {
+        "task": "eval",
+        "config_name": "pi05_aloha_robotwin",
+        "num_images_in_input": 3,
+        "noise_level": 0.5,
+        "action_chunk": 20,
+        "num_steps": 5,
+        "train_expert_only": true,
+        "action_env_dim": 14,
+        "noise_method": "flow_ode",
+        "add_value_head": false,
+        "value_after_vlm": false,
+        "value_vlm_mode": "mean_token",
+        "detach_critic_input": false,
+        "model_action_dim": 32,
+        "paligemma_variant": "gemma_2b",
+        "action_expert_variant": "gemma_300m",
+        "max_token_len": 200,
+        "torch_compile": false,
+        "action_horizon": 32
+      },
+      "model_path": "/media/yifei/workspace_nvme/icr_motus/checkpoints/Motus-Pi05-RoboTwin2",
+      "openpi_data": {
+        "norm_stats_path": "/media/yifei/workspace_nvme/icr_motus/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json"
+      }
+    }
+  },
+  "schema_version": 1,
+  "task_name": "click_bell",
+  "task_instruction": "Pinpoint the metal bell with plastic parts and click its top center.",
+  "simulator_success": true,
+  "split": "train",
+  "seed": 100001,
+  "actual_scene_seed": 100001,
+  "requested_scene_seed": 100001,
+  "camera": "head",
+  "raw_rgb": true,
+  "frame_count": 121,
+  "action_count": 120,
+  "frame_shape": [
+    240,
+    320,
+    3
+  ],
+  "frames_dtype": "uint8",
+  "first_success_frame_index": 120,
+  "context_frames": 8,
+  "context_frame_indices": [
+    0,
+    17,
+    34,
+    51,
+    69,
+    86,
+    103,
+    120
+  ],
+  "frames_sha256": "0a0a75db9408853527b0b2b667eb4724fe12ef2f5e2affdec2afd1cd8cb6e472"
+}

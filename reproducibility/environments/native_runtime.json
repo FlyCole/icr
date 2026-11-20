@@ -1,0 +1,191 @@
+{
+  "captured_date": "2026-11-20",
+  "gpu": "2 x NVIDIA RTX PRO6000 Blackwell Max-Q Workstation Edition (97887MiB each)",
+  "installed_oidn_files": [
+    {
+      "path": "libOpenImageDenoise.so.2.3.3",
+      "sha256": "9ac9dcd18318cae879efb01c14cff72c2c4275428a15e5ab6e94c8ff8a43c4dc",
+      "size": 115336
+    },
+    {
+      "path": "libOpenImageDenoise_core.so.2.3.3",
+      "sha256": "eadb2437d6ac4a88e5746980495ba1091f7d14745e3000b82a9382093d22f351",
+      "size": 50631472
+    },
+    {
+      "path": "libOpenImageDenoise_device_cpu.so.2.3.3",
+      "sha256": "744ce70325b2cf2ca34832513379f1a7384d2ee31be7cfb73c060e2221dd3812",
+      "size": 539496
+    },
+    {
+      "path": "libOpenImageDenoise_device_cuda.so.2.3.3",
+      "sha256": "12b3ff87cfa4b6a90481b757f5a56ee69380a45e3dcaeadf8dd22cb73d4f714a",
+      "size": 4156088
+    },
+    {
+      "path": "libOpenImageDenoise_device_hip.so.2.3.3",
+      "sha256": "828a7c4375a7d7502f9a25b3ea591daf7ca76d8b45239e028958eb8d5751551e",
+      "size": 7651528
+    },
+    {
+      "path": "libOpenImageDenoise_device_sycl.so.2.3.3",
+      "sha256": "02ac8bf56b84336c7b824a68ba07d883d45e14ce7590176be94839103fa8686b",
+      "size": 8596376
+    },
+    {
+      "path": "libsycl.so.8.0.0-0",
+      "sha256": "78adeaf5c92961726cf5da48c261ea0e0ac168ea741925ba8b02335bed0ae43d",
+      "size": 4929024
+    },
+    {
+      "path": "libtbb.so.12.12",
+      "sha256": "dcf63f8cb99f76c9c5a5e9e8410aa05ea2ed1e7efa07e1fe9d48e688c4dbd1c9",
+      "size": 3843184
+    },
+    {
+      "path": "libtbbbind.so.3.12",
+      "sha256": "eceac0a9ef5efcb6cdca3371a9d93a8f9bdc2e10338f93d8505239bfdf2d8b02",
+      "size": 234880
+    },
+    {
+      "path": "libtbbbind_2_0.so.3.12",
+      "sha256": "c7e78dbb612a00b443e69e93dc8a3bff1230a09d228567348468f660361f9908",
+      "size": 234488
+    },
+    {
+      "path": "libtbbbind_2_5.so.3.12",
+      "sha256": "266c7a9f2328f04cef244a3f6c85d864db76632b5d27aac3df5217fa1e17c2a8",
+      "size": 238704
+    },
+    {
+      "path": "libumf.so.0.9.0",
+      "sha256": "918e21e6f7d5b66be23cf5dd81d63ca5883817236e980516963a455ed2f642c0",
+      "size": 81312
+    },
+    {
+      "path": "libur_adapter_level_zero.so.0.10.8",
+      "sha256": "da46993e2634bef0e9d16b82ca48e1f9bc68c03fc2d04f7204cc4c42cdf6424a",
+      "size": 1727536
+    },
+    {
+      "path": "libur_loader.so.0.10.8",
+      "sha256": "194e6d45b1db75de137c9bf5c54cde13b9fbf4efd48d8ee73a4816a75e9d8d5c",
+      "size": 18161136
+    }
+  ],
+  "installed_oidn_symlinks": [
+    {
+      "path": "libOpenImageDenoise.so",
+      "target": "libOpenImageDenoise.so.2"
+    },
+    {
+      "path": "libOpenImageDenoise.so.2",
+      "target": "libOpenImageDenoise.so.2.3.3"
+    },
+    {
+      "path": "libsycl.so.8",
+      "target": "libsycl.so.8.0.0-0"
+    },
+    {
+      "path": "libtbb.so",
+      "target": "libtbb.so.12"
+    },
+    {
+      "path": "libtbb.so.12",
+      "target": "libtbb.so.12.12"
+    },
+    {
+      "path": "libtbbbind.so.3",
+      "target": "libtbbbind.so.3.12"
+    },
+    {
+      "path": "libtbbbind_2_0.so.3",
+      "target": "libtbbbind_2_0.so.3.12"
+    },
+    {
+      "path": "libtbbbind_2_5.so.3",
+      "target": "libtbbbind_2_5.so.3.12"
+    },
+    {
+      "path": "libumf.so",
+      "target": "libumf.so.0"
+    },
+    {
+      "path": "libumf.so.0",
+      "target": "libumf.so.0.9.0"
+    },
+    {
+      "path": "libur_adapter_level_zero.so",
+      "target": "libur_adapter_level_zero.so.0"
+    },
+    {
+      "path": "libur_adapter_level_zero.so.0",
+      "target": "libur_adapter_level_zero.so.0.10.8"
+    },
+    {
+      "path": "libur_loader.so",
+      "target": "libur_loader.so.0"
+    },
+    {
+      "path": "libur_loader.so.0",
+      "target": "libur_loader.so.0.10.8"
+    }
+  ],
+  "kernel": "7.0.0-38-generic",
+  "native_nccl_preload": {
+    "filename": "nvidia_nccl_cu12-2.31.2-py3-none-manylinux_2_18_x86_64.whl",
+    "installed_library_path": "data/nccl/2.31.2/nvidia/nccl/lib/libnccl.so.2",
+    "installed_library_sha256": "dba12e429fe11268b895d0531ba96a7f679f35227d5b1ec77c5febbcd02281bd",
+    "package": "nvidia-nccl-cu12",
+    "sha256": "f9b1dc3c2a7e20176054144ebb3b32fea83b40402ee5d7ac7045cd11ecc956c0",
+    "url": "https://files.pythonhosted.org/packages/0f/36/104de52d6368f5b7f886e8fd252e0a438fe73a215e59b1b47f93a80ae2ea/nvidia_nccl_cu12-2.31.2-py3-none-manylinux_2_18_x86_64.whl",
+    "version": "2.31.2"
+  },
+  "notes": [
+    "NCCL2.31.2 is installed as a separate --target tree, not by replacing the torch environment NCCL package.",
+    "OIDN2.3.3 native libraries are required to match the patched SAPIEN loader. Current experiments use raster rendering with denoiser none."
+  ],
+  "nvidia_driver": "580.178.04",
+  "os": "Ubuntu24.04.4 LTS x86_64",
+  "sapien_oidn": {
+    "archive_sha256": "3c385230d9e6f63527ba72f2229594dbac5051674219d72e0044b5d0b841796f",
+    "installed_at_utc": "2026-10-28T06:38:37.529809+00:00",
+    "new_loader_sha256": "fcd70cffc803bd5510480cd597932416f2d70254dcba84e235a63bee6587c581",
+    "new_oidn_library_sha256": {
+      "libOpenImageDenoise.so.2.3.3": "9ac9dcd18318cae879efb01c14cff72c2c4275428a15e5ab6e94c8ff8a43c4dc",
+      "libOpenImageDenoise_core.so.2.3.3": "eadb2437d6ac4a88e5746980495ba1091f7d14745e3000b82a9382093d22f351",
+      "libOpenImageDenoise_device_cpu.so.2.3.3": "744ce70325b2cf2ca34832513379f1a7384d2ee31be7cfb73c060e2221dd3812",
+      "libOpenImageDenoise_device_cuda.so.2.3.3": "12b3ff87cfa4b6a90481b757f5a56ee69380a45e3dcaeadf8dd22cb73d4f714a",
+      "libOpenImageDenoise_device_hip.so.2.3.3": "828a7c4375a7d7502f9a25b3ea591daf7ca76d8b45239e028958eb8d5751551e",
+      "libOpenImageDenoise_device_sycl.so.2.3.3": "02ac8bf56b84336c7b824a68ba07d883d45e14ce7590176be94839103fa8686b"
+    },
+    "original_library_sha256": {
+      "libOpenImageDenoise.so.2.0.1": "6651393c908c1c07676a2d643a51c3d684be94c15813dc57ac9001bb0d650b13",
+      "libOpenImageDenoise_core.so.2.0.1": "44d378709d385ad02cd7c9f54e2a2287ab7cf22367fac717694429f328124d7d",
+      "libOpenImageDenoise_device_cuda.so.2.0.1": "90572666392c6997b58e12ceb5262d3647a99415717a5929d5c2e969f37e4ddf"
+    },
+    "original_loader_sha256": "61a7900ee84d846cd92bd6e0c0fe9a1de90981e4eb3c611828b7102e2c457d68",
+    "previous_version": "2.0.1",
+    "scope": "SAPIEN OIDN native libraries and loader only; no training/config/driver/Torch/NCCL changes",
+    "source_url": "https://github.com/RenderKit/oidn/releases/download/v2.3.3/oidn-2.3.3.x86_64.linux.tar.gz",
+    "temporary_download_and_extraction_removed": true,
+    "verification_status": "passed",
+    "version": "2.3.3"
+  },
+  "schema_version": 1,
+  "system_packages": {
+    "build-essential": "12.10ubuntu1",
+    "ffmpeg": "7:6.1.1-3ubuntu5",
+    "libaio1t64:amd64": "0.3.113-6build1.1",
+    "libc6:amd64": "2.39-0ubuntu8.7",
+    "libegl1:amd64": "1.7.0-1build1",
+    "libgl1:amd64": "1.7.0-1build1",
+    "libglib2.0-0t64:amd64": "2.80.0-6ubuntu3.10",
+    "libgomp1:amd64": "14.2.0-4ubuntu2~24.04.1",
+    "libnuma1:amd64": "2.0.18-1ubuntu0.24.04.1",
+    "libstdc++6:amd64": "14.2.0-4ubuntu2~24.04.1",
+    "libvulkan1:amd64": "1.3.275.0-1build1",
+    "patchelf": "0.18.0-1.1build1"
+  },
+  "torch_cuda_runtime": "12.8"
+}

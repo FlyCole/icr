@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "source_tensor_count": 812,
+  "converted_tensor_count": 667,
+  "source_dtype_counts": {
+    "F32": 122,
+    "BF16": 690
+  },
+  "decoder_horizon": 32,
+  "action_env_dim": 14,
+  "internal_action_dim": 32,
+  "download_complete": false,
+  "validation": "actual key conversion against actual Pi0 meta architecture; no tensor body/model inference",
+  "header_source": "checkpoints/Motus-Pi05-RoboTwin2/.cache/huggingface/download/xGOKKLRSlIhH692hSVvI1-gpoa8=.de8e03a445f3e0af417a9d61a903d342fca5b6a5b4fdc6f20445e14ad25692eb.incomplete",
+  "expected_full_file_size": 7473091464,
+  "weights_integrity_verified": false,
+  "limitation": "Partial download header only; full-file SHA verification is still required before model loading."
+}

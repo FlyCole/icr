@@ -221,11 +221,15 @@ def test_checkpoint_guard_checks_task_path_update_counts_and_head_shapes(tmp_pat
 
 
 def fake_supervisor(
-    tmp_path, monkeypatch, *, smoke_only=False, task=queue.TASK, penalty_weight=0.1
+    tmp_path, monkeypatch, *, smoke_only=False, task=queue.TASK, penalty_weight=0.1,
+    methods=queue.METHODS, low_gpu_memory=False,
 ):
     instance = object.__new__(queue.QueueSupervisor)
     instance.task = task
+    instance.methods = tuple(methods)
     instance.penalty_weight = penalty_weight
+    instance.low_gpu_memory = low_gpu_memory
+    instance.server_kind = None
     instance.out = tmp_path
     instance.run_dir = tmp_path / "queue_run"
     instance.args = SimpleNamespace(smoke_only=smoke_only)
@@ -242,12 +246,21 @@ def fake_supervisor(
 
     def start_icon():
         calls.append(("icon", "start"))
+        instance.server_kind = "icon"
         instance.server = SimpleNamespace(stop=lambda: calls.append(("icon", "stop")))
 
     instance.start_icon = start_icon
+
+    def start_robometer():
+        calls.append(("robometer", "start"))
+        instance.server_kind = "robometer"
+        instance.server = SimpleNamespace(stop=lambda: calls.append(("robometer", "stop")))
+
+    instance.start_robometer = start_robometer
     instance.cache_evidence = lambda stage: {"passed": True}
     cfgs = queue.resolved_configs(
-        out=tmp_path, task=task, penalty_weight=penalty_weight
+        out=tmp_path, task=task, penalty_weight=penalty_weight, methods=methods,
+        low_gpu_memory=low_gpu_memory,
     )
 
     def run_stage(method, stage):
@@ -337,6 +350,56 @@ def test_smoke_only_stops_after_first_icon_smoke(tmp_path, monkeypatch):
     assert not (tmp_path / "summary.json").exists()
 
 
+def test_selected_simulator_icon_robometer_queue_finishes_each_own_evaluation(tmp_path, monkeypatch):
+    methods = ("simulator", "icon", "robometer")
+    instance, calls = fake_supervisor(
+        tmp_path, monkeypatch, task="move_can_pot", penalty_weight=0.3, methods=methods
+    )
+    traces = []
+    monkeypatch.setattr(queue, "reward_trace_proof", lambda directory, **kwargs: traces.append(directory) or {"passed": True})
+    instance._execute_locked()
+    stages = [item for item in calls if item[0] in methods and item[1] in {"smoke", "train", "eval"}]
+    assert stages == [(method, stage) for method in methods for stage in ("smoke", "train", "eval")]
+    assert calls.index(("simulator", "eval")) < calls.index(("icon", "start"))
+    assert calls.index(("icon", "eval")) < calls.index(("robometer", "smoke"))
+    assert len(traces) == 2
+    assert [path.name for path in traces] == ["icon_train", "robometer_train"]
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    assert summary["ordered_methods"] == list(methods)
+    assert [row["method"] for row in summary["evaluations"]] == list(methods)
+
+
+@pytest.mark.parametrize("stage", ("smoke", "train", "eval"))
+def test_move_can_pot_simulator_reward_has_no_estimator_and_preserves_matched_sac(stage):
+    cfg = queue.resolved_configs(task="move_can_pot", penalty_weight=0.3, methods=("simulator",))["simulator"][stage]
+    for mode in ("eval",) if stage == "eval" else ("train", "eval"):
+        assert cfg["env"][mode]["max_episode_steps"] == 400
+        assert cfg["env"][mode]["max_steps_per_rollout_epoch"] == 400
+        assert cfg["env"][mode]["task_config"]["step_lim"] == 400
+        assert cfg["env"][mode]["task_config"]["task_name"] == "move_can_pot"
+    assert cfg["reward"]["use_reward_model"] is False
+    assert cfg["rollout"]["model"]["openpi"]["dsrl_noise_action_chunk_size"] == 20
+    if stage == "eval":
+        assert cfg["rollout"]["model"]["model_path"] == str(queue.checkpoint_path("simulator", task="move_can_pot", penalty_weight=0.3))
+        assert cfg["env"]["eval"]["total_num_envs"] * cfg["env"]["eval"]["rollout_epoch"] == 150
+    else:
+        assert cfg["reward"]["env_reward_weight"] == 1.0
+        assert cfg["reward"]["reward_weight"] == 0.0
+        assert cfg["actor"]["global_batch_size"] == 128
+        assert cfg["algorithm"]["entropy_tuning"]["initial_alpha"] == 0.0005
+        assert not any("progress_penalty_weight" in value for value in queue.stage_overrides("simulator", stage, task="move_can_pot", penalty_weight=0.3))
+
+
+def test_method_cli_preserves_default_pair_and_accepts_ordered_three_way_run():
+    assert tuple(queue.parse_args([]).methods) == queue.METHODS
+    args = queue.parse_args(["--task", "move_can_pot", "--methods", "simulator", "icon", "robometer", "--penalty-weight", "0.3"])
+    instance = queue.QueueSupervisor(args)
+    assert instance.methods == ("simulator", "icon", "robometer")
+    assert instance.state["queue"] == ["simulator", "icon", "robometer"]
+    with pytest.raises(SystemExit):
+        queue.parse_args(["--methods", "simulator", "simulator"])
+
+
 def test_failed_native_evaluation_prevents_every_following_method(
     tmp_path, monkeypatch
 ):
@@ -389,6 +452,67 @@ def test_task_cli_selects_bottle_without_changing_click_defaults():
     assert queue.parse_args([]).task == "click_bell"
     assert queue.parse_args([]).output_root == queue.OUT
     assert (queue.TASK, queue.OUT, queue.noise.TASK, queue.noise.OUT) == original
+
+
+@pytest.mark.parametrize("method", queue.METHODS)
+@pytest.mark.parametrize("stage", ("smoke", "train", "eval"))
+def test_move_can_pot_preserves_latest_recipe_with_400_action_limits(method, stage):
+    task = "move_can_pot"
+    cfg = queue.resolved_configs(task=task, penalty_weight=0.3)[method][stage]
+    for mode in ("eval",) if stage == "eval" else ("train", "eval"):
+        env = cfg["env"][mode]
+        assert env["task_config"]["task_name"] == task
+        assert env["max_episode_steps"] == 400
+        assert env["max_steps_per_rollout_epoch"] == 400
+        assert env["task_config"]["step_lim"] == 400
+        assert env["context_match_mode"] == "fixed"
+    assert cfg["rollout"]["model"]["openpi"]["dsrl_noise_action_chunk_size"] == 20
+    assert cfg["rollout"]["model"]["openpi"]["action_horizon"] == 32
+    if stage == "eval":
+        assert cfg["env"]["eval"]["total_num_envs"] * cfg["env"]["eval"]["rollout_epoch"] == 150
+        assert cfg["reward"]["use_reward_model"] is False
+        assert cfg["rollout"]["model"]["model_path"] == str(
+            queue.checkpoint_path(method, task=task, penalty_weight=0.3)
+        )
+    else:
+        assert cfg["actor"]["model"]["openpi"]["dsrl_noise_action_chunk_size"] == 20
+        assert cfg["reward"]["model"]["progress_penalty_weight"] == 0.3
+        assert cfg["actor"]["global_batch_size"] == 128
+        assert cfg["algorithm"]["entropy_tuning"]["initial_alpha"] == 0.0005
+        assert cfg["runner"]["resume_dir"] is None
+    # This comparison guards against accidental training changes while moving
+    # the latest bottle recipe to a new task and doubling its episode horizon.
+    reference = queue.resolved_configs(task="adjust_bottle", penalty_weight=0.3)[method][stage]
+    normalized = json.loads(json.dumps(cfg).replace("move_can_pot", "adjust_bottle"))
+    for mode in ("train", "eval"):
+        if mode in normalized["env"]:
+            normalized["env"][mode]["max_episode_steps"] = 200
+            normalized["env"][mode]["max_steps_per_rollout_epoch"] = 200
+            normalized["env"][mode]["task_config"]["step_lim"] = 200
+    assert normalized == reference
+
+
+@pytest.mark.parametrize("mode", ("train", "eval"))
+@pytest.mark.parametrize("key", ("max_episode_steps", "max_steps_per_rollout_epoch", "task_config.step_lim"))
+def test_move_can_pot_rejects_any_stale_200_action_limit(mode, key):
+    cfg = queue.resolved_configs(task="move_can_pot", penalty_weight=0.3)["icon"]["train"]
+    target = cfg["env"][mode]
+    parts = key.split(".")
+    for part in parts[:-1]:
+        target = target[part]
+    target[parts[-1]] = 200
+    with pytest.raises(RuntimeError):
+        queue.verify_config(cfg, "icon", "train", task="move_can_pot", penalty_weight=0.3)
+
+
+def test_move_can_pot_cli_selects_fresh_lambda03_outputs():
+    args = queue.parse_args(["--task", "move_can_pot", "--penalty-weight", "0.3"])
+    supervisor = queue.QueueSupervisor(args)
+    assert supervisor.task == "move_can_pot"
+    assert supervisor.out == queue.ROOT / "outputs/motus_noise20_move_can_pot_lambda03"
+    assert supervisor.penalty_weight == 0.3
+    assert queue.parse_args([]).task == "click_bell"
+    assert queue.parse_args([]).penalty_weight == 0.1
 
 
 @pytest.mark.parametrize("method", queue.METHODS)
@@ -515,3 +639,177 @@ def test_penalty_cli_rejects_invalid_values(value):
 def test_programmatic_penalty_validation_rejects_invalid_values(value):
     with pytest.raises(ValueError, match="finite and nonnegative"):
         queue.validate_penalty_weight(value)
+
+
+@pytest.mark.parametrize("stage", ("smoke", "train", "eval"))
+def test_low_memory_profile_changes_only_actor_phase_offload(tmp_path, stage):
+    kwargs = dict(
+        task="move_can_pot", penalty_weight=0.3,
+        methods=queue.SUPPORTED_METHODS, out=tmp_path,
+    )
+    original = queue.resolved_configs(**kwargs)
+    low_memory = queue.resolved_configs(**kwargs, low_gpu_memory=True)
+    for method in queue.SUPPORTED_METHODS:
+        old, new = (copy.deepcopy(cfg[method][stage]) for cfg in (original, low_memory))
+        if stage != "eval":
+            assert old["actor"]["enable_offload"] is False
+            assert new["actor"].pop("enable_offload") is True
+            old["actor"].pop("enable_offload")
+            assert new["actor"]["micro_batch_size"] == 64
+            assert new["actor"]["global_batch_size"] == 128
+        assert old == new
+
+
+def test_low_memory_cli_uses_fresh_output_and_default_remains_unchanged():
+    options = ["--task", "move_can_pot", "--penalty-weight", "0.3"]
+    normal = queue.parse_args(options)
+    low = queue.parse_args([*options, "--low-gpu-memory"])
+    assert not normal.low_gpu_memory
+    assert low.low_gpu_memory
+    assert low.output_root == Path(str(normal.output_root) + "_lowmem")
+    assert queue.QueueSupervisor(low).state["low_gpu_memory"] is True
+    assert queue.parse_args([]).output_root == queue.OUT
+
+
+def test_low_memory_queue_loads_only_its_active_reward_service(tmp_path, monkeypatch):
+    methods = queue.SUPPORTED_METHODS
+    instance, calls = fake_supervisor(
+        tmp_path, monkeypatch, task="move_can_pot", penalty_weight=0.3,
+        methods=methods, low_gpu_memory=True,
+    )
+    instance._execute_locked()
+    sequence = [item for item in calls if item[0] in methods]
+    assert sequence == [
+        ("simulator", "smoke"), ("simulator", "train"), ("simulator", "eval"),
+        ("icon", "start"), ("icon", "smoke"), ("icon", "train"),
+        ("icon", "stop"), ("icon", "eval"),
+        ("robometer", "start"), ("robometer", "smoke"), ("robometer", "train"),
+        ("robometer", "stop"), ("robometer", "eval"),
+    ]
+    assert instance.server is None
+
+
+@pytest.mark.parametrize("method", ("icon", "robometer"))
+def test_low_memory_queue_stops_owned_server_when_training_fails(tmp_path, monkeypatch, method):
+    instance, calls = fake_supervisor(
+        tmp_path, monkeypatch, methods=(method,), low_gpu_memory=True,
+    )
+
+    def fail(*args):
+        raise RuntimeError("collection failed")
+
+    instance.run_stage = fail
+    with pytest.raises(RuntimeError, match="collection failed"):
+        instance._execute_locked()
+    assert calls.index((method, "start")) < calls.index((method, "stop"))
+    assert instance.server is None
+
+
+def test_low_memory_robometer_uses_gpu0_and_pins_its_own_receipt(tmp_path, monkeypatch):
+    instance = queue.QueueSupervisor(queue.parse_args([
+        "--task", "move_can_pot", "--methods", "robometer", "--low-gpu-memory",
+        "--output-root", str(tmp_path),
+    ]))
+    directory = queue.stage_path("robometer", "run", task=instance.task, out=tmp_path)
+    directory.mkdir(parents=True)
+    instance.pins = {}
+    instance.status = lambda *args, **kwargs: None
+    calls = []
+    process = SimpleNamespace(pid=123, poll=lambda: None)
+
+    def popen(command, **kwargs):
+        calls.append((command, kwargs))
+        fingerprint = Path(command[command.index("--fingerprint") + 1])
+        fingerprint.write_text('{"pid": 123}')
+        return process
+
+    seen_paths = []
+    monkeypatch.setattr(queue.subprocess, "Popen", popen)
+    monkeypatch.setattr(queue.noise, "OwnedChild", lambda process: SimpleNamespace(pid=123, process=process))
+    monkeypatch.setattr(queue.base, "require_port_free", lambda port: None)
+    monkeypatch.setattr(
+        queue.base, "verify_robometer",
+        lambda *, fingerprint_path: seen_paths.append(fingerprint_path) or {"fingerprint": {"pid": 123}},
+    )
+    instance.start_robometer()
+    command, kwargs = calls[0]
+    assert kwargs["env"]["CUDA_VISIBLE_DEVICES"] == "0"
+    assert kwargs["env"]["PYTHONPATH"] == str(queue.ROOT / "third_party/robometer")
+    assert "num_gpus=1" in command
+    receipt = directory / "server_source_fingerprint.json"
+    assert seen_paths == [receipt]
+    assert str(receipt) in instance.pins
+    assert json.loads((directory / "robometer_service_identity.json").read_text())["source_pin"] == instance.pins[str(receipt)]
+
+
+def test_low_memory_monitor_tracks_active_log_and_deduplicates_progress(tmp_path):
+    instance = queue.QueueSupervisor(queue.parse_args([
+        "--task", "move_can_pot", "--methods", "simulator", "--low-gpu-memory",
+        "--output-root", str(tmp_path),
+    ]))
+    # Before ownership is established, a status update cannot create a monitor
+    # file that would make the fresh-run preflight collide with itself.
+    instance.status("starting")
+    assert not (tmp_path / "progress.log").exists()
+    assert not instance.run_dir.exists()
+    queue.require_fresh(out=tmp_path, task=instance.task, methods=instance.methods)
+    instance.run_dir.mkdir()
+    instance.owns_run = True
+    first = tmp_path / "first.log"
+    second = tmp_path / "second.log"
+    first.write_text("smoke")
+    second.write_text("train")
+    instance.status("simulator/smoke", global_step=0, log_path=str(first))
+    instance.status("simulator/smoke", global_step=0)
+    instance.status("simulator/smoke", global_step=1)
+    instance.status("simulator/train", global_step=0, log_path=str(second))
+    assert (tmp_path / "current.log").resolve() == second
+    lines = (tmp_path / "progress.log").read_text().splitlines()
+    assert len(lines) == 3
+    assert "simulator/smoke | step 1/2" in lines[1]
+    assert "simulator/train | step 0/400" in lines[2]
+
+
+@pytest.mark.parametrize("low_gpu_memory", (False, True))
+def test_robometer_preflight_keeps_legacy_health_or_defers_low_memory_service(
+    tmp_path, monkeypatch, low_gpu_memory
+):
+    options = ["--methods", "robometer", "--output-root", str(tmp_path)]
+    if low_gpu_memory:
+        options.append("--low-gpu-memory")
+    instance = queue.QueueSupervisor(queue.parse_args(options))
+    calls = []
+    monkeypatch.setattr(queue, "resolved_configs", lambda **kwargs: {})
+    monkeypatch.setattr(queue.deferred, "source_consumers", lambda cfg: [])
+    monkeypatch.setattr(queue.base, "require_storage", lambda **kwargs: {})
+    monkeypatch.setattr(queue.base, "verify_robometer", lambda: calls.append("external_health") or {})
+    monkeypatch.setattr(queue.base, "require_port_free", lambda port: calls.append(port))
+    monkeypatch.setattr(queue, "offline_robometer_preflight", lambda: calls.append("offline_proof") or {})
+    monkeypatch.setattr(queue, "collect_pins", lambda *args, **kwargs: {})
+    monkeypatch.setattr(queue.base, "verify_pins", lambda pins: None)
+    instance.preflight()
+    assert calls == ([8000, "offline_proof"] if low_gpu_memory else ["external_health"])
+
+
+def test_offline_robometer_preflight_checks_shards_and_disables_cuda(tmp_path, monkeypatch):
+    model = tmp_path / "checkpoints/Robometer-4B-inference"
+    model.mkdir(parents=True)
+    (model / "config.yaml").write_text("model: test")
+    (model / "config.json").write_text("{}")
+    (model / "model.safetensors.index.json").write_text(json.dumps({"weight_map": {"weight": "part.safetensors"}}))
+    (model / "part.safetensors").write_bytes(b"weights")
+    monkeypatch.setattr(queue, "ROOT", tmp_path)
+    seen = []
+
+    def run(command, **kwargs):
+        seen.append((command, kwargs))
+        return SimpleNamespace(stdout='{"from_logits_default": true, "logits_sum_one_test": true}')
+
+    monkeypatch.setattr(queue.subprocess, "run", run)
+    proof = queue.offline_robometer_preflight()
+    assert proof["deferred_until_method"] is True
+    assert seen[0][1]["env"]["CUDA_VISIBLE_DEVICES"] == ""
+    assert seen[0][0][-1] == "--check-only"
+    (model / "part.safetensors").unlink()
+    with pytest.raises(RuntimeError, match="shards are missing"):
+        queue.offline_robometer_preflight()

@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "reference": "installed upstream openpi.training.config.LeRobotAlohaDataConfig",
+  "batch_size": 2,
+  "raw_state_dim": 14,
+  "normalized_padded_state_dim": 32,
+  "raw_camera_order": [
+    "head",
+    "left_wrist",
+    "right_wrist"
+  ],
+  "adapt_to_pi": true,
+  "delta_joint_mask": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+  ],
+  "quantile_normalization": true,
+  "decoder_horizon": 32,
+  "executed_action_chunk": 20,
+  "input_max_abs_error": 0.0,
+  "output_max_abs_error": 0.0,
+  "checks": [
+    "camera orientation and order",
+    "joint/gripper state conversion",
+    "normalized state tokens",
+    "inverse normalization and delta-joint reconstruction",
+    "20-action prefix cropping"
+  ],
+  "reference_source_sha256": {
+    "upstream_config": "b54b77a123537bcb304ffe4ad3ed191ee065890f8d7d6a0973d13a0231b93cec",
+    "upstream_aloha": "50d7ad972d80142ecb0f03b0780dacfd3af212946f4c9aac31a204b02db4543d"
+  },
+  "norm_stats_path": "/home/yifei/icr/checkpoints/Motus-Pi05-RoboTwin2/assets/pi0.5_clean_randomize_joint_training/norm_stats.json",
+  "norm_stats_sha256": "1dce5ceb9a98eaa6ae587795e0e8977dc3ce046a7ba0a5ec07858ea896ed1adb"
+}
